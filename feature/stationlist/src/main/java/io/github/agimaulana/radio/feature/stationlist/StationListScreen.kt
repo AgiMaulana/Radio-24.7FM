@@ -58,7 +58,6 @@ private fun StationListScreen(
 ) {
     Scaffold { innerPadding ->
         GlassSlidingPlayerLayout(
-            modifier = modifier.padding(innerPadding),
             state = playerState,
             peekHeight = 80.dp,
             mainContent = {
@@ -66,7 +65,8 @@ private fun StationListScreen(
                     stations = uiState.stations,
                     onClick = {
                         onAction(Action.Click(it))
-                    }
+                    },
+                    modifier = modifier.padding(innerPadding),
                 )
             },
             miniPlayerContent = {
@@ -101,8 +101,8 @@ private fun StationListScreen(
                             onAction(Action.Pause(uiState.playing))
                         },
                         onStop = {
-                            onAction(Action.Stop(uiState.playing))
                             playerState.collapse()
+                            onAction(Action.Stop(uiState.playing))
                         },
                         onCollapse = {
                             playerState.collapse()

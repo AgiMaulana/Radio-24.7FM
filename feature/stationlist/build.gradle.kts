@@ -10,5 +10,5 @@ dependencies {
     implementation(project(":core:design"))
     implementation(project(":core:shared-test"))
     implementation(project(":domain:api"))
-//    implementation("dev.chrisbanes.haze:haze-materials:1.7.1")
+    implementation(libs.androidx.media3.ui.compose.material3)
 }
