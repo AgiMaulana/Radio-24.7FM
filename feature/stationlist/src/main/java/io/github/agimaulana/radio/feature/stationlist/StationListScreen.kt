@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -30,6 +31,7 @@ import kotlinx.collections.immutable.persistentListOf
 fun StationListRoute(
     viewModel: StationListViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val playerState = rememberGlassPlayerState(peekHeight = 80.dp)
 
@@ -70,14 +72,14 @@ private fun StationListScreen(
                 )
             },
             miniPlayerContent = {
-                if (uiState.playing != null) {
+                if (uiState.selectedStation != null) {
                     MiniPlayer(
-                        station = uiState.playing,
+                        station = uiState.selectedStation,
                         onPlay = {
-                            onAction(Action.Play(uiState.playing))
+                            onAction(Action.Play(uiState.selectedStation))
                         },
                         onPause = {
-                            onAction(Action.Pause(uiState.playing))
+                            onAction(Action.Pause(uiState.selectedStation))
                         },
                         modifier = Modifier
                             .clickable(
@@ -90,19 +92,19 @@ private fun StationListScreen(
                 }
             },
             fullPlayerContent = { progress ->
-                if (uiState.playing != null) {
+                if (uiState.selectedStation != null) {
                     FullPlayer(
                         progress = progress,
-                        station = uiState.playing,
+                        station = uiState.selectedStation,
                         onPlay = {
-                            onAction(Action.Play(uiState.playing))
+                            onAction(Action.Play(uiState.selectedStation))
                         },
                         onPause = {
-                            onAction(Action.Pause(uiState.playing))
+                            onAction(Action.Pause(uiState.selectedStation))
                         },
                         onStop = {
                             playerState.collapse()
-                            onAction(Action.Stop(uiState.playing))
+                            onAction(Action.Stop(uiState.selectedStation))
                         },
                         onCollapse = {
                             playerState.collapse()
@@ -128,14 +130,18 @@ private fun StationListScreenPreview() {
                         name = "24.7 FM",
                         genre = "Pop",
                         imageUrl = "",
-                        isPlaying = false
+                        streamUrl = "",
+                        isBuffering = false,
+                        isPlaying = false,
                     ),
                     Station(
                         serverUuid = "uuid",
                         name = "24.7 FM",
                         genre = "Pop",
                         imageUrl = "",
-                        isPlaying = true
+                        streamUrl = "",
+                        isBuffering = false,
+                        isPlaying = true,
                     ),
                 )
             ),

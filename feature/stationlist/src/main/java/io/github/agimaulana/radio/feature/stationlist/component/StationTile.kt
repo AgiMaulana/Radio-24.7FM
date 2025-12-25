@@ -207,6 +207,8 @@ internal class StationPreviewProvider : PreviewParameterProvider<Station> {
                 name = "24.7 FM",
                 genre = "Pop",
                 imageUrl = "",
+                streamUrl = "",
+                isBuffering = false,
                 isPlaying = false
             ),
             Station(
@@ -214,6 +216,8 @@ internal class StationPreviewProvider : PreviewParameterProvider<Station> {
                 name = "24.7 FM",
                 genre = "Pop",
                 imageUrl = "",
+                streamUrl = "",
+                isBuffering = false,
                 isPlaying = true
             ),
         )

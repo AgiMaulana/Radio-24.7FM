@@ -96,6 +96,8 @@ private fun MiniPlayerPreview() {
                 name = "24.7 FM",
                 genre = "Pop",
                 imageUrl = "",
+                streamUrl = "",
+                isBuffering = false,
                 isPlaying = false
             ),
             onPlay = {},
@@ -120,6 +122,8 @@ private fun MiniPlayerSheetModePreview() {
                     name = "24.7 FM",
                     genre = "Pop",
                     imageUrl = "",
+                    streamUrl = "",
+                    isBuffering = false,
                     isPlaying = false
                 ),
                 onPlay = {},

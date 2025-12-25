@@ -11,5 +11,4 @@ data class RadioStationResponse(
     @param:Json(name = "stationuuid") val stationuuid: String,
     @param:Json(name = "tags") val tags: String,
     @param:Json(name = "url") val url: String,
-    @param:Json(name = "url_resolved") val urlResolved: String,
 )

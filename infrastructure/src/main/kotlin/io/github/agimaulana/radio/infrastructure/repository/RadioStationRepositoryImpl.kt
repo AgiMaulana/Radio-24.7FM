@@ -27,7 +27,6 @@ class RadioStationRepositoryImpl @Inject constructor(
             imageUrl = this.favicon,
             tags = this.tags.split(","),
             url = this.url,
-            resolvedUrl = this.urlResolved
         )
     }
 }

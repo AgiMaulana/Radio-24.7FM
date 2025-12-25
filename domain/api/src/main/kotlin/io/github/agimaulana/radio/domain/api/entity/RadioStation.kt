@@ -6,5 +6,4 @@ data class RadioStation(
     val tags: List<String>,
     val imageUrl: String,
     val url: String,
-    val resolvedUrl: String,
 )

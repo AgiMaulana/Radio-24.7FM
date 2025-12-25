@@ -7,11 +7,15 @@ fun newUiStateStation(
     withName: String = "",
     withGenre: String = "",
     withImageUrl: String = "",
+    withStreamUrl: String = "",
+    withIsBuffering: Boolean = false,
     withIsPlaying: Boolean = false,
 ) = StationListViewModel.UiState.Station(
     serverUuid = withServerUuid,
     name = withName,
     genre = withGenre,
     imageUrl = withImageUrl,
+    streamUrl = withStreamUrl,
+    isBuffering = withIsBuffering,
     isPlaying = withIsPlaying,
 )

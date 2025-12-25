@@ -212,6 +212,8 @@ private fun FullPlayerPreview() {
                 name = "24.7 FM",
                 genre = "Pop",
                 imageUrl = "",
+                streamUrl = "",
+                isBuffering = false,
                 isPlaying = false
             ),
             onPlay = {},
@@ -238,6 +240,8 @@ private fun FullPlayerSheetModePreview() {
                     name = "24.7 FM",
                     genre = "Pop",
                     imageUrl = "",
+                    streamUrl = "",
+                    isBuffering = false,
                     isPlaying = false
                 ),
                 onPlay = {},
