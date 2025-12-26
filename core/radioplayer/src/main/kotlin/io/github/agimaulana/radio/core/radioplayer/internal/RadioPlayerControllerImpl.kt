@@ -20,6 +20,9 @@ internal class RadioPlayerControllerImpl(
     override val currentMediaId: String?
         get() = mediaController.currentMediaItem?.mediaId
 
+    override val isPlaying: Boolean
+        get() = mediaController.isPlaying
+
     override fun setMediaItem(radioMediaItem: RadioMediaItem) {
         mediaController.setMediaItem(radioMediaItem.toMediaItem())
     }

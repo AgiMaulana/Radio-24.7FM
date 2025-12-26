@@ -5,6 +5,7 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.Composable
@@ -15,6 +16,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -26,6 +28,7 @@ import kotlin.math.roundToInt
 @Composable
 fun GlassSlidingPlayerLayout(
     state: GlassPlayerState,
+    scaffoldPadding: PaddingValues,
     modifier: Modifier = Modifier,
     peekHeight: Dp = 80.dp,
     miniPlayerContent: @Composable (progress: Float) -> Unit,
@@ -43,14 +46,16 @@ fun GlassSlidingPlayerLayout(
     }
 
     Box(modifier.fillMaxSize()) {
-        Box(Modifier.fillMaxSize().blur(if (progress > 0.01f) (progress * 25).dp else 0.dp)) {
+        Box(
+            modifier = Modifier.fillMaxSize()
+                .blur(if (progress > 0.01f) (progress * 25).dp else 0.dp)
+        ) {
             mainContent()
         }
 
         Box(
             modifier = Modifier
-                .offset { IntOffset(0, state.offsetY.value.roundToInt()) }
-                .fillMaxSize()
+                .offset { IntOffset(0, (state.offsetY.value + scaffoldPadding.calculateBottomPadding().toPx()).roundToInt()) }
                 .background(Color.White.copy(alpha = 0.6f))
                 .draggable(
                     orientation = Orientation.Vertical,
@@ -66,9 +71,20 @@ fun GlassSlidingPlayerLayout(
                     }
                 )
         ) {
-            Box(Modifier.fillMaxSize()) {
-                if (progress < 0.8f) miniPlayerContent(progress)
-                if (progress > 0.1f) fullPlayerContent(progress)
+            Box(
+                modifier = Modifier.graphicsLayer {
+                    alpha = (1f - progress * 3f).coerceIn(0f, 1f)
+                }
+            ) {
+                miniPlayerContent(progress)
+            }
+
+            Box(
+                modifier = Modifier.graphicsLayer {
+                    alpha = progress
+                }
+            ) {
+                fullPlayerContent(progress)
             }
         }
     }

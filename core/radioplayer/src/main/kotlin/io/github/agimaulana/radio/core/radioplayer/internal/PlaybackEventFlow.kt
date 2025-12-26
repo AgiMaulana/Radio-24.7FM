@@ -13,6 +13,10 @@ class PlaybackEventFlow(
     private val _event = Channel<PlaybackEvent>()
     val event = _event.receiveAsFlow()
 
+    init {
+        mediaController.addListener(this)
+    }
+
     override fun onIsPlayingChanged(isPlaying: Boolean) {
         _event.trySend(PlaybackEvent.PlayingChanged(isPlaying))
     }

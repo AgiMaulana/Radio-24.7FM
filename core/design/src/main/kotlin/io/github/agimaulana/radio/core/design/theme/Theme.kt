@@ -80,7 +80,7 @@ fun RadioTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
-    val radioColors = if (darkTheme) DarkRadioColors else LightRadioColors
+    val radioColors = if (darkTheme) LightRadioColors else LightRadioColors
     val colorScheme = if (darkTheme) {
         colorSchemeFrom(radioColors, true)
     } else {

@@ -8,6 +8,7 @@ import io.github.agimaulana.radio.core.radioplayer.PlaybackState
 import io.github.agimaulana.radio.core.radioplayer.RadioMediaItem
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerControllerFactory
+import io.github.agimaulana.radio.core.radioplayer.extension.playImmediately
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
 import kotlinx.collections.immutable.ImmutableList
@@ -33,8 +34,8 @@ class StationListViewModel @Inject constructor(
         viewModelScope.launch {
             fetchRadioStations()
         }
-        radioPlayerControllerFactory.getAsync {
-            radioPlayerController = it
+        viewModelScope.launch {
+            radioPlayerController = radioPlayerControllerFactory.get()
             viewModelScope.launch {
                 radioPlayerController?.event?.collect(::onPlaybackEventReceived)
             }
@@ -53,20 +54,23 @@ class StationListViewModel @Inject constructor(
             }
 
             is Action.Click -> {
-                val currentStation = _uiState.value.selectedStation
-                if (currentStation?.serverUuid == action.station.serverUuid) {
-                    if (currentStation.isPlaying) {
+                if (radioPlayerController?.currentMediaId == action.station.serverUuid) {
+                    if (radioPlayerController?.isPlaying == true) {
                         radioPlayerController?.pause()
                     } else {
                         radioPlayerController?.play()
                     }
                 } else {
                     _uiState.update {
-                        it.copy(selectedStation = action.station)
+                        it.copy(
+                            selectedStation = action.station,
+                            stations = it.stations.togglePlayingStateForStations(
+                                isPlaying = false,
+                                targetUuid = action.station.serverUuid
+                            )
+                        )
                     }
-                    radioPlayerController?.setMediaItem(action.station.toRadioMediaItem())
-                    radioPlayerController?.prepare()
-                    radioPlayerController?.play()
+                    radioPlayerController?.playImmediately(action.station.toRadioMediaItem())
                 }
             }
 
@@ -80,6 +84,9 @@ class StationListViewModel @Inject constructor(
 
             is Action.Stop -> {
                 radioPlayerController?.stop()
+                _uiState.update {
+                    it.copy(selectedStation = null)
+                }
             }
         }
     }
@@ -98,12 +105,25 @@ class StationListViewModel @Inject constructor(
 
     private fun onPlaybackEventReceived(playbackEvent: PlaybackEvent) {
         when (playbackEvent) {
-            is PlaybackEvent.PlayingChanged -> Unit
+            is PlaybackEvent.PlayingChanged -> {
+                val station = _uiState.value.selectedStation?.copy(
+                    isPlaying = playbackEvent.isPlaying,
+                    isBuffering = false,
+                )
+                _uiState.update {
+                    it.copy(
+                        selectedStation = station,
+                        stations = it.stations.togglePlayingStateForStations(
+                            isPlaying = playbackEvent.isPlaying,
+                            targetUuid = station?.serverUuid.orEmpty()
+                        )
+                    )
+                }
+            }
 
             is PlaybackEvent.StateChanged -> {
                 val station = _uiState.value.selectedStation?.copy(
                     isBuffering = playbackEvent.state == PlaybackState.BUFFERING,
-                    isPlaying = playbackEvent.state == PlaybackState.PLAYING
                 )
                 _uiState.update {
                     it.copy(selectedStation = station)

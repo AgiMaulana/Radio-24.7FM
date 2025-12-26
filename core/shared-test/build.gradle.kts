@@ -7,6 +7,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.junit)
     implementation(libs.kotlinx.coroutines.test)
     implementation(project(":core:common"))
 }

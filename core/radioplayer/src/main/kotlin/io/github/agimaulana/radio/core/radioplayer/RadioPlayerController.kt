@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.Flow
 interface RadioPlayerController {
     val event: Flow<PlaybackEvent>
     val currentMediaId: String?
+    val isPlaying: Boolean
     fun setMediaItem(radioMediaItem: RadioMediaItem)
     fun prepare()
     fun play()

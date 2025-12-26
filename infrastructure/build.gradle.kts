@@ -9,11 +9,10 @@ android {
 
 dependencies {
     implementation(libs.moshi)
+    ksp(libs.moshi.codegen)
     implementation(project(":core:common"))
     implementation(project(":core:network"))
     implementation(project(":domain:api"))
-
-    ksp(libs.moshi.codegen)
 
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

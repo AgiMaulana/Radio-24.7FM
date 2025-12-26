@@ -15,10 +15,11 @@ internal fun LazyRadioStationList(
     stations: ImmutableList<Station>,
     onClick: (Station) -> Unit,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
     LazyColumn(
         modifier = modifier,
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         items(stations) {

@@ -1,6 +1,8 @@
 package io.github.agimaulana.radio.core.radioplayer
 
+import android.app.PendingIntent
 import android.content.Intent
+import androidx.core.net.toUri
 import androidx.media3.exoplayer.DefaultLivePlaybackSpeedControl
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
@@ -17,7 +19,9 @@ class RadioService : MediaSessionService() {
             .setLoadControl(DefaultLoadControl())
             .setLivePlaybackSpeedControl(DefaultLivePlaybackSpeedControl.Builder().build())
             .build()
-        mediaSession = MediaSession.Builder(this, player).build()
+        mediaSession = MediaSession.Builder(this, player)
+            .setSessionActivity(createPendingMainActivityIntent())
+            .build()
 
         setMediaNotificationProvider(DefaultMediaNotificationProvider.Builder(this).build())
     }
@@ -32,4 +36,23 @@ class RadioService : MediaSessionService() {
             stopSelf()
         }
     }
+
+    override fun onDestroy() {
+        mediaSession?.run {
+            player.release()
+            release()
+            mediaSession = null
+        }
+        super.onDestroy()
+    }
+
+    private fun createPendingMainActivityIntent(): PendingIntent {
+        return PendingIntent.getActivity(
+            this,
+            0,
+            packageManager.getLaunchIntentForPackage(packageName),
+            PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
 }

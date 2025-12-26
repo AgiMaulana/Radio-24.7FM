@@ -1,15 +1,21 @@
 package io.github.agimaulana.radio.feature.stationlist
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeContentPadding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -31,7 +37,6 @@ import kotlinx.collections.immutable.persistentListOf
 fun StationListRoute(
     viewModel: StationListViewModel = hiltViewModel()
 ) {
-    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val playerState = rememberGlassPlayerState(peekHeight = 80.dp)
 
@@ -58,20 +63,25 @@ private fun StationListScreen(
     modifier: Modifier = Modifier,
     onAction: (Action) -> Unit = {},
 ) {
-    Scaffold { innerPadding ->
+    Scaffold(
+        modifier = Modifier.safeDrawingPadding()
+    ) { innerPadding ->
         GlassSlidingPlayerLayout(
             state = playerState,
+            scaffoldPadding = innerPadding,
             peekHeight = 80.dp,
             mainContent = {
                 LazyRadioStationList(
                     stations = uiState.stations,
+                    contentPadding = PaddingValues(bottom = 96.dp),
                     onClick = {
                         onAction(Action.Click(it))
                     },
-                    modifier = modifier.padding(innerPadding),
+                    modifier = modifier
+                        .padding(innerPadding),
                 )
             },
-            miniPlayerContent = {
+            miniPlayerContent = { progress ->
                 if (uiState.selectedStation != null) {
                     MiniPlayer(
                         station = uiState.selectedStation,
@@ -82,12 +92,13 @@ private fun StationListScreen(
                             onAction(Action.Pause(uiState.selectedStation))
                         },
                         modifier = Modifier
+                            .fillMaxWidth()
+                            .height(80.dp)
                             .clickable(
                                 onClick = {
                                     playerState.expand()
                                 }
                             )
-                            .padding(16.dp)
                     )
                 }
             },
@@ -109,7 +120,8 @@ private fun StationListScreen(
                         onCollapse = {
                             playerState.collapse()
                         },
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
                     )
                 }
             }
@@ -118,11 +130,23 @@ private fun StationListScreen(
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Preview
+@Preview(
+    showBackground = true,
+    showSystemUi = true
+)
 @Composable
 private fun StationListScreenPreview() {
     PreviewTheme {
+        val playerState = rememberGlassPlayerState(
+            peekHeight = 80.dp,
+        )
+
+        LaunchedEffect(Unit) {
+            playerState.collapse()
+        }
+
         StationListScreen(
+            playerState = playerState,
             uiState = UiState(
                 stations = persistentListOf(
                     Station(
@@ -143,11 +167,107 @@ private fun StationListScreenPreview() {
                         isBuffering = false,
                         isPlaying = true,
                     ),
-                )
+                    Station(
+                        serverUuid = "uuid",
+                        name = "24.7 FM",
+                        genre = "Pop",
+                        imageUrl = "",
+                        streamUrl = "",
+                        isBuffering = false,
+                        isPlaying = false,
+                    ),
+                    Station(
+                        serverUuid = "uuid",
+                        name = "24.7 FM",
+                        genre = "Pop",
+                        imageUrl = "",
+                        streamUrl = "",
+                        isBuffering = false,
+                        isPlaying = true,
+                    ),
+                    Station(
+                        serverUuid = "uuid",
+                        name = "24.7 FM",
+                        genre = "Pop",
+                        imageUrl = "",
+                        streamUrl = "",
+                        isBuffering = false,
+                        isPlaying = false,
+                    ),
+                    Station(
+                        serverUuid = "uuid",
+                        name = "24.7 FM",
+                        genre = "Pop",
+                        imageUrl = "",
+                        streamUrl = "",
+                        isBuffering = false,
+                        isPlaying = true,
+                    ),
+                    Station(
+                        serverUuid = "uuid",
+                        name = "24.7 FM",
+                        genre = "Pop",
+                        imageUrl = "",
+                        streamUrl = "",
+                        isBuffering = false,
+                        isPlaying = false,
+                    ),
+                    Station(
+                        serverUuid = "uuid",
+                        name = "24.7 FM",
+                        genre = "Pop",
+                        imageUrl = "",
+                        streamUrl = "",
+                        isBuffering = false,
+                        isPlaying = true,
+                    ),
+                    Station(
+                        serverUuid = "uuid",
+                        name = "24.7 FM",
+                        genre = "Pop",
+                        imageUrl = "",
+                        streamUrl = "",
+                        isBuffering = false,
+                        isPlaying = false,
+                    ),
+                    Station(
+                        serverUuid = "uuid",
+                        name = "24.7 FM",
+                        genre = "Pop",
+                        imageUrl = "",
+                        streamUrl = "",
+                        isBuffering = false,
+                        isPlaying = true,
+                    ),
+                    Station(
+                        serverUuid = "uuid",
+                        name = "24.7 FM",
+                        genre = "Pop",
+                        imageUrl = "",
+                        streamUrl = "",
+                        isBuffering = false,
+                        isPlaying = false,
+                    ),
+                    Station(
+                        serverUuid = "uuid",
+                        name = "24.7 FM",
+                        genre = "Pop",
+                        imageUrl = "",
+                        streamUrl = "",
+                        isBuffering = false,
+                        isPlaying = true,
+                    ),
+                ),
+                selectedStation = Station(
+                    serverUuid = "uuid",
+                    name = "24.7 FM",
+                    genre = "Pop",
+                    imageUrl = "",
+                    streamUrl = "",
+                    isBuffering = false,
+                    isPlaying = true,
+                ),
             ),
-            playerState = rememberGlassPlayerState(
-                peekHeight = 80.dp
-            )
         )
     }
 }

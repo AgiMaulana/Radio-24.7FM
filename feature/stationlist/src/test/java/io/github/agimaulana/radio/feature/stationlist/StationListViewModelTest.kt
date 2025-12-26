@@ -2,6 +2,7 @@ package io.github.agimaulana.radio.feature.stationlist
 
 import androidx.lifecycle.ViewModel
 import app.cash.turbine.turbineScope
+import io.github.agimaulana.radio.core.network.test.CoroutineMainDispatcherRule
 import io.github.agimaulana.radio.core.network.test.randomizer.randomString
 import io.github.agimaulana.radio.core.network.test.randomizer.randomUrl
 import io.github.agimaulana.radio.core.radioplayer.PlaybackEvent
@@ -29,6 +30,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 
 class StationListViewModelTest {
@@ -46,6 +48,9 @@ class StationListViewModelTest {
 
     private lateinit var viewModel: StationListViewModel
 
+    @get:Rule
+    val dispatcherRule = CoroutineMainDispatcherRule()
+
     @Before
     fun setup() {
         MockKAnnotations.init(this)
@@ -53,11 +58,9 @@ class StationListViewModelTest {
         every {
             radioPlayerController.event
         } returns playbackEventChannel.receiveAsFlow()
-        every {
-            radioPlayerControllerFactory.getAsync(any())
-        } answers {
-            firstArg<(RadioPlayerController) -> Unit>().invoke(radioPlayerController)
-        }
+        coEvery {
+            radioPlayerControllerFactory.get()
+        } returns radioPlayerController
         viewModel = StationListViewModel(
             getRadioStationsUseCase,
             radioPlayerControllerFactory
@@ -97,7 +100,7 @@ class StationListViewModelTest {
             }
             coVerify(exactly = 1) {
                 getRadioStationsUseCase.execute(page = 1)
-                radioPlayerControllerFactory.getAsync(any())
+                radioPlayerControllerFactory.get()
             }
         }
     }
@@ -202,14 +205,14 @@ class StationListViewModelTest {
 
             with(uiState.awaitItem()) {
                 assertTrue(selectedStation!!.isBuffering)
-                assertFalse(selectedStation!!.isPlaying)
+                assertFalse(selectedStation.isPlaying)
             }
 
-            playbackEventChannel.send(PlaybackEvent.StateChanged(PlaybackState.PLAYING))
+            playbackEventChannel.send(PlaybackEvent.PlayingChanged(true))
 
             with(uiState.awaitItem()) {
                 assertFalse(selectedStation!!.isBuffering)
-                assertTrue(selectedStation!!.isPlaying)
+                assertTrue(selectedStation.isPlaying)
             }
             // region end: assert not playing -> playing
 

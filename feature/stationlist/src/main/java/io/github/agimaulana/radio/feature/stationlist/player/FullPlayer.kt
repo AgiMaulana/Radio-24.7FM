@@ -1,5 +1,6 @@
 package io.github.agimaulana.radio.feature.stationlist.player
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -14,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -28,6 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -108,12 +111,27 @@ private fun PlayerControls(
             )
         }
 
-        PlayerController(
-            isPlaying = station.isPlaying,
-            onPlay = onPlay,
-            onPause = onPause,
-            onStop = onStop
-        )
+        Box {
+            AnimatedContent(
+                targetState = station.isBuffering,
+                label = "FullPlayer.Buffering"
+            ) { buffering ->
+                if (buffering) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(64.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    PlayerController(
+                        isPlaying = station.isPlaying,
+                        onPlay = onPlay,
+                        onPause = onPause,
+                        onStop = onStop
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -133,6 +151,8 @@ private fun RadioImage(
                 alpha = progress.coerceIn(0f, 1f)
             }
             .shadow(12.dp, RoundedCornerShape(16.dp))
+            .background(RadioTheme.colors.muted)
+            .size(256.dp),
     ) {
         Image(
             painter = rememberAsyncImagePainter(
@@ -141,7 +161,8 @@ private fun RadioImage(
                 error = painterResource(id = R.drawable.station_default),
             ),
             contentDescription = stationName,
-            modifier = Modifier.size(256.dp)
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.fillMaxSize()
         )
     }
 }
@@ -213,7 +234,7 @@ private fun FullPlayerPreview() {
                 genre = "Pop",
                 imageUrl = "",
                 streamUrl = "",
-                isBuffering = false,
+                isBuffering = true,
                 isPlaying = false
             ),
             onPlay = {},
