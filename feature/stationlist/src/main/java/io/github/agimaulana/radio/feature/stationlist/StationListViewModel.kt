@@ -1,6 +1,5 @@
 package io.github.agimaulana.radio.feature.stationlist
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -113,7 +112,6 @@ class StationListViewModel @Inject constructor(
     }
 
     private fun onPlaybackEventReceived(playbackEvent: PlaybackEvent) {
-        Log.d("ketai", "onPlaybackEventReceived: $playbackEvent")
         when (playbackEvent) {
             is PlaybackEvent.PlayingChanged -> {
                 val station = _uiState.value.selectedStation

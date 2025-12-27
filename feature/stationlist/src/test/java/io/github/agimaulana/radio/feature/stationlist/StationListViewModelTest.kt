@@ -6,6 +6,7 @@ import io.github.agimaulana.radio.core.network.test.CoroutineMainDispatcherRule
 import io.github.agimaulana.radio.core.network.test.randomizer.randomString
 import io.github.agimaulana.radio.core.network.test.randomizer.randomUrl
 import io.github.agimaulana.radio.core.radioplayer.PlaybackEvent
+import io.github.agimaulana.radio.core.radioplayer.RadioMediaItem
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerControllerFactory
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
@@ -88,7 +89,7 @@ class StationListViewModelTest {
                 )
             )
             coEvery {
-                getRadioStationsUseCase.execute(page = 1)
+                getRadioStationsUseCase.execute(page = 1, searchName = null)
             } returns stations
             val expectedStations = stations.map { it.toUiStateStation() }
 
@@ -99,7 +100,7 @@ class StationListViewModelTest {
                 assertEquals(expectedStations, this.stations)
             }
             coVerify(exactly = 1) {
-                getRadioStationsUseCase.execute(page = 1)
+                getRadioStationsUseCase.execute(page = 1, searchName = null)
                 radioPlayerControllerFactory.get()
             }
         }
@@ -125,7 +126,7 @@ class StationListViewModelTest {
                 )
             )
             coEvery {
-                getRadioStationsUseCase.execute(page = 1)
+                getRadioStationsUseCase.execute(page = 1, searchName = null)
             } returns stations1
             val expectedStations1 = stations1.map { it.toUiStateStation() }
 
@@ -136,7 +137,7 @@ class StationListViewModelTest {
                 assertEquals(expectedStations1, this.stations)
             }
             coVerify(exactly = 1) {
-                getRadioStationsUseCase.execute(page = 1)
+                getRadioStationsUseCase.execute(page = 1, searchName = null)
             }
 
             val stations2 = listOf(
@@ -149,7 +150,7 @@ class StationListViewModelTest {
                 )
             )
             coEvery {
-                getRadioStationsUseCase.execute(page = 2)
+                getRadioStationsUseCase.execute(page = 2, searchName = null)
             } returns stations2
             val expectedStations2 = stations2.map { it.toUiStateStation() }
 
@@ -160,8 +161,156 @@ class StationListViewModelTest {
                 assertEquals(expectedStations1 + expectedStations2, this.stations)
             }
             coVerify(exactly = 1) {
-                getRadioStationsUseCase.execute(page = 2)
+                getRadioStationsUseCase.execute(page = 2, searchName = null)
             }
+        }
+    }
+
+    @Test
+    fun `given search by station name when load more then fetch next page of radio stations`() = runTest {
+        turbineScope {
+            val uiState = viewModel.uiState.testIn(backgroundScope)
+            val searchName = randomString()
+
+            with(uiState.awaitItem()) {
+                assertEquals(0, currentPage)
+                assertTrue(stations.isEmpty())
+            }
+
+            val stations1 = listOf(
+                newRadioStation(
+                    withStationUuid = randomString(length = 24),
+                    withName = "Radio 1 ${randomString(length = 5)}",
+                    withTags = listOf(randomString()),
+                    withImageUrl = randomUrl(),
+                    withUrl = randomUrl(),
+                )
+            )
+            coEvery {
+                getRadioStationsUseCase.execute(page = 1, searchName = searchName)
+            } returns stations1
+            val expectedStations1 = stations1.map { it.toUiStateStation() }
+
+            viewModel.init()
+            viewModel.onAction(StationListViewModel.Action.Search(searchName))
+
+            with(uiState.expectMostRecentItem()) {
+                assertEquals(1, currentPage)
+                assertEquals(searchName, filterStationName)
+                assertEquals(expectedStations1, this.stations)
+            }
+            coVerify(exactly = 1) {
+                getRadioStationsUseCase.execute(page = 1, searchName = searchName)
+            }
+
+            val stations2 = listOf(
+                newRadioStation(
+                    withStationUuid = randomString(length = 24),
+                    withName = "Radio 2 ${randomString(length = 5)}",
+                    withTags = listOf(randomString()),
+                    withImageUrl = randomUrl(),
+                    withUrl = randomUrl(),
+                )
+            )
+            coEvery {
+                getRadioStationsUseCase.execute(page = 2, searchName = searchName)
+            } returns stations2
+            val expectedStations2 = stations2.map { it.toUiStateStation() }
+
+            viewModel.onAction(LoadMore)
+
+            with(uiState.awaitItem()) {
+                assertEquals(2, currentPage)
+                assertEquals(searchName, filterStationName)
+                assertEquals(expectedStations1 + expectedStations2, this.stations)
+            }
+            coVerify(exactly = 1) {
+                getRadioStationsUseCase.execute(page = 2, searchName = searchName)
+            }
+        }
+    }
+
+    @Test
+    fun `given station is not playing when clicked then set radio and play`() {
+        val station = newUiStateStation(
+            withServerUuid = "radio-123",
+            withName = "Radio 123",
+        )
+        every { radioPlayerController.currentMediaId } returns "radio-566"
+
+        viewModel.init()
+        viewModel.onAction(StationListViewModel.Action.Click(station))
+
+        verify {
+            radioPlayerController.setMediaItem(station.toRadioMediaItem())
+            radioPlayerController.prepare()
+            radioPlayerController.play()
+        }
+    }
+
+    @Test
+    fun `given station is the current radio media and playing when clicked then pause`() {
+        val station = newUiStateStation(
+            withServerUuid = "radio-123",
+            withName = "Radio 123",
+            withIsPlaying = true,
+        )
+        every { radioPlayerController.currentMediaId } returns station.serverUuid
+        every { radioPlayerController.isPlaying } returns station.isPlaying
+
+        viewModel.init()
+        viewModel.onAction(StationListViewModel.Action.Click(station))
+
+        verify {
+            radioPlayerController.pause()
+        }
+    }
+
+    @Test
+    fun `given station is the current radio media and not playing when clicked then play`() {
+        val station = newUiStateStation(
+            withServerUuid = "radio-123",
+            withName = "Radio 123",
+            withIsPlaying = false,
+        )
+        every { radioPlayerController.currentMediaId } returns station.serverUuid
+        every { radioPlayerController.isPlaying } returns station.isPlaying
+
+        viewModel.init()
+        viewModel.onAction(StationListViewModel.Action.Click(station))
+
+        verify {
+            radioPlayerController.play()
+        }
+    }
+
+    @Test
+    fun `when pause then pause radio player`() {
+        val station = newUiStateStation(
+            withServerUuid = "radio-123",
+            withName = "Radio 123",
+        )
+
+        viewModel.init()
+        viewModel.onAction(StationListViewModel.Action.Pause(station))
+
+        verify {
+            radioPlayerController.pause()
+        }
+    }
+
+    @Test
+    fun `when play then play radio player`() {
+        val station = newUiStateStation(
+            withServerUuid = "radio-123",
+            withName = "Radio 123",
+        )
+
+        viewModel.init()
+        viewModel.onAction(StationListViewModel.Action.Play(station))
+
+        verify {
+            radioPlayerController.play()
         }
     }
 
@@ -190,4 +339,16 @@ class StationListViewModelTest {
         withIsBuffering = false,
         withIsPlaying = false,
     )
+
+    private fun StationListViewModel.UiState.Station.toRadioMediaItem(): RadioMediaItem {
+        return RadioMediaItem(
+            mediaId = serverUuid,
+            streamUrl = streamUrl,
+            radioMetadata = RadioMediaItem.RadioMetadata(
+                stationName = name,
+                genre = genre,
+                imageUrl = imageUrl,
+            )
+        )
+    }
 }
