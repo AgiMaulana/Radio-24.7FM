@@ -3,6 +3,7 @@ package io.github.agimaulana.radio.feature.stationlist
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -71,15 +72,23 @@ private fun StationListScreen(
             scaffoldPadding = innerPadding,
             peekHeight = 80.dp,
             mainContent = {
-                LazyRadioStationList(
-                    stations = uiState.stations,
-                    contentPadding = PaddingValues(bottom = 96.dp),
-                    onClick = {
-                        onAction(Action.Click(it))
-                    },
+                Column(
                     modifier = modifier
                         .padding(innerPadding),
-                )
+                ) {
+                    LazyRadioStationList(
+                        stations = uiState.stations,
+                        contentPadding = PaddingValues(
+                            top = 16.dp,
+                            start = 16.dp,
+                            end = 16.dp,
+                            bottom = innerPadding.calculateBottomPadding() + 80.dp + 16.dp
+                        ),
+                        onClick = {
+                            onAction(Action.Click(it))
+                        },
+                    )
+                }
             },
             miniPlayerContent = { progress ->
                 if (uiState.selectedStation != null) {

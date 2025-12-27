@@ -26,6 +26,12 @@ class RadioStationRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getRadioStation(stationUuid: String): RadioStation {
+        return withContext(dispatcherProvider.io) {
+            parseMockResponse().first { it.stationUuid == stationUuid }
+        }
+    }
+
     private fun parseMockResponse(): List<RadioStation> {
         val moshi = Moshi.Builder()
             .add(KotlinJsonAdapterFactory())
@@ -135,7 +141,7 @@ private const val MOCK_RESPONSE_JSON = """
         "stationuuid": "ab8ee851-2750-475e-ab77-aab0b2c49823",
         "serveruuid": "f0a6457a-fe7e-4c54-b721-ee583cdfcbcf",
         "name": "Prambors FM Jakarta 102.2",
-        "url": "http://103.24.105.90:9300/pjkt",
+        "url": "https://s2.cloudmu.id/listen/prambors/radio.aac",
         "url_resolved": "http://103.24.105.90:9300/pjkt",
         "homepage": "http://www.pramborsfm.com/",
         "favicon": "https://static.wixstatic.com/media/f66dc6_9dc6cbfe361c4cb0bddbe39262ec761d~mv2.png/v1/fill/w_980,h_980,al_c,q_90,usm_0.66_1.00_0.01,enc_avif,quality_auto/f66dc6_9dc6cbfe361c4cb0bddbe39262ec761d~mv2.png",

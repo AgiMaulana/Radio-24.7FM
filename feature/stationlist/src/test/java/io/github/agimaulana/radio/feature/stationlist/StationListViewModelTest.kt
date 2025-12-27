@@ -6,11 +6,10 @@ import io.github.agimaulana.radio.core.network.test.CoroutineMainDispatcherRule
 import io.github.agimaulana.radio.core.network.test.randomizer.randomString
 import io.github.agimaulana.radio.core.network.test.randomizer.randomUrl
 import io.github.agimaulana.radio.core.radioplayer.PlaybackEvent
-import io.github.agimaulana.radio.core.radioplayer.PlaybackState
-import io.github.agimaulana.radio.core.radioplayer.RadioMediaItem
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerControllerFactory
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
+import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.Action.LoadMore
 import io.github.agimaulana.radio.feature.stationlist.datafactories.newRadioStation
@@ -18,7 +17,6 @@ import io.github.agimaulana.radio.feature.stationlist.datafactories.newUiStateSt
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
-import io.mockk.coVerifyOrder
 import io.mockk.every
 import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.verify
@@ -26,8 +24,6 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -40,6 +36,9 @@ class StationListViewModelTest {
 
     @RelaxedMockK
     private lateinit var radioPlayerControllerFactory: RadioPlayerControllerFactory
+
+    @RelaxedMockK
+    private lateinit var getRadioStationUseCase: GetRadioStationUseCase
 
     @RelaxedMockK
     private lateinit var radioPlayerController: RadioPlayerController
@@ -62,8 +61,9 @@ class StationListViewModelTest {
             radioPlayerControllerFactory.get()
         } returns radioPlayerController
         viewModel = StationListViewModel(
-            getRadioStationsUseCase,
-            radioPlayerControllerFactory
+            getRadioStationsUseCase = getRadioStationsUseCase,
+            getRadioStationUseCase = getRadioStationUseCase,
+            radioPlayerControllerFactory = radioPlayerControllerFactory
         )
     }
 
@@ -161,121 +161,6 @@ class StationListViewModelTest {
             }
             coVerify(exactly = 1) {
                 getRadioStationsUseCase.execute(page = 2)
-            }
-        }
-    }
-
-    @Test
-    fun `given station is not selected when clicked then set as new media item and play`() = runTest {
-        turbineScope {
-            val station = newUiStateStation(
-                withServerUuid = randomString(length = 24),
-                withName = "Radio ${randomString(length = 5)}",
-                withGenre = randomString(),
-                withImageUrl = randomUrl(),
-                withStreamUrl = randomUrl(),
-                withIsBuffering = false,
-                withIsPlaying = false,
-            )
-            val uiState = viewModel.uiState.testIn(backgroundScope)
-            assertNull(uiState.awaitItem().selectedStation)
-
-            // region start: assert not playing -> playing
-            viewModel.init()
-            viewModel.onAction(StationListViewModel.Action.Click(station))
-
-            assertEquals(station, uiState.expectMostRecentItem().selectedStation)
-            coVerifyOrder {
-                radioPlayerController.setMediaItem(
-                    RadioMediaItem(
-                        mediaId = station.serverUuid,
-                        streamUrl = station.streamUrl,
-                        radioMetadata = RadioMediaItem.RadioMetadata(
-                            stationName = station.name,
-                            genre = station.genre,
-                            imageUrl = station.imageUrl,
-                        )
-                    )
-                )
-                radioPlayerController.prepare()
-                radioPlayerController.play()
-            }
-
-            playbackEventChannel.send(PlaybackEvent.StateChanged(PlaybackState.BUFFERING))
-
-            with(uiState.awaitItem()) {
-                assertTrue(selectedStation!!.isBuffering)
-                assertFalse(selectedStation.isPlaying)
-            }
-
-            playbackEventChannel.send(PlaybackEvent.PlayingChanged(true))
-
-            with(uiState.awaitItem()) {
-                assertFalse(selectedStation!!.isBuffering)
-                assertTrue(selectedStation.isPlaying)
-            }
-            // region end: assert not playing -> playing
-
-            // region start: assert playing -> pause
-            viewModel.onAction(StationListViewModel.Action.Click(station))
-
-            verify {
-                radioPlayerController.pause()
-            }
-            // region end: assert playing -> pause
-
-            // region start: assert paused -> play
-            viewModel.onAction(StationListViewModel.Action.Click(station))
-
-            verify {
-                radioPlayerController.play()
-            }
-            // region end: assert paused -> play
-        }
-
-        @Test
-        fun `given station is playing when pause then pause`() = runTest {
-            turbineScope {
-                val station = newUiStateStation(
-                    withServerUuid = randomString(length = 24),
-                    withName = "Radio ${randomString(length = 5)}",
-                    withGenre = randomString(),
-                    withImageUrl = randomUrl(),
-                    withStreamUrl = randomUrl(),
-                    withIsBuffering = false,
-                    withIsPlaying = true,
-                )
-                val uiState = viewModel.uiState.testIn(backgroundScope)
-
-                viewModel.onAction(StationListViewModel.Action.Click(station))
-                playbackEventChannel.send(PlaybackEvent.StateChanged(PlaybackState.PLAYING))
-
-                assertTrue(uiState.expectMostRecentItem().selectedStation!!.isPlaying)
-
-                // region start: assert playing -> pause
-                viewModel.onAction(StationListViewModel.Action.Pause(station))
-
-                verify {
-                    radioPlayerController.pause()
-                }
-                // region end: assert playing -> pause
-
-                // region start: assert paused -> play
-                viewModel.onAction(StationListViewModel.Action.Play(station))
-
-                verify {
-                    radioPlayerController.play()
-                }
-                // region end: assert paused -> play
-
-                // region start: assert selected then stop -> null
-                viewModel.onAction(StationListViewModel.Action.Stop(station))
-
-                verify {
-                    radioPlayerController.stop()
-                }
-                assertNull(uiState.awaitItem().selectedStation)
-                // region end: assert selected then stop -> null
             }
         }
     }

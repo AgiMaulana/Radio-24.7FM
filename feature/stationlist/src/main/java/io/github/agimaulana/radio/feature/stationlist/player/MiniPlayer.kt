@@ -3,11 +3,13 @@ package io.github.agimaulana.radio.feature.stationlist.player
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -82,6 +84,7 @@ internal fun MiniPlayer(
                         Image(
                             painter = painterResource(id = R.drawable.ic_pause),
                             contentDescription = null,
+                            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.surfaceTint)
                         )
                     }
                 } else {

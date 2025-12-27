@@ -1,6 +1,8 @@
 package io.github.agimaulana.radio
 
+import android.graphics.Color
 import android.os.Bundle
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -20,7 +22,13 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+//            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+//            navigationBarStyle = SystemBarStyle.auto(
+//                lightScrim = Color.TRANSPARENT,
+//                darkScrim = Color.TRANSPARENT
+//            )
+        )
         setContent {
             RadioTheme {
                 StationListRoute()

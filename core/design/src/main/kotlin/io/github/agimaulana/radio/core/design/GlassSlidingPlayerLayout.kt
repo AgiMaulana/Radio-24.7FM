@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -56,7 +57,7 @@ fun GlassSlidingPlayerLayout(
         Box(
             modifier = Modifier
                 .offset { IntOffset(0, (state.offsetY.value + scaffoldPadding.calculateBottomPadding().toPx()).roundToInt()) }
-                .background(Color.White.copy(alpha = 0.6f))
+                .background(MaterialTheme.colorScheme.background.copy(alpha = 0.6f))
                 .draggable(
                     orientation = Orientation.Vertical,
                     state = rememberDraggableState { delta ->
