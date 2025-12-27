@@ -8,7 +8,14 @@ import javax.inject.Inject
 class GetRadioStationsUseCaseImpl @Inject constructor(
     private val radioStationRepository: RadioStationRepository
 ) : GetRadioStationsUseCase {
-    override suspend fun execute(page: Int): List<RadioStation> {
-        return radioStationRepository.getRadioStations(page)
+    override suspend fun execute(
+        page: Int,
+        searchName: String?
+    ): List<RadioStation> {
+        return if (searchName.isNullOrEmpty()) {
+            radioStationRepository.getRadioStations(page)
+        } else {
+            radioStationRepository.getRadioStations(searchName, page)
+        }
     }
 }

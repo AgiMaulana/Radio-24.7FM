@@ -1,5 +1,6 @@
 package io.github.agimaulana.radio.feature.stationlist
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -54,6 +55,19 @@ class StationListViewModel @Inject constructor(
                 fetchRadioStations()
             }
 
+            is Action.Search -> {
+                _uiState.update {
+                    it.copy(
+                        filterStationName = action.stationName,
+                        currentPage = 0,
+                        stations = persistentListOf(),
+                    )
+                }
+                viewModelScope.launch {
+                    fetchRadioStations()
+                }
+            }
+
             is Action.Click -> {
                 if (radioPlayerController?.currentMediaId == action.station.serverUuid) {
                     if (radioPlayerController?.isPlaying == true) {
@@ -84,7 +98,10 @@ class StationListViewModel @Inject constructor(
     }
 
     private suspend fun fetchRadioStations() {
-        val stations = getRadioStationsUseCase.execute(page = _uiState.value.currentPage + 1)
+        val stations = getRadioStationsUseCase.execute(
+            page = _uiState.value.currentPage + 1,
+            searchName = _uiState.value.filterStationName
+        )
             .map { it.toUiStateStation() }
             .toPersistentList()
         _uiState.update {
@@ -96,6 +113,7 @@ class StationListViewModel @Inject constructor(
     }
 
     private fun onPlaybackEventReceived(playbackEvent: PlaybackEvent) {
+        Log.d("ketai", "onPlaybackEventReceived: $playbackEvent")
         when (playbackEvent) {
             is PlaybackEvent.PlayingChanged -> {
                 val station = _uiState.value.selectedStation
@@ -179,6 +197,7 @@ class StationListViewModel @Inject constructor(
     }
 
     data class UiState(
+        val filterStationName: String? = null,
         val currentPage: Int = 0,
         val stations: ImmutableList<Station> = persistentListOf(),
         val selectedStation: Station? = null,
@@ -196,6 +215,7 @@ class StationListViewModel @Inject constructor(
 
     sealed interface Action {
         data object LoadMore : Action
+        data class Search(val stationName: String): Action
         data class Click(val station: UiState.Station) : Action
         data class Play(val station: UiState.Station) : Action
         data class Pause(val station: UiState.Station) : Action

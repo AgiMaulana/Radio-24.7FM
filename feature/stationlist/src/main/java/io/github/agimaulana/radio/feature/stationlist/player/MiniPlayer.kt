@@ -38,7 +38,8 @@ internal fun MiniPlayer(
 ) {
     Row(
         modifier = modifier.fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background),
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

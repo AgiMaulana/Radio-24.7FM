@@ -26,6 +26,15 @@ class RadioStationRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getRadioStations(
+        searchQuery: String,
+        page: Int
+    ): List<RadioStation> {
+        return withContext(dispatcherProvider.io) {
+            parseMockResponse().filter { it.name.lowercase().startsWith(searchQuery.lowercase()) }
+        }
+    }
+
     override suspend fun getRadioStation(stationUuid: String): RadioStation {
         return withContext(dispatcherProvider.io) {
             parseMockResponse().first { it.stationUuid == stationUuid }

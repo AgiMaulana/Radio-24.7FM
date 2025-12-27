@@ -1,18 +1,17 @@
 package io.github.agimaulana.radio.feature.stationlist
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeContentPadding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -64,18 +63,32 @@ private fun StationListScreen(
     modifier: Modifier = Modifier,
     onAction: (Action) -> Unit = {},
 ) {
-    Scaffold(
-        modifier = Modifier.safeDrawingPadding()
-    ) { innerPadding ->
-        GlassSlidingPlayerLayout(
-            state = playerState,
-            scaffoldPadding = innerPadding,
-            peekHeight = 80.dp,
-            mainContent = {
+    GlassSlidingPlayerLayout(
+        state = playerState,
+        peekHeight = 80.dp,
+        mainContent = {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = {
+                            Text("24.7 FM")
+                        }
+                    )
+                }
+            ) { innerPadding ->
                 Column(
-                    modifier = modifier
-                        .padding(innerPadding),
+                    modifier = modifier.padding(innerPadding)
                 ) {
+                    OutlinedTextField(
+                        value = uiState.filterStationName.orEmpty(),
+                        onValueChange = {
+                            onAction(Action.Search(it))
+                        },
+                        placeholder = { Text("Listen to your favourite station...") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                    )
                     LazyRadioStationList(
                         stations = uiState.stations,
                         contentPadding = PaddingValues(
@@ -89,53 +102,53 @@ private fun StationListScreen(
                         },
                     )
                 }
-            },
-            miniPlayerContent = { progress ->
-                if (uiState.selectedStation != null) {
-                    MiniPlayer(
-                        station = uiState.selectedStation,
-                        onPlay = {
-                            onAction(Action.Play(uiState.selectedStation))
-                        },
-                        onPause = {
-                            onAction(Action.Pause(uiState.selectedStation))
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(80.dp)
-                            .clickable(
-                                onClick = {
-                                    playerState.expand()
-                                }
-                            )
-                    )
-                }
-            },
-            fullPlayerContent = { progress ->
-                if (uiState.selectedStation != null) {
-                    FullPlayer(
-                        progress = progress,
-                        station = uiState.selectedStation,
-                        onPlay = {
-                            onAction(Action.Play(uiState.selectedStation))
-                        },
-                        onPause = {
-                            onAction(Action.Pause(uiState.selectedStation))
-                        },
-                        onStop = {
-                            playerState.collapse()
-                            onAction(Action.Stop(uiState.selectedStation))
-                        },
-                        onCollapse = {
-                            playerState.collapse()
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                    )
-                }
             }
-        )
-    }
+        },
+        miniPlayerContent = { _ ->
+            if (uiState.selectedStation != null) {
+                MiniPlayer(
+                    station = uiState.selectedStation,
+                    onPlay = {
+                        onAction(Action.Play(uiState.selectedStation))
+                    },
+                    onPause = {
+                        onAction(Action.Pause(uiState.selectedStation))
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(80.dp)
+                        .clickable(
+                            onClick = {
+                                playerState.expand()
+                            }
+                        )
+                )
+            }
+        },
+        fullPlayerContent = { progress ->
+            if (uiState.selectedStation != null) {
+                FullPlayer(
+                    progress = progress,
+                    station = uiState.selectedStation,
+                    onPlay = {
+                        onAction(Action.Play(uiState.selectedStation))
+                    },
+                    onPause = {
+                        onAction(Action.Pause(uiState.selectedStation))
+                    },
+                    onStop = {
+                        playerState.collapse()
+                        onAction(Action.Stop(uiState.selectedStation))
+                    },
+                    onCollapse = {
+                        playerState.collapse()
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                )
+            }
+        }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
