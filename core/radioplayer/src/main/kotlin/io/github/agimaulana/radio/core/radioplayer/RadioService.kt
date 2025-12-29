@@ -4,6 +4,7 @@ import android.app.PendingIntent
 import android.content.Intent
 import androidx.annotation.OptIn
 import androidx.core.net.toUri
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLivePlaybackSpeedControl
 import androidx.media3.exoplayer.DefaultLoadControl
@@ -24,6 +25,30 @@ class RadioService : MediaSessionService() {
             .build()
         mediaSession = MediaSession.Builder(this, player)
             .setSessionActivity(createPendingMainActivityIntent())
+            .setCallback(object : MediaSession.Callback {
+                override fun onConnect(
+                    session: MediaSession,
+                    controller: MediaSession.ControllerInfo
+                ): MediaSession.ConnectionResult {
+                    // 1. Get ALL default commands first
+                    val connectionResult = super.onConnect(session, controller)
+
+                    // 2. Start with the default available player commands
+                    val customPlayerCommands = connectionResult.availablePlayerCommands.buildUpon()
+                        // 3. Specifically REMOVE the ones that cause the buttons to show
+                        .remove(Player.COMMAND_SEEK_TO_NEXT)
+                        .remove(Player.COMMAND_SEEK_TO_PREVIOUS)
+                        .remove(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+                        .remove(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+                        .build()
+
+                    // 4. Return the result keeping everything else (Prepare, Play, etc.) intact
+                    return MediaSession.ConnectionResult.accept(
+                        connectionResult.availableSessionCommands,
+                        customPlayerCommands
+                    )
+                }
+            })
             .build()
 
         setMediaNotificationProvider(DefaultMediaNotificationProvider.Builder(this).build())

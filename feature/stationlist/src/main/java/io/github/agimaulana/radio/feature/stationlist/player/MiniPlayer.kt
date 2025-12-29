@@ -59,11 +59,13 @@ internal fun MiniPlayer(
             Text(
                 text = station.name,
                 style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground
             )
 
             Text(
                 text = station.genre,
                 style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onBackground
             )
         }
 
