@@ -5,9 +5,10 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -44,7 +45,12 @@ fun GlassSlidingPlayerLayout(
         derivedStateOf { ((maxOffset - state.offsetY.value) / maxOffset).coerceIn(0f, 1f) }
     }
 
-    Box(modifier.fillMaxSize().safeContentPadding()) {
+    val density = LocalDensity.current
+    val navigationBarInset = WindowInsets.navigationBars.getBottom(density)
+    val dragFactor = (state.offsetY.value / navigationBarInset).coerceIn(0f, 1f)
+    val dynamicInset = navigationBarInset * dragFactor
+
+    Box(modifier.fillMaxSize()) {
         Box(
             modifier = Modifier.fillMaxSize()
                 .blur(if (progress > 0.01f) (progress * 25).dp else 0.dp)
@@ -54,7 +60,7 @@ fun GlassSlidingPlayerLayout(
 
         Box(
             modifier = Modifier
-                .offset { IntOffset(0, (state.offsetY.value).roundToInt()) }
+                .offset { IntOffset(0, (state.offsetY.value-dynamicInset).roundToInt()) }
                 .background(MaterialTheme.colorScheme.background.copy(alpha = 0.6f))
                 .draggable(
                     orientation = Orientation.Vertical,
@@ -71,17 +77,19 @@ fun GlassSlidingPlayerLayout(
                 )
         ) {
             Box(
-                modifier = Modifier.graphicsLayer {
-                    alpha = (1f - progress * 3f).coerceIn(0f, 1f)
-                }
+                modifier = Modifier
+                    .graphicsLayer {
+                        alpha = (1f - progress * 3f).coerceIn(0f, 1f)
+                    }
             ) {
                 miniPlayerContent(progress)
             }
 
             Box(
-                modifier = Modifier.graphicsLayer {
-                    alpha = progress
-                }
+                modifier = Modifier
+                    .graphicsLayer {
+                        alpha = progress
+                    }
             ) {
                 fullPlayerContent(progress)
             }

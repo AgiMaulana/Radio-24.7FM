@@ -9,9 +9,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -32,6 +35,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -53,12 +57,17 @@ internal fun FullPlayer(
     modifier: Modifier = Modifier,
     progress: Float = 1f,
 ) {
+    val density = LocalDensity.current
+    val statusBarHeight = WindowInsets.statusBars.getTop(density)
+    val dynamicTopPadding = with(density) { (statusBarHeight * progress).toDp() }
     Box(
         modifier = modifier.fillMaxSize()
     ) {
         IconButton(
             onClick = onCollapse,
-            modifier = Modifier.align(Alignment.TopEnd).alpha(progress)
+            modifier = Modifier.align(Alignment.TopEnd)
+                .padding(top = dynamicTopPadding)
+                .alpha(progress)
         ) {
             Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Close")
         }
