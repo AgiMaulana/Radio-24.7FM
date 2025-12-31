@@ -89,21 +89,9 @@ fun RadioTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            val controller = WindowCompat.getInsetsController(window, view)
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                window.apply {
-                    statusBarColor = colorScheme.background.toArgb()
-                    navigationBarColor = colorScheme.background.toArgb()
-                    isStatusBarContrastEnforced = false
-                    isNavigationBarContrastEnforced = false
-                }
-            }
+            // DO NOT set statusBarColor or navigationBarColor here.
+            // Only set icon appearance:
             WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = !darkTheme
-                isAppearanceLightNavigationBars = !darkTheme
-            }
-            controller.apply {
                 isAppearanceLightStatusBars = !darkTheme
                 isAppearanceLightNavigationBars = !darkTheme
             }

@@ -69,7 +69,11 @@ internal fun FullPlayer(
                 .padding(top = dynamicTopPadding)
                 .alpha(progress)
         ) {
-            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Close")
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowDown,
+                contentDescription = "Close",
+                tint = MaterialTheme.colorScheme.onBackground,
+            )
         }
 
         PlayerControls(
