@@ -8,7 +8,7 @@ android {
 
 dependencies {
     implementation(project(":core:design"))
+    implementation(project(":core:radioplayer"))
     implementation(project(":core:shared-test"))
     implementation(project(":domain:api"))
-//    implementation("dev.chrisbanes.haze:haze-materials:1.7.1")
 }

@@ -1,0 +1,119 @@
+name: Release Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  extract-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.VERSION }}
+      build_number: ${{ steps.build_number.outputs.BUILD_NUMBER }}
+    steps:
+      - name: Extract version
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Set build number from run number
+        id: build_number
+        # Use run_number to avoid race conditions from concurrent tag pushes
+        run: echo "BUILD_NUMBER=${{ github.run_number }}" >> $GITHUB_OUTPUT
+
+  build:
+    needs: extract-version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Create keystore.properties
+        # Pass secrets as env vars to avoid direct shell interpolation
+        env:
+          KEY_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
+          STORE_PASSWORD: ${{ secrets.KEYSTORE_FILE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEYSTORE_ALIAS_PASSWORD }}
+        run: |
+          echo "keystoreFile=${{ runner.temp }}/keystore.jks" > keystore.properties
+          echo "keyAlias=$KEY_ALIAS" >> keystore.properties
+          echo "storeFilePassword=$STORE_PASSWORD" >> keystore.properties
+          echo "keyPassword=$KEY_PASSWORD" >> keystore.properties
+
+      - name: Decode keystore
+        # Write outside workspace to avoid accidental artifact upload
+        run: echo "${{ secrets.KEYSTORE_FILE }}" | base64 -d > ${{ runner.temp }}/keystore.jks
+
+      - name: Build all APKs
+        run: |
+          ./gradlew :app:assembleProdRelease \
+            -PversionName=${{ needs.extract-version.outputs.VERSION }} \
+            -PbuildNumber=${{ needs.extract-version.outputs.BUILD_NUMBER }}
+
+      - name: Find and rename APKs
+        run: |
+          VERSION=${{ needs.extract-version.outputs.VERSION }}
+          mkdir -p artifacts
+
+          for apk in app/build/outputs/apk/prod/release/*.apk; do
+            if [ -f "$apk" ]; then
+              filename=$(basename "$apk")
+              newname=$(echo "$filename" | sed "s/app-prod-/app-prod-release-$VERSION-/")
+              cp "$apk" "artifacts/$newname"
+              echo "Created: artifacts/$newname"
+            fi
+          done
+
+          # Fail early if no APKs were produced
+          APK_COUNT=$(ls artifacts/*.apk 2>/dev/null | wc -l)
+          if [ "$APK_COUNT" -eq 0 ]; then
+            echo "ERROR: No APKs found after build"
+            exit 1
+          fi
+
+          ls -la artifacts/
+
+      - name: Upload all APKs
+        uses: actions/upload-artifact@v7
+        with:
+          name: apks-release
+          path: "artifacts/*.apk"
+
+  create-release:
+    needs: [extract-version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: apks-release
+          path: artifacts
+
+      - name: List files
+        run: ls -la artifacts/
+
+      - name: Create Release
+        # Use find + xargs so glob expands correctly in shell before passing to gh
+        run: |
+          gh release create ${{ github.ref_name }} \
+            --draft \
+            --generate-notes \
+            $(find artifacts/ -name "*.apk" | tr '\n' ' ')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}

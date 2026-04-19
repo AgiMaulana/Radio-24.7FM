@@ -3,7 +3,13 @@ package io.github.agimaulana.radio.feature.stationlist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.agimaulana.radio.core.radioplayer.PlaybackEvent
+import io.github.agimaulana.radio.core.radioplayer.PlaybackState
+import io.github.agimaulana.radio.core.radioplayer.RadioMediaItem
+import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
+import io.github.agimaulana.radio.core.radioplayer.RadioPlayerControllerFactory
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
+import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -17,14 +23,48 @@ import javax.inject.Inject
 @HiltViewModel
 class StationListViewModel @Inject constructor(
     private val getRadioStationsUseCase: GetRadioStationsUseCase,
+    private val getRadioStationUseCase: GetRadioStationUseCase,
+    private val radioPlayerControllerFactory: RadioPlayerControllerFactory,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(UiState())
     val uiState = _uiState.asStateFlow()
+
+    private var radioPlayerController: RadioPlayerController? = null
 
     fun init() {
         viewModelScope.launch {
             fetchRadioStations()
         }
+        viewModelScope.launch {
+            radioPlayerController = radioPlayerControllerFactory.get()
+            viewModelScope.launch {
+                radioPlayerController?.event?.collect(::onPlaybackEventReceived)
+            }
+            viewModelScope.launch {
+                restoreSelectedStation()
+            }
+        }
+    }
+
+    private suspend fun restoreSelectedStation() {
+        val mediaId = radioPlayerController?.currentMediaId ?: return
+        if (mediaId.isNotEmpty()) {
+            val station = getRadioStationUseCase.execute(mediaId)
+            station.let {
+                _uiState.update { state ->
+                    state.copy(
+                        selectedStation = it.toUiStateStation().copy(
+                            isPlaying = radioPlayerController?.isPlaying == true
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        radioPlayerController?.release()
     }
 
     fun onAction(action: Action) {
@@ -33,85 +73,104 @@ class StationListViewModel @Inject constructor(
                 fetchRadioStations()
             }
 
-            is Action.Click -> {
-                if (_uiState.value.playing?.serverUuid == action.station.serverUuid) {
-                    _uiState.update {
-                        val isPlaying = _uiState.value.playing?.isPlaying == true
-                        it.copy(
-                            playing = it.playing?.copy(isPlaying = !isPlaying),
-                            stations = it.stations.map { s ->
-                                if (s.serverUuid == action.station.serverUuid) {
-                                    s.copy(isPlaying = !isPlaying)
-                                } else {
-                                    s.copy(isPlaying = false)
-                                }
-                            }.toPersistentList(),
-                        )
-                    }
-                } else {
-                    _uiState.update {
-                        it.copy(
-                            playing = action.station.copy(isPlaying = true),
-                            stations = it.stations.map { s ->
-                                if (s.serverUuid == action.station.serverUuid) {
-                                    s.copy(isPlaying = true)
-                                } else {
-                                    s.copy(isPlaying = false)
-                                }
-                            }.toPersistentList(),
-                        )
-                    }
+            is Action.Search -> {
+                _uiState.update {
+                    it.copy(
+                        filterStationName = action.stationName,
+                        currentPage = 0,
+                        stations = persistentListOf(),
+                    )
+                }
+                viewModelScope.launch {
+                    fetchRadioStations()
                 }
             }
 
-            is Action.Play -> {
-                _uiState.update {
-                    it.copy(
-                        playing = action.station.copy(isPlaying = true),
-                        stations = it.stations.map { s ->
-                            if (s.serverUuid == action.station.serverUuid) {
-                                s.copy(isPlaying = true)
-                            } else {
-                                s.copy(isPlaying = false)
-                            }
-                        }.toPersistentList(),
-                    )
+            is Action.Click -> {
+                if (radioPlayerController?.currentMediaId == action.station.serverUuid) {
+                    if (radioPlayerController?.isPlaying == true) {
+                        radioPlayerController?.pause()
+                    } else {
+                        radioPlayerController?.play()
+                    }
+                } else {
+                    radioPlayerController?.playImmediately(action.station.toRadioMediaItem())
                 }
             }
 
             is Action.Pause -> {
-                _uiState.update {
-                    it.copy(
-                        playing = action.station.copy(isPlaying = false),
-                        stations = it.stations.map { s ->
-                            s.copy(isPlaying = false)
-                        }.toPersistentList()
-                    )
-                }
+                radioPlayerController?.pause()
+            }
+
+            is Action.Play -> {
+                radioPlayerController?.play()
             }
 
             is Action.Stop -> {
+                radioPlayerController?.stop()
                 _uiState.update {
-                    it.copy(
-                        playing = null,
-                        stations = it.stations.map { s ->
-                            s.copy(isPlaying = false)
-                        }.toPersistentList()
-                    )
+                    it.copy(selectedStation = null)
                 }
             }
         }
     }
 
     private suspend fun fetchRadioStations() {
-        val stations = getRadioStationsUseCase.execute(page = _uiState.value.currentPage + 1)
+        val nextPage = _uiState.value.currentPage + 1
+        val fetchedStations = getRadioStationsUseCase.execute(
+            page = nextPage,
+            searchName = _uiState.value.filterStationName
+        )
             .map { it.toUiStateStation() }
             .toPersistentList()
         _uiState.update {
             it.copy(
-                currentPage = it.currentPage + 1,
-                stations = (it.stations + stations).toPersistentList()
+                currentPage = nextPage,
+                stations = (it.stations + fetchedStations).toPersistentList()
             )
+        }
+    }
+
+    private fun onPlaybackEventReceived(playbackEvent: PlaybackEvent) {
+        when (playbackEvent) {
+            is PlaybackEvent.PlayingChanged -> {
+                val station = _uiState.value.selectedStation
+                _uiState.update {
+                    it.copy(
+                        selectedStation = station?.copy(
+                            isPlaying = playbackEvent.isPlaying,
+                            isBuffering = false,
+                        ),
+                        stations = it.stations.togglePlayingStateForStations(
+                            targetUuid = radioPlayerController?.currentMediaId.orEmpty(),
+                            isPlaying = playbackEvent.isPlaying
+                        )
+                    )
+                }
+            }
+
+            is PlaybackEvent.StateChanged -> {
+                val station = _uiState.value.selectedStation
+                _uiState.update {
+                    it.copy(
+                        selectedStation = station?.copy(
+                            isBuffering = playbackEvent.state == PlaybackState.BUFFERING,
+                        )
+                    )
+                }
+            }
+
+            is PlaybackEvent.MediaItemTransition -> {
+                val mediaId = playbackEvent.mediaId ?: return
+                viewModelScope.launch {
+                    val station = getRadioStationUseCase.execute(mediaId)
+                    _uiState.update {
+                        it.copy(
+                            selectedStation = station.toUiStateStation(),
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -121,26 +180,65 @@ class StationListViewModel @Inject constructor(
             name = name,
             genre = tags.getOrNull(0).orEmpty(),
             imageUrl = imageUrl,
-            isPlaying = false
+            streamUrl = url,
+            isBuffering = false,
+            isPlaying = false,
         )
     }
 
+    private fun UiState.Station.toRadioMediaItem(): RadioMediaItem {
+        return RadioMediaItem(
+            mediaId = serverUuid,
+            streamUrl = streamUrl,
+            radioMetadata = RadioMediaItem.RadioMetadata(
+                stationName = name,
+                genre = genre,
+                imageUrl = imageUrl,
+            )
+        )
+    }
+
+    private fun ImmutableList<UiState.Station>.togglePlayingStateForStations(
+        isPlaying: Boolean,
+        targetUuid: String
+    ): ImmutableList<UiState.Station> {
+        return map { s ->
+            if (s.serverUuid == targetUuid) s.copy(isPlaying = isPlaying)
+            else s.copy(isPlaying = false)
+        }.toPersistentList()
+    }
+
+    private fun RadioPlayerController.playImmediately(radioMediaItem: RadioMediaItem) {
+        setMediaItem(radioMediaItem)
+        prepare()
+        play()
+    }
+
     data class UiState(
+        val filterStationName: String? = null,
         val currentPage: Int = 0,
         val stations: ImmutableList<Station> = persistentListOf(),
-        val playing: Station? = null,
+        val selectedStation: Station? = null,
+        val featureFlags: FeatureFlags = FeatureFlags()
     ) {
         data class Station(
             val serverUuid: String,
             val name: String,
             val genre: String,
             val imageUrl: String,
+            val streamUrl: String,
+            val isBuffering: Boolean,
             val isPlaying: Boolean,
+        )
+
+        data class FeatureFlags(
+            val searchEnabled: Boolean = false
         )
     }
 
     sealed interface Action {
         data object LoadMore : Action
+        data class Search(val stationName: String): Action
         data class Click(val station: UiState.Station) : Action
         data class Play(val station: UiState.Station) : Action
         data class Pause(val station: UiState.Station) : Action

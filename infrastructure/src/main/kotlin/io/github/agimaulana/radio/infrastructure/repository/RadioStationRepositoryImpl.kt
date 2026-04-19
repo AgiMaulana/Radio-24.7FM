@@ -13,10 +13,29 @@ class RadioStationRepositoryImpl @Inject constructor(
     private val dispatcherProvider: DispatcherProvider,
 ) : RadioStationRepository {
 
-    override suspend fun getRadioStations(page: Int): List<RadioStation> {
+    override suspend fun getRadioStations(offset: Int, limit: Int): List<RadioStation> {
         return withContext(dispatcherProvider.io) {
-            radioStationApi.getRadioStations(page)
+            radioStationApi.getRadioStations(offset = offset, limit = limit).map { it.toEntity() }
+        }
+    }
+
+    override suspend fun searchRadioStations(
+        searchQuery: String,
+        offset: Int,
+        limit: Int
+    ): List<RadioStation> {
+        return withContext(dispatcherProvider.io) {
+            radioStationApi.getRadioStationsByName(format = "json", searchTerm = searchQuery)
                 .map { it.toEntity() }
+                .filter { it.name.lowercase().startsWith(searchQuery.lowercase()) }
+        }
+    }
+
+    override suspend fun getRadioStation(stationUuid: String): RadioStation? {
+        return withContext(dispatcherProvider.io) {
+            radioStationApi.getRadioStationByUuid(format = "json", uuid = stationUuid)
+                .map { it.toEntity() }
+                .firstOrNull { it.stationUuid == stationUuid }
         }
     }
 

@@ -1,5 +1,6 @@
 package io.github.agimaulana.radio.feature.stationlist.player
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -35,7 +37,8 @@ internal fun MiniPlayer(
 ) {
     Row(
         modifier = modifier.fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background),
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -55,32 +58,48 @@ internal fun MiniPlayer(
             Text(
                 text = station.name,
                 style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground
             )
 
             Text(
                 text = station.genre,
                 style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onBackground
             )
         }
 
-        if (station.isPlaying) {
-            IconButton(
-                onClick = onPause
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_pause),
-                    contentDescription = null,
+        AnimatedContent(
+            targetState = station.isBuffering,
+            label = "MiniPlayer.Buffering"
+        ) { isBuffering ->
+            if (isBuffering) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    strokeWidth = 2.dp,
                 )
-            }
-        } else {
-            IconButton(
-                onClick = onPlay,
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_play),
-                    contentDescription = null,
-                    colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.surfaceTint)
-                )
+            } else {
+                if (station.isPlaying) {
+                    IconButton(
+                        onClick = onPause
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_pause),
+                            contentDescription = null,
+                            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.surfaceTint)
+                        )
+                    }
+                } else {
+                    IconButton(
+                        onClick = onPlay,
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_play),
+                            contentDescription = null,
+                            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.surfaceTint)
+                        )
+                    }
+                }
             }
         }
     }
@@ -96,6 +115,8 @@ private fun MiniPlayerPreview() {
                 name = "24.7 FM",
                 genre = "Pop",
                 imageUrl = "",
+                streamUrl = "",
+                isBuffering = false,
                 isPlaying = false
             ),
             onPlay = {},
@@ -120,6 +141,8 @@ private fun MiniPlayerSheetModePreview() {
                     name = "24.7 FM",
                     genre = "Pop",
                     imageUrl = "",
+                    streamUrl = "",
+                    isBuffering = false,
                     isPlaying = false
                 ),
                 onPlay = {},

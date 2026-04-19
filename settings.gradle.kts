@@ -33,6 +33,7 @@ include(
     ":core:design",
     ":core:network",
     ":core:network:test",
+    ":core:radioplayer",
     ":core:shared-test",
 )
 

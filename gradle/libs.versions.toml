@@ -1,5 +1,6 @@
 [versions]
 compileSdk = "36"
+media3UiComposeMaterial3 = "1.9.0"
 targetSdk = "36"
 minSdk = "24"
 ndk = "29.0.13599879"
@@ -48,9 +49,14 @@ detekt = "1.23.8"
 detekt-twitter = "0.0.26"
 lifecycleRuntimeKtx = "2.10.0"
 composeBom = "2024.09.00"
+media3Session = "1.9.0"
+media3Exoplayer = "1.9.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-media3-session = { group = "androidx.media3", name = "media3-session", version.ref = "media3Session" }
+androidx-media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "media3Exoplayer" }
+androidx-media3-exoplayer-hls = { group = "androidx.media3", name = "media3-exoplayer-hls", version.ref = "media3Exoplayer" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 android-desugarJdkLibs = { module = "com.android.tools:desugar_jdk_libs", version.ref = "androidDesugarJdkLibs" }
 android-material = { module = "com.google.android.material:material", version.ref = "androidMaterial" }

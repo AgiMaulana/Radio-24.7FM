@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,12 +47,14 @@ internal fun StationTile(
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
 ) {
-    val contentColor = MaterialTheme.colorScheme.onBackground
     val border = if (station.isPlaying) RadioTheme.colors.ring else RadioTheme.colors.border
-    val darkTheme = isSystemInDarkTheme()
     val background = if (station.isPlaying) {
-        if (darkTheme) RadioTheme.colors.accentForeground else RadioTheme.colors.accent.copy(alpha = 0.2f)
-    } else RadioTheme.colors.background
+        MaterialTheme.colorScheme.background
+    } else {
+        MaterialTheme.colorScheme.surface
+    }
+
+    val contentColor = contentColorFor(background)
     Row(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         modifier = modifier
@@ -207,6 +210,8 @@ internal class StationPreviewProvider : PreviewParameterProvider<Station> {
                 name = "24.7 FM",
                 genre = "Pop",
                 imageUrl = "",
+                streamUrl = "",
+                isBuffering = false,
                 isPlaying = false
             ),
             Station(
@@ -214,6 +219,8 @@ internal class StationPreviewProvider : PreviewParameterProvider<Station> {
                 name = "24.7 FM",
                 genre = "Pop",
                 imageUrl = "",
+                streamUrl = "",
+                isBuffering = false,
                 isPlaying = true
             ),
         )

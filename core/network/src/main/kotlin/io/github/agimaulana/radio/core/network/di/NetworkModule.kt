@@ -30,7 +30,7 @@ object NetworkModule {
             .build()
         return RetrofitBuilderFactory()
             .create(
-                baseUrl = "https://de1.api.radio-browser.info/",
+                baseUrl = "https://all.api.radio-browser.info/",
                 okHttpClient = okHttpClient,
             )
             .build()

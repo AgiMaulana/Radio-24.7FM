@@ -15,5 +15,5 @@ fun newRadioStation(
     tags = withTags,
     imageUrl = withImageUrl,
     url = withUrl,
-    resolvedUrl = withResolvedUrl
+    resolvedUrl = withResolvedUrl,
 )

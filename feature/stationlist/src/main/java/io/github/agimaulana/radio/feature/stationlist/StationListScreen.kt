@@ -2,9 +2,16 @@ package io.github.agimaulana.radio.feature.stationlist
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -56,71 +63,117 @@ private fun StationListScreen(
     modifier: Modifier = Modifier,
     onAction: (Action) -> Unit = {},
 ) {
-    Scaffold { innerPadding ->
-        GlassSlidingPlayerLayout(
-            modifier = modifier.padding(innerPadding),
-            state = playerState,
-            peekHeight = 80.dp,
-            mainContent = {
-                LazyRadioStationList(
-                    stations = uiState.stations,
-                    onClick = {
-                        onAction(Action.Click(it))
-                    }
-                )
-            },
-            miniPlayerContent = {
-                if (uiState.playing != null) {
-                    MiniPlayer(
-                        station = uiState.playing,
-                        onPlay = {
-                            onAction(Action.Play(uiState.playing))
-                        },
-                        onPause = {
-                            onAction(Action.Pause(uiState.playing))
-                        },
-                        modifier = Modifier
-                            .clickable(
-                                onClick = {
-                                    playerState.expand()
-                                }
-                            )
-                            .padding(16.dp)
+    GlassSlidingPlayerLayout(
+        state = playerState,
+        peekHeight = 80.dp,
+        mainContent = {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = {
+                            Text("24.7 FM")
+                        }
                     )
                 }
-            },
-            fullPlayerContent = { progress ->
-                if (uiState.playing != null) {
-                    FullPlayer(
-                        progress = progress,
-                        station = uiState.playing,
-                        onPlay = {
-                            onAction(Action.Play(uiState.playing))
+            ) { innerPadding ->
+                Column(
+                    modifier = modifier.padding(innerPadding)
+                ) {
+                    if (uiState.featureFlags.searchEnabled) {
+                        OutlinedTextField(
+                            value = uiState.filterStationName.orEmpty(),
+                            onValueChange = {
+                                onAction(Action.Search(it))
+                            },
+                            placeholder = { Text("Search your favourite in the list...") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                        )
+                    }
+                    LazyRadioStationList(
+                        stations = uiState.stations,
+                        contentPadding = PaddingValues(
+                            top = 16.dp,
+                            start = 16.dp,
+                            end = 16.dp,
+                            bottom = innerPadding.calculateBottomPadding() + 80.dp + 16.dp
+                        ),
+                        onClick = {
+                            onAction(Action.Click(it))
                         },
-                        onPause = {
-                            onAction(Action.Pause(uiState.playing))
+                        onReachEnd = {
+                            onAction(Action.LoadMore)
                         },
-                        onStop = {
-                            onAction(Action.Stop(uiState.playing))
-                            playerState.collapse()
-                        },
-                        onCollapse = {
-                            playerState.collapse()
-                        },
-                        modifier = Modifier.padding(16.dp),
                     )
                 }
             }
-        )
-    }
+        },
+        miniPlayerContent = { _ ->
+            if (uiState.selectedStation != null) {
+                MiniPlayer(
+                    station = uiState.selectedStation,
+                    onPlay = {
+                        onAction(Action.Play(uiState.selectedStation))
+                    },
+                    onPause = {
+                        onAction(Action.Pause(uiState.selectedStation))
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(80.dp)
+                        .clickable(
+                            onClick = {
+                                playerState.expand()
+                            }
+                        )
+                )
+            }
+        },
+        fullPlayerContent = { progress ->
+            if (uiState.selectedStation != null) {
+                FullPlayer(
+                    progress = progress,
+                    station = uiState.selectedStation,
+                    onPlay = {
+                        onAction(Action.Play(uiState.selectedStation))
+                    },
+                    onPause = {
+                        onAction(Action.Pause(uiState.selectedStation))
+                    },
+                    onStop = {
+                        playerState.collapse()
+                        onAction(Action.Stop(uiState.selectedStation))
+                    },
+                    onCollapse = {
+                        playerState.collapse()
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                )
+            }
+        }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Preview
+@Preview(
+    showBackground = true,
+    showSystemUi = true
+)
 @Composable
 private fun StationListScreenPreview() {
     PreviewTheme {
+        val playerState = rememberGlassPlayerState(
+            peekHeight = 80.dp,
+        )
+
+        LaunchedEffect(Unit) {
+            playerState.collapse()
+        }
+
         StationListScreen(
+            playerState = playerState,
             uiState = UiState(
                 stations = persistentListOf(
                     Station(
@@ -128,20 +181,120 @@ private fun StationListScreenPreview() {
                         name = "24.7 FM",
                         genre = "Pop",
                         imageUrl = "",
-                        isPlaying = false
+                        streamUrl = "",
+                        isBuffering = false,
+                        isPlaying = false,
                     ),
                     Station(
                         serverUuid = "uuid",
                         name = "24.7 FM",
                         genre = "Pop",
                         imageUrl = "",
-                        isPlaying = true
+                        streamUrl = "",
+                        isBuffering = false,
+                        isPlaying = true,
                     ),
-                )
+                    Station(
+                        serverUuid = "uuid",
+                        name = "24.7 FM",
+                        genre = "Pop",
+                        imageUrl = "",
+                        streamUrl = "",
+                        isBuffering = false,
+                        isPlaying = false,
+                    ),
+                    Station(
+                        serverUuid = "uuid",
+                        name = "24.7 FM",
+                        genre = "Pop",
+                        imageUrl = "",
+                        streamUrl = "",
+                        isBuffering = false,
+                        isPlaying = true,
+                    ),
+                    Station(
+                        serverUuid = "uuid",
+                        name = "24.7 FM",
+                        genre = "Pop",
+                        imageUrl = "",
+                        streamUrl = "",
+                        isBuffering = false,
+                        isPlaying = false,
+                    ),
+                    Station(
+                        serverUuid = "uuid",
+                        name = "24.7 FM",
+                        genre = "Pop",
+                        imageUrl = "",
+                        streamUrl = "",
+                        isBuffering = false,
+                        isPlaying = true,
+                    ),
+                    Station(
+                        serverUuid = "uuid",
+                        name = "24.7 FM",
+                        genre = "Pop",
+                        imageUrl = "",
+                        streamUrl = "",
+                        isBuffering = false,
+                        isPlaying = false,
+                    ),
+                    Station(
+                        serverUuid = "uuid",
+                        name = "24.7 FM",
+                        genre = "Pop",
+                        imageUrl = "",
+                        streamUrl = "",
+                        isBuffering = false,
+                        isPlaying = true,
+                    ),
+                    Station(
+                        serverUuid = "uuid",
+                        name = "24.7 FM",
+                        genre = "Pop",
+                        imageUrl = "",
+                        streamUrl = "",
+                        isBuffering = false,
+                        isPlaying = false,
+                    ),
+                    Station(
+                        serverUuid = "uuid",
+                        name = "24.7 FM",
+                        genre = "Pop",
+                        imageUrl = "",
+                        streamUrl = "",
+                        isBuffering = false,
+                        isPlaying = true,
+                    ),
+                    Station(
+                        serverUuid = "uuid",
+                        name = "24.7 FM",
+                        genre = "Pop",
+                        imageUrl = "",
+                        streamUrl = "",
+                        isBuffering = false,
+                        isPlaying = false,
+                    ),
+                    Station(
+                        serverUuid = "uuid",
+                        name = "24.7 FM",
+                        genre = "Pop",
+                        imageUrl = "",
+                        streamUrl = "",
+                        isBuffering = false,
+                        isPlaying = true,
+                    ),
+                ),
+                selectedStation = Station(
+                    serverUuid = "uuid",
+                    name = "24.7 FM",
+                    genre = "Pop",
+                    imageUrl = "",
+                    streamUrl = "",
+                    isBuffering = false,
+                    isPlaying = true,
+                ),
             ),
-            playerState = rememberGlassPlayerState(
-                peekHeight = 80.dp
-            )
         )
     }
 }

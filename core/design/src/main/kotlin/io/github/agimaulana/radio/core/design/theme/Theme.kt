@@ -1,6 +1,7 @@
 package io.github.agimaulana.radio.core.design.theme
 
 import android.app.Activity
+import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
@@ -9,6 +10,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import io.github.agimaulana.radio.core.design.LocalRadioColors
@@ -81,22 +83,18 @@ fun RadioTheme(
     content: @Composable () -> Unit,
 ) {
     val radioColors = if (darkTheme) DarkRadioColors else LightRadioColors
-    val colorScheme = if (darkTheme) {
-        colorSchemeFrom(radioColors, true)
-    } else {
-        colorSchemeFrom(radioColors, false)
-    }
+    val colorScheme = colorSchemeFrom(radioColors, darkTheme)
     val view = LocalView.current
 
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            val controller = WindowCompat.getInsetsController(window, view)
-
-            // This replaces the deprecated SystemUI Visibility flags
-            // If true: icons become Dark (for light backgrounds)
-            // If false: icons become Light (for dark backgrounds)
-            controller.isAppearanceLightStatusBars = !darkTheme
+            // DO NOT set statusBarColor or navigationBarColor here.
+            // Only set icon appearance:
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightNavigationBars = !darkTheme
+            }
         }
     }
 

@@ -11,7 +11,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import kotlin.random.Random
 
 class RadioStationRepositoryImplTest {
 
@@ -29,17 +28,32 @@ class RadioStationRepositoryImplTest {
     }
 
     @Test
-    fun `when get success response then parse json and return radio stations`() = runTest {
+    fun `when getRadioStations success then parse json and return radio stations with correct offset and limit`() = runTest {
         val data = loadJsonResource("get_radio_stations_success_response.json")
         testApiRule.setResponse(200, data)
-        val page = Random.nextInt()
+        val offset = 0
+        val limit = 10
 
-        val radioStations = repository.getRadioStations(page)
+        val radioStations = repository.getRadioStations(offset, limit)
 
         assertEquals(createExpectedRadioStations(), radioStations)
         with(testApiRule.takeLastRequest()) {
             assertEquals("GET", method)
-            assertEquals("/json/stations/bycountry/indonesia?offset=$page&limit=10", pathWithQueryParams)
+            assertEquals("/json/stations/bycountry/indonesia?offset=$offset&limit=$limit", pathWithQueryParams)
+        }
+    }
+
+    @Test
+    fun `when getRadioStations with offset 10 then request correct offset`() = runTest {
+        val data = loadJsonResource("get_radio_stations_success_response.json")
+        testApiRule.setResponse(200, data)
+        val offset = 10
+        val limit = 20
+
+        repository.getRadioStations(offset, limit)
+
+        with(testApiRule.takeLastRequest()) {
+            assertEquals("/json/stations/bycountry/indonesia?offset=$offset&limit=$limit", pathWithQueryParams)
         }
     }
 
@@ -54,7 +68,7 @@ class RadioStationRepositoryImplTest {
             ),
             withImageUrl = "https://i.imgur.com/ldM8wDn.jpeg",
             withUrl = "https://moshhead-blackmetal.stream.laut.fm/moshhead-blackmetal",
-            withResolvedUrl = "https://moshhead-blackmetal.stream.laut.fm/moshhead-blackmetal"
+            withResolvedUrl = "https://moshhead-blackmetal.stream.laut.fm/moshhead-blackmetal",
         ),
         newRadioStation(
             withStationUuid = "16cc7691-8785-4e36-ae75-c9376eedfdcf",

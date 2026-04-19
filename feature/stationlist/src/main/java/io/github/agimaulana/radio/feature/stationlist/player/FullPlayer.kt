@@ -1,19 +1,25 @@
 package io.github.agimaulana.radio.feature.stationlist.player
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -28,6 +34,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -49,14 +57,23 @@ internal fun FullPlayer(
     modifier: Modifier = Modifier,
     progress: Float = 1f,
 ) {
+    val density = LocalDensity.current
+    val statusBarHeight = WindowInsets.statusBars.getTop(density)
+    val dynamicTopPadding = with(density) { (statusBarHeight * progress).toDp() }
     Box(
         modifier = modifier.fillMaxSize()
     ) {
         IconButton(
             onClick = onCollapse,
-            modifier = Modifier.align(Alignment.TopEnd).alpha(progress)
+            modifier = Modifier.align(Alignment.TopEnd)
+                .padding(top = dynamicTopPadding)
+                .alpha(progress)
         ) {
-            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Close")
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowDown,
+                contentDescription = "Close",
+                tint = MaterialTheme.colorScheme.onBackground,
+            )
         }
 
         PlayerControls(
@@ -108,12 +125,27 @@ private fun PlayerControls(
             )
         }
 
-        PlayerController(
-            isPlaying = station.isPlaying,
-            onPlay = onPlay,
-            onPause = onPause,
-            onStop = onStop
-        )
+        Box {
+            AnimatedContent(
+                targetState = station.isBuffering,
+                label = "FullPlayer.Buffering"
+            ) { buffering ->
+                if (buffering) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(64.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    PlayerController(
+                        isPlaying = station.isPlaying,
+                        onPlay = onPlay,
+                        onPause = onPause,
+                        onStop = onStop
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -133,6 +165,8 @@ private fun RadioImage(
                 alpha = progress.coerceIn(0f, 1f)
             }
             .shadow(12.dp, RoundedCornerShape(16.dp))
+            .background(RadioTheme.colors.muted)
+            .size(256.dp),
     ) {
         Image(
             painter = rememberAsyncImagePainter(
@@ -141,7 +175,8 @@ private fun RadioImage(
                 error = painterResource(id = R.drawable.station_default),
             ),
             contentDescription = stationName,
-            modifier = Modifier.size(256.dp)
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.fillMaxSize()
         )
     }
 }
@@ -212,6 +247,8 @@ private fun FullPlayerPreview() {
                 name = "24.7 FM",
                 genre = "Pop",
                 imageUrl = "",
+                streamUrl = "",
+                isBuffering = true,
                 isPlaying = false
             ),
             onPlay = {},
@@ -238,6 +275,8 @@ private fun FullPlayerSheetModePreview() {
                     name = "24.7 FM",
                     genre = "Pop",
                     imageUrl = "",
+                    streamUrl = "",
+                    isBuffering = false,
                     isPlaying = false
                 ),
                 onPlay = {},

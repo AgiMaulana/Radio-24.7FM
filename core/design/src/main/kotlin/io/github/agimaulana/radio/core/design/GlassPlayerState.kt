@@ -1,5 +1,6 @@
 package io.github.agimaulana.radio.core.design
 
+import android.os.Build
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -53,7 +54,13 @@ fun rememberGlassPlayerState(peekHeight: Dp): GlassPlayerState {
     val peekHeightPx = with(density) { peekHeight.toPx() }
     
     val minOffset = 0f
-    val maxOffset = screenHeight - peekHeightPx
+    val isSupportEdge2EdgeByDefault = Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM // API 35+
 
-    return remember { GlassPlayerState(maxOffset, minOffset, maxOffset, scope) }
+    return if (isSupportEdge2EdgeByDefault) {
+        val maxOffset = screenHeight - peekHeightPx
+        remember { GlassPlayerState(maxOffset, minOffset, maxOffset, scope) }
+    } else {
+        val maxOffset = screenHeight - peekHeightPx + with(density) { 32.dp.toPx()  }
+        remember { GlassPlayerState(maxOffset, minOffset, maxOffset, scope) }
+    }
 }
