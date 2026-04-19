@@ -195,12 +195,24 @@ private fun StationListScreen(
         fullPlayerContent = { playerProgress ->
             uiState.selectedStation?.let { station ->
                 FullPlayer(
+                    progress = playerProgress,
                     station = station,
-                    onPlay = { onAction(Action.Play(station)) },
-                    onPause = { onAction(Action.Pause(station)) },
-                    onStop = { onAction(Action.Stop(station)) },
-                    onCollapse = { playerState.collapse() },
-                    progress = playerProgress
+                    playerColors = uiState.playerColors,
+                    featureFlag = uiState.featureFlag,
+                    onPlay = {
+                        onAction(Action.Play(station))
+                    },
+                    onPause = {
+                        onAction(Action.Pause(station))
+                    },
+                    onStop = {
+                        playerState.collapse()
+                        onAction(Action.Stop(station))
+                    },
+                    onCollapse = {
+                        playerState.collapse()
+                    },
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }
