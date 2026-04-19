@@ -171,7 +171,10 @@ class StationListViewModel @Inject constructor(
                     val station = getRadioStationUseCase.execute(mediaId)
                     _uiState.update {
                         it.copy(
-                            selectedStation = station.toUiStateStation(),
+                            selectedStation = station.toUiStateStation().copy(
+                                isPlaying = radioPlayerController?.isPlaying == true,
+                                isBuffering = it.selectedStation?.isBuffering ?: false
+                            ),
                         )
                     }
                 }
