@@ -2,6 +2,7 @@ package io.github.agimaulana.radio.feature.stationlist.component
 
 import android.content.res.Configuration
 import android.util.Log
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -55,9 +56,8 @@ internal fun StationTile(
     }
 
     val contentColor = contentColorFor(background)
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = modifier
+    Box(
+        modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .border(
@@ -66,14 +66,31 @@ internal fun StationTile(
                 shape = RoundedCornerShape(16.dp)
             )
             .background(background)
-            .clickable(onClick = onClick)
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
     ) {
-        details(
-            station = station,
-            contentColor = contentColor,
-        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .clickable(onClick = onClick)
+                .padding(vertical = 16.dp)
+                .padding(start = 16.dp, end = 48.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            details(
+                station = station,
+                contentColor = contentColor,
+            )
+        }
+
+        AnimatedVisibility(
+            visible = station.isPlaying,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 16.dp),
+        ) {
+            PlayingWaveIndicator()
+        }
     }
 }
 
@@ -85,7 +102,6 @@ private fun RowScope.details(
     RadioImage(
         stationName = station.name,
         imageUrl = station.imageUrl,
-        isPlaying = station.isPlaying
     )
 
     Column(
@@ -111,7 +127,6 @@ private fun RowScope.details(
 private fun RadioImage(
     stationName: String,
     imageUrl: String,
-    isPlaying: Boolean,
     modifier: Modifier = Modifier,
     size: Dp = 96.dp,
     placeholderSize: Dp = 48.dp
@@ -162,20 +177,6 @@ private fun RadioImage(
                     )
                 }
             }
-        }
-
-        if (isPlaying) {
-            Image(
-                painter = painterResource(id = R.drawable.playing),
-                contentDescription = null,
-                colorFilter = ColorFilter.tint(RadioTheme.colors.ring),
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .size(size)
-                    .align(Alignment.Center)
-                    .background(Color.Black.copy(0.5f))
-                    .padding(32.dp)
-            )
         }
     }
 }
