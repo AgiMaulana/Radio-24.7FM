@@ -39,6 +39,7 @@ activityCompose = "1.10.1"
 collectionsImmutable = "0.4.0"
 lottieCompose = "6.6.7"
 swiperefreshlayout = "1.1.0"
+androidxPalette = "1.0.0"
 
 # only for tests
 turbine = "1.2.1"
@@ -104,6 +105,8 @@ joda-time = { module = "joda-time:joda-time", version.ref = "joda" }
 collections-immutable = { module = "org.jetbrains.kotlinx:kotlinx-collections-immutable", version.ref = "collectionsImmutable" }
 lottie-compose = { module = "com.airbnb.android:lottie-compose", version.ref = "lottieCompose" }
 androidx-swiperefreshlayout = { module = "androidx.swiperefreshlayout:swiperefreshlayout", version.ref = "swiperefreshlayout" }
+androidx-palette = { group = "androidx.palette", name = "palette", version.ref = "androidxPalette" }
+androidx-compose-animation-graphics = { group = "androidx.compose.animation", name = "animation-graphics", version.ref = "compose" }
 
 # only for tests
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }

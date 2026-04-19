@@ -11,4 +11,7 @@ dependencies {
     implementation(project(":core:radioplayer"))
     implementation(project(":core:shared-test"))
     implementation(project(":domain:api"))
+
+    implementation(libs.androidx.palette)
+    implementation(libs.androidx.compose.animation.graphics)
 }

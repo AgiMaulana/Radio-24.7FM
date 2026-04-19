@@ -11,6 +11,11 @@ import io.github.agimaulana.radio.core.radioplayer.RadioPlayerControllerFactory
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
+import android.content.Context
+import androidx.compose.ui.graphics.Color
+import dagger.hilt.android.qualifiers.ApplicationContext
+import io.github.agimaulana.radio.feature.stationlist.player.PlayerColors
+import io.github.agimaulana.radio.feature.stationlist.player.extractPlayerColors
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toPersistentList
@@ -27,6 +32,7 @@ class StationListViewModel @Inject constructor(
     private val getRadioStationsUseCase: GetRadioStationsUseCase,
     private val getRadioStationUseCase: GetRadioStationUseCase,
     private val radioPlayerControllerFactory: RadioPlayerControllerFactory,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(UiState())
     val uiState = _uiState.asStateFlow()
@@ -54,13 +60,13 @@ class StationListViewModel @Inject constructor(
         if (mediaId.isNotEmpty()) {
             val station = getRadioStationUseCase.execute(mediaId)
             station.let {
+                val uiStation = it.toUiStateStation().copy(
+                    isPlaying = radioPlayerController?.isPlaying == true
+                )
                 _uiState.update { state ->
-                    state.copy(
-                        selectedStation = it.toUiStateStation().copy(
-                            isPlaying = radioPlayerController?.isPlaying == true
-                        )
-                    )
+                    state.copy(selectedStation = uiStation)
                 }
+                updatePlayerColors(uiStation.imageUrl)
             }
         }
     }
@@ -101,6 +107,7 @@ class StationListViewModel @Inject constructor(
                     }
                 } else {
                     radioPlayerController?.playImmediately(action.station.toRadioMediaItem())
+                    updatePlayerColors(action.station.imageUrl)
                 }
             }
 
@@ -177,16 +184,23 @@ class StationListViewModel @Inject constructor(
                 val mediaId = playbackEvent.mediaId ?: return
                 viewModelScope.launch {
                     val station = getRadioStationUseCase.execute(mediaId)
+                    val uiStation = station.toUiStateStation().copy(
+                        isPlaying = radioPlayerController?.isPlaying == true,
+                        isBuffering = _uiState.value.selectedStation?.isBuffering ?: false
+                    )
                     _uiState.update {
-                        it.copy(
-                            selectedStation = station.toUiStateStation().copy(
-                                isPlaying = radioPlayerController?.isPlaying == true,
-                                isBuffering = it.selectedStation?.isBuffering ?: false
-                            ),
-                        )
+                        it.copy(selectedStation = uiStation)
                     }
+                    updatePlayerColors(uiStation.imageUrl)
                 }
             }
+        }
+    }
+
+    private fun updatePlayerColors(imageUrl: String?) {
+        viewModelScope.launch {
+            val colors = extractPlayerColors(imageUrl, context)
+            _uiState.update { it.copy(playerColors = colors) }
         }
     }
 
@@ -235,7 +249,13 @@ class StationListViewModel @Inject constructor(
         val currentPage: Int = 0,
         val stations: ImmutableList<Station> = persistentListOf(),
         val selectedStation: Station? = null,
-        val hasMorePages: Boolean = true
+        val hasMorePages: Boolean = true,
+        val playerColors: PlayerColors = PlayerColors(
+            dominant = Color(0xFF1C1A24),
+            vibrant = Color(0xFF3a1040),
+            darkMuted = Color(0xFF0e0c14),
+        ),
+        val featureFlag: FeatureFlag = FeatureFlag(),
     ) {
         data class Station(
             val serverUuid: String,
@@ -247,6 +267,11 @@ class StationListViewModel @Inject constructor(
             val isPlaying: Boolean,
         )
 
+        data class FeatureFlag(
+            val isMoreMenuEnabled: Boolean = false,
+            val isFavoriteEnabled: Boolean = false,
+            val isActionRowEnabled: Boolean = false,
+        )
     }
 
     sealed interface Action {

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    ic_station_rings.xml
+    Default artwork placeholder for stations without a thumbnail.
+    Shows concentric rings with a center dot — matches the app icon language.
+    Recommended size: fill the artwork ImageView (e.g. 220dp x 220dp).
+    Background color should be set on the parent view: #1f1829
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="220dp"
+    android:height="220dp"
+    android:viewportWidth="220"
+    android:viewportHeight="220">
+
+    <!-- Outermost ring -->
+    <path android:pathData="M110,10 A100,100 0 1,1 109.999,10 Z"
+        android:fillColor="#00000000" android:strokeColor="#9a1045"
+        android:strokeWidth="1" android:strokeAlpha="0.30"/>
+    <!-- Ring 2 -->
+    <path android:pathData="M110,26 A84,84 0 1,1 109.999,26 Z"
+        android:fillColor="#00000000" android:strokeColor="#b8185e"
+        android:strokeWidth="1.5" android:strokeAlpha="0.45"/>
+    <!-- Ring 3 -->
+    <path android:pathData="M110,44 A66,66 0 1,1 109.999,44 Z"
+        android:fillColor="#00000000" android:strokeColor="#cc1c6a"
+        android:strokeWidth="2" android:strokeAlpha="0.60"/>
+    <!-- Ring 4 -->
+    <path android:pathData="M110,64 A46,46 0 1,1 109.999,64 Z"
+        android:fillColor="#00000000" android:strokeColor="#da1e72"
+        android:strokeWidth="2.5" android:strokeAlpha="0.75"/>
+    <!-- Ring 5 — innermost -->
+    <path android:pathData="M110,82 A28,28 0 1,1 109.999,82 Z"
+        android:fillColor="#00000000" android:strokeColor="#e82080"
+        android:strokeWidth="3" android:strokeAlpha="0.90"/>
+    <!-- Glow fill -->
+    <path android:pathData="M110,82 A28,28 0 1,1 109.999,82 Z"
+        android:fillColor="#FF69B4" android:fillAlpha="0.10"/>
+    <!-- Center dot outer -->
+    <path android:pathData="M110,98 A12,12 0 1,1 109.999,98 Z"
+        android:fillColor="#FF69B4" android:fillAlpha="0.30"/>
+    <!-- Center dot inner -->
+    <path android:pathData="M110,105 A5,5 0 1,1 109.999,105 Z"
+        android:fillColor="#FF69B4" android:fillAlpha="0.90"/>
+
+</vector>
