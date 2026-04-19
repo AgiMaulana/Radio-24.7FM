@@ -57,6 +57,23 @@ class RadioStationRepositoryImplTest {
         }
     }
 
+    @Test
+    fun `when searchRadioStations then hit search endpoint with correct query params`() = runTest {
+        val data = loadJsonResource("get_radio_stations_success_response.json")
+        testApiRule.setResponse(200, data)
+        val query = "Mosh"
+        val offset = 0
+        val limit = 10
+
+        val radioStations = repository.searchRadioStations(query, offset, limit)
+
+        assertEquals(createExpectedRadioStations(), radioStations)
+        with(testApiRule.takeLastRequest()) {
+            assertEquals("GET", method)
+            assertEquals("/json/stations/search?name=$query&nameExact=false&countrycode=ID&offset=$offset&limit=$limit", pathWithQueryParams)
+        }
+    }
+
     private fun createExpectedRadioStations() = listOf(
         newRadioStation(
             withStationUuid = "6bd67acb-e99e-4673-8270-19d55935be2a",

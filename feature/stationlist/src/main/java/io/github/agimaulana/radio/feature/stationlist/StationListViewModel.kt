@@ -17,6 +17,8 @@ import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -30,6 +32,7 @@ class StationListViewModel @Inject constructor(
     val uiState = _uiState.asStateFlow()
 
     private var radioPlayerController: RadioPlayerController? = null
+    private var searchJob: Job? = null
 
     fun init() {
         viewModelScope.launch {
@@ -74,6 +77,7 @@ class StationListViewModel @Inject constructor(
             }
 
             is Action.Search -> {
+                searchJob?.cancel()
                 _uiState.update {
                     it.copy(
                         filterStationName = action.stationName,
@@ -81,7 +85,8 @@ class StationListViewModel @Inject constructor(
                         stations = persistentListOf(),
                     )
                 }
-                viewModelScope.launch {
+                searchJob = viewModelScope.launch {
+                    delay(SEARCH_DEBOUNCE_MS)
                     fetchRadioStations()
                 }
             }
@@ -219,7 +224,6 @@ class StationListViewModel @Inject constructor(
         val currentPage: Int = 0,
         val stations: ImmutableList<Station> = persistentListOf(),
         val selectedStation: Station? = null,
-        val featureFlags: FeatureFlags = FeatureFlags()
     ) {
         data class Station(
             val serverUuid: String,
@@ -231,9 +235,6 @@ class StationListViewModel @Inject constructor(
             val isPlaying: Boolean,
         )
 
-        data class FeatureFlags(
-            val searchEnabled: Boolean = false
-        )
     }
 
     sealed interface Action {
@@ -243,5 +244,9 @@ class StationListViewModel @Inject constructor(
         data class Play(val station: UiState.Station) : Action
         data class Pause(val station: UiState.Station) : Action
         data class Stop(val station: UiState.Station) : Action
+    }
+
+    companion object {
+        internal const val SEARCH_DEBOUNCE_MS = 300L
     }
 }

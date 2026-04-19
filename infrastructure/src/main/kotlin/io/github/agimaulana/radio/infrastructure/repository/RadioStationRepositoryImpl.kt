@@ -25,9 +25,8 @@ class RadioStationRepositoryImpl @Inject constructor(
         limit: Int
     ): List<RadioStation> {
         return withContext(dispatcherProvider.io) {
-            radioStationApi.getRadioStationsByName(format = "json", searchTerm = searchQuery)
+            radioStationApi.searchRadioStations(name = searchQuery, offset = offset, limit = limit)
                 .map { it.toEntity() }
-                .filter { it.name.lowercase().startsWith(searchQuery.lowercase()) }
         }
     }
 

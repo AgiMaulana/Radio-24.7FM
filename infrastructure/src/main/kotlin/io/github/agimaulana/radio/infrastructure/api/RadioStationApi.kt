@@ -13,10 +13,14 @@ interface RadioStationApi {
         @Query("limit") limit: Int = 10,
     ): List<RadioStationResponse>
 
-    @GET("/{format}/stations/byname/{searchterm}")
-    suspend fun getRadioStationsByName(
-        @Path("format") format: String,
-        @Path("searchterm") searchTerm: String
+    @Suppress("LongParameterList")
+    @GET("/json/stations/search")
+    suspend fun searchRadioStations(
+        @Query("name") name: String,
+        @Query("nameExact") nameExact: Boolean = false,
+        @Query("countrycode") country: String = "ID",
+        @Query("offset") offset: Int = 0,
+        @Query("limit") limit: Int = 100000,
     ): List<RadioStationResponse>
 
     @GET("/{format}/stations/byuuid/{uuid}")
