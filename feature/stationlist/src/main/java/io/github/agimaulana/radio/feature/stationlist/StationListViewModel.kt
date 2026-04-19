@@ -129,7 +129,11 @@ class StationListViewModel @Inject constructor(
             page = nextPage,
             searchName = _uiState.value.filterStationName
         )
-            .map { it.toUiStateStation() }
+            .map {
+                val isCurrentlyPlaying = radioPlayerController?.currentMediaId == it.stationUuid
+                        && radioPlayerController?.isPlaying == true
+                it.toUiStateStation().copy(isPlaying = isCurrentlyPlaying)
+            }
             .toPersistentList()
         _uiState.update {
             it.copy(

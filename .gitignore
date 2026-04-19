@@ -15,3 +15,5 @@ litellm_config.yaml
 *.keystore
 keystore.properties
 app/prod/release
+/.claude/settings.local.json
+/.kotlin
