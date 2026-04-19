@@ -10,6 +10,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.verify
+import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.Companion.SEARCH_DEBOUNCE_MS
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -143,7 +144,17 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
             viewModel.init()
             viewModel.onAction(StationListViewModel.Action.Search(searchName))
 
+            // State updates immediately: keyword set, list cleared
             with(uiState.expectMostRecentItem()) {
+                assertEquals(0, currentPage)
+                assertEquals(searchName, filterStationName)
+                assertTrue(stations.isEmpty())
+            }
+
+            // Advance past the debounce window so the fetch fires
+            testScheduler.advanceTimeBy(SEARCH_DEBOUNCE_MS + 1)
+
+            with(uiState.awaitItem()) {
                 assertEquals(1, currentPage)
                 assertEquals(searchName, filterStationName)
                 assertEquals(expectedStations1, this.stations)
@@ -176,6 +187,45 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
             coVerify(exactly = 1) {
                 getRadioStationsUseCase.execute(page = 2, searchName = searchName)
             }
+        }
+    }
+
+    @Test
+    fun `given rapid typing when search then only one fetch is made after debounce`() = runTest {
+        turbineScope {
+            val uiState = viewModel.uiState.testIn(backgroundScope)
+            uiState.awaitItem() // initial state
+
+            val finalQuery = "radio"
+            coEvery {
+                getRadioStationsUseCase.execute(page = 1, searchName = finalQuery)
+            } returns emptyList()
+
+            // Simulate rapid keystrokes within the debounce window
+            viewModel.onAction(StationListViewModel.Action.Search("r"))
+            testScheduler.advanceTimeBy(100)
+            viewModel.onAction(StationListViewModel.Action.Search("ra"))
+            testScheduler.advanceTimeBy(100)
+            viewModel.onAction(StationListViewModel.Action.Search("rad"))
+            testScheduler.advanceTimeBy(100)
+            viewModel.onAction(StationListViewModel.Action.Search("radi"))
+            testScheduler.advanceTimeBy(100)
+            viewModel.onAction(StationListViewModel.Action.Search(finalQuery))
+
+            // Advance past the debounce window
+            testScheduler.advanceTimeBy(SEARCH_DEBOUNCE_MS + 1)
+
+            // Only the last query should have triggered a fetch
+            coVerify(exactly = 1) {
+                getRadioStationsUseCase.execute(page = 1, searchName = finalQuery)
+            }
+            coVerify(exactly = 0) {
+                getRadioStationsUseCase.execute(page = 1, searchName = "r")
+                getRadioStationsUseCase.execute(page = 1, searchName = "ra")
+                getRadioStationsUseCase.execute(page = 1, searchName = "rad")
+                getRadioStationsUseCase.execute(page = 1, searchName = "radi")
+            }
+            uiState.cancelAndConsumeRemainingEvents()
         }
     }
 

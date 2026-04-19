@@ -1,3 +1,5 @@
+@file:Suppress("MatchingDeclarationName", "FunctionNaming")
+
 package io.github.agimaulana.radio
 
 import androidx.compose.foundation.layout.Column
@@ -32,12 +34,14 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
 
 @Composable
 fun MainScreen(
+    modifier: Modifier = Modifier,
     onNavigateToSample: () -> Unit,
 ) {
     val navController = rememberNavController()
     val items = listOf(Screen.Home, Screen.Profile, Screen.Settings)
 
     Scaffold(
+        modifier = modifier,
         bottomBar = {
             NavigationBar {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()

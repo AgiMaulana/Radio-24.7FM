@@ -8,10 +8,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -79,18 +83,27 @@ private fun StationListScreen(
                 Column(
                     modifier = modifier.padding(innerPadding)
                 ) {
-                    if (uiState.featureFlags.searchEnabled) {
-                        OutlinedTextField(
-                            value = uiState.filterStationName.orEmpty(),
-                            onValueChange = {
-                                onAction(Action.Search(it))
-                            },
-                            placeholder = { Text("Search your favourite in the list...") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                        )
-                    }
+                    OutlinedTextField(
+                        value = uiState.filterStationName.orEmpty(),
+                        onValueChange = {
+                            onAction(Action.Search(it))
+                        },
+                        placeholder = { Text("Search your favourite in the list...") },
+                        trailingIcon = {
+                            if (!uiState.filterStationName.isNullOrEmpty()) {
+                                IconButton(onClick = { onAction(Action.Search("")) }) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Close,
+                                        contentDescription = "Clear search",
+                                    )
+                                }
+                            }
+                        },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                    )
                     LazyRadioStationList(
                         stations = uiState.stations,
                         contentPadding = PaddingValues(

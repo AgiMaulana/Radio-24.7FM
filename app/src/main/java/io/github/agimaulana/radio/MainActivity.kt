@@ -1,13 +1,12 @@
+@file:Suppress("FunctionNaming")
+
 package io.github.agimaulana.radio
 
-import android.graphics.Color
 import android.os.Bundle
-import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.Composable
-import androidx.core.view.WindowCompat
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -16,7 +15,6 @@ import io.github.agimaulana.radio.core.design.theme.RadioTheme
 import io.github.agimaulana.radio.feature.sample.navigateToSampleScreen
 import io.github.agimaulana.radio.feature.sample.sampleScreen
 import io.github.agimaulana.radio.feature.stationlist.StationListRoute
-import io.github.agimaulana.radio.infrastructure.response.RadioStationResponse
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
