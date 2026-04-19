@@ -66,7 +66,7 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
                 assertTrue(stations.isEmpty())
             }
 
-            val stations1 = listOf(
+            val stations1 = List(10) {
                 newRadioStation(
                     withStationUuid = randomString(length = 24),
                     withName = "Radio 1 ${randomString(length = 5)}",
@@ -74,7 +74,7 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
                     withImageUrl = randomUrl(),
                     withUrl = randomUrl(),
                 )
-            )
+            }
             coEvery {
                 getRadioStationsUseCase.execute(page = 1, searchName = null)
             } returns stations1
@@ -117,6 +117,78 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
     }
 
     @Test
+    fun `given fetched stations is empty when fetch radio stations then hasMorePages is false`() = runTest {
+        turbineScope {
+            val uiState = viewModel.uiState.testIn(backgroundScope)
+            uiState.awaitItem()
+
+            coEvery {
+                getRadioStationsUseCase.execute(page = 1, searchName = null)
+            } returns emptyList()
+
+            viewModel.init()
+
+            with(uiState.awaitItem()) {
+                assertEquals(false, hasMorePages)
+            }
+        }
+    }
+
+    @Test
+    fun `given fetched stations is less than page size when fetch radio stations then hasMorePages is false`() = runTest {
+        turbineScope {
+            val uiState = viewModel.uiState.testIn(backgroundScope)
+            uiState.awaitItem()
+
+            val stations = List(StationListViewModel.PAGE_SIZE - 1) {
+                newRadioStation(
+                    withStationUuid = randomString(length = 24),
+                    withName = "Radio $it",
+                    withTags = listOf(randomString()),
+                    withImageUrl = randomUrl(),
+                    withUrl = randomUrl(),
+                )
+            }
+            coEvery {
+                getRadioStationsUseCase.execute(page = 1, searchName = null)
+            } returns stations
+
+            viewModel.init()
+
+            with(uiState.awaitItem()) {
+                assertEquals(false, hasMorePages)
+            }
+        }
+    }
+
+    @Test
+    fun `given fetched stations is equal to page size when fetch radio stations then hasMorePages is true`() = runTest {
+        turbineScope {
+            val uiState = viewModel.uiState.testIn(backgroundScope)
+            uiState.awaitItem()
+
+            val stations = List(StationListViewModel.PAGE_SIZE) {
+                newRadioStation(
+                    withStationUuid = randomString(length = 24),
+                    withName = "Radio $it",
+                    withTags = listOf(randomString()),
+                    withImageUrl = randomUrl(),
+                    withUrl = randomUrl(),
+                )
+            }
+            coEvery {
+                getRadioStationsUseCase.execute(page = 1, searchName = null)
+            } returns stations
+
+            viewModel.init()
+
+            with(uiState.awaitItem()) {
+                assertEquals(true, hasMorePages)
+            }
+        }
+    }
+
+    @Test
     fun `given search by station name when load more then fetch next page of radio stations`() = runTest {
         turbineScope {
             val uiState = viewModel.uiState.testIn(backgroundScope)
@@ -127,7 +199,7 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
                 assertTrue(stations.isEmpty())
             }
 
-            val stations1 = listOf(
+            val stations1 = List(10) {
                 newRadioStation(
                     withStationUuid = randomString(length = 24),
                     withName = "Radio 1 ${randomString(length = 5)}",
@@ -135,7 +207,7 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
                     withImageUrl = randomUrl(),
                     withUrl = randomUrl(),
                 )
-            )
+            }
             coEvery {
                 getRadioStationsUseCase.execute(page = 1, searchName = searchName)
             } returns stations1

@@ -83,6 +83,7 @@ class StationListViewModel @Inject constructor(
                         filterStationName = action.stationName,
                         currentPage = 0,
                         stations = persistentListOf(),
+                        hasMorePages = true,
                     )
                 }
                 searchJob = viewModelScope.launch {
@@ -121,6 +122,8 @@ class StationListViewModel @Inject constructor(
     }
 
     private suspend fun fetchRadioStations() {
+        if (!_uiState.value.hasMorePages) return
+
         val nextPage = _uiState.value.currentPage + 1
         val fetchedStations = getRadioStationsUseCase.execute(
             page = nextPage,
@@ -131,7 +134,8 @@ class StationListViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 currentPage = nextPage,
-                stations = (it.stations + fetchedStations).toPersistentList()
+                stations = (it.stations + fetchedStations).toPersistentList(),
+                hasMorePages = fetchedStations.isNotEmpty() && fetchedStations.size >= PAGE_SIZE
             )
         }
     }
@@ -227,6 +231,7 @@ class StationListViewModel @Inject constructor(
         val currentPage: Int = 0,
         val stations: ImmutableList<Station> = persistentListOf(),
         val selectedStation: Station? = null,
+        val hasMorePages: Boolean = true
     ) {
         data class Station(
             val serverUuid: String,
@@ -251,5 +256,6 @@ class StationListViewModel @Inject constructor(
 
     companion object {
         internal const val SEARCH_DEBOUNCE_MS = 300L
+        internal const val PAGE_SIZE = 10
     }
 }
