@@ -13,6 +13,8 @@ import io.mockk.verify
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.Companion.SEARCH_DEBOUNCE_MS
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -480,6 +482,81 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
             }
             coVerify(exactly = 0) {
                 getRadioStationUseCase.execute(any())
+            }
+        }
+    }
+
+    @Test
+    fun `given station is playing when search then station shows as playing in search results`() = runTest {
+        turbineScope {
+            val playingMediaId = "playing-radio-id"
+            every { radioPlayerController.currentMediaId } returns playingMediaId
+            every { radioPlayerController.isPlaying } returns true
+            val stations = listOf(
+                newRadioStation(
+                    withStationUuid = playingMediaId,
+                    withName = "Playing Radio",
+                    withTags = listOf("Pop"),
+                    withImageUrl = randomUrl(),
+                    withUrl = randomUrl(),
+                ),
+                newRadioStation(
+                    withStationUuid = "other-radio-id",
+                    withName = "Other Radio",
+                    withTags = listOf("Jazz"),
+                    withImageUrl = randomUrl(),
+                    withUrl = randomUrl(),
+                ),
+            )
+            coEvery {
+                getRadioStationsUseCase.execute(page = 1, searchName = "radio")
+            } returns stations
+
+            viewModel.init()
+            val uiState = viewModel.uiState.testIn(backgroundScope)
+
+            viewModel.onAction(StationListViewModel.Action.Search("radio"))
+            testScheduler.advanceTimeBy(SEARCH_DEBOUNCE_MS + 1)
+
+            with(uiState.expectMostRecentItem()) {
+                val playingStation = stations.find { it.stationUuid == playingMediaId }
+                assertNotNull(playingStation)
+                val uiStation = this.stations.find { it.serverUuid == playingMediaId }
+                assertTrue(uiStation?.isPlaying!!)
+                val otherStation = this.stations.find { it.serverUuid == "other-radio-id" }
+                assertFalse(otherStation?.isPlaying!!)
+            }
+        }
+    }
+
+    @Test
+    fun `given station is not playing when search then station shows as not playing in search results`() = runTest {
+        turbineScope {
+            val currentMediaId = "paused-radio-id"
+            every { radioPlayerController.currentMediaId } returns currentMediaId
+            every { radioPlayerController.isPlaying } returns false
+            val stations = listOf(
+                newRadioStation(
+                    withStationUuid = currentMediaId,
+                    withName = "Paused Radio",
+                    withTags = listOf("Pop"),
+                    withImageUrl = randomUrl(),
+                    withUrl = randomUrl(),
+                ),
+            )
+            coEvery {
+                getRadioStationsUseCase.execute(page = 1, searchName = "radio")
+            } returns stations
+
+            viewModel.init()
+            val uiState = viewModel.uiState.testIn(backgroundScope)
+
+            viewModel.onAction(StationListViewModel.Action.Search("radio"))
+            testScheduler.advanceTimeBy(SEARCH_DEBOUNCE_MS + 1)
+
+            with(uiState.expectMostRecentItem()) {
+                val uiStation = this.stations.find { it.serverUuid == currentMediaId }
+                assertFalse(uiStation?.isPlaying!!)
             }
         }
     }

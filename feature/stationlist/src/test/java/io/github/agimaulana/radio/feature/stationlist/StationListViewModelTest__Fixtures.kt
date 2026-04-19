@@ -58,9 +58,24 @@ abstract class StationListViewModelTest__Fixtures {
         every {
             radioPlayerController.event
         } returns playbackEventChannel.receiveAsFlow()
+        every {
+            radioPlayerController.currentMediaId
+        } returns ""
+        every {
+            radioPlayerController.isPlaying
+        } returns false
         coEvery {
             radioPlayerControllerFactory.get()
         } returns radioPlayerController
+        coEvery {
+            getRadioStationUseCase.execute(any())
+        } returns newRadioStation(
+            withStationUuid = "",
+            withName = "Test",
+        )
+        coEvery {
+            getRadioStationsUseCase.execute(page = 1, searchName = null)
+        } returns emptyList()
         viewModel = StationListViewModel(
             getRadioStationsUseCase = getRadioStationsUseCase,
             getRadioStationUseCase = getRadioStationUseCase,
@@ -77,15 +92,18 @@ abstract class StationListViewModelTest__Fixtures {
         onCleared.invoke(this)
     }
 
-    protected fun RadioStation.toUiStateStation() = newUiStateStation(
-        withServerUuid = stationUuid,
-        withName = name,
-        withGenre = tags.getOrNull(0).orEmpty(),
-        withImageUrl = imageUrl,
-        withStreamUrl = url,
-        withIsBuffering = false,
-        withIsPlaying = false,
-    )
+    protected fun RadioStation.toUiStateStation(): StationListViewModel.UiState.Station {
+        val isCurrentlyPlaying = radioPlayerController.currentMediaId == stationUuid
+        return newUiStateStation(
+            withServerUuid = stationUuid,
+            withName = name,
+            withGenre = tags.getOrNull(0).orEmpty(),
+            withImageUrl = imageUrl,
+            withStreamUrl = url,
+            withIsBuffering = false,
+            withIsPlaying = isCurrentlyPlaying && radioPlayerController.isPlaying,
+        )
+    }
 
     protected fun StationListViewModel.UiState.Station.toRadioMediaItem(): RadioMediaItem {
         return RadioMediaItem(
