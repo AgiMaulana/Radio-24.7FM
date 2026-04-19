@@ -4,12 +4,14 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
@@ -19,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -50,6 +53,13 @@ internal fun MiniPlayer(
             ),
             contentDescription = station.name,
             modifier = Modifier.size(64.dp)
+                .clip(
+                    shape = RoundedCornerShape(8.dp)
+                )
+                .background(
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(8.dp)
+                )
         )
 
         Column(
@@ -68,40 +78,17 @@ internal fun MiniPlayer(
             )
         }
 
-        AnimatedContent(
-            targetState = station.isBuffering,
-            label = "MiniPlayer.Buffering"
-        ) { isBuffering ->
-            if (isBuffering) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = MaterialTheme.colorScheme.primary,
-                    strokeWidth = 2.dp,
-                )
-            } else {
-                if (station.isPlaying) {
-                    IconButton(
-                        onClick = onPause
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.ic_pause),
-                            contentDescription = null,
-                            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.surfaceTint)
-                        )
-                    }
+        MiniPlayerPlayPauseButton(
+            isBuffering = station.isBuffering,
+            isPlaying = station.isPlaying,
+            onClick = { isPlaying ->
+                if (isPlaying) {
+                    onPause()
                 } else {
-                    IconButton(
-                        onClick = onPlay,
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.ic_play),
-                            contentDescription = null,
-                            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.surfaceTint)
-                        )
-                    }
+                    onPlay()
                 }
             }
-        }
+        )
     }
 }
 
@@ -125,31 +112,22 @@ private fun MiniPlayerPreview() {
     }
 }
 
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Preview
+@Preview(uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
-private fun MiniPlayerSheetModePreview() {
+private fun MiniPlayerNightPreview() {
     PreviewTheme {
-        ModalBottomSheet(
-            onDismissRequest = {},
-            dragHandle = null,
-        ) {
-            MiniPlayer(
-                station = Station(
-                    serverUuid = "uuid",
-                    name = "24.7 FM",
-                    genre = "Pop",
-                    imageUrl = "",
-                    streamUrl = "",
-                    isBuffering = false,
-                    isPlaying = false
-                ),
-                onPlay = {},
-                onPause = {},
-                modifier = Modifier.fillMaxSize()
-            )
-        }
+        MiniPlayer(
+            station = Station(
+                serverUuid = "uuid",
+                name = "24.7 FM",
+                genre = "Pop",
+                imageUrl = "",
+                streamUrl = "",
+                isBuffering = false,
+                isPlaying = false
+            ),
+            onPlay = {},
+            onPause = {},
+        )
     }
 }
-
