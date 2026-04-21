@@ -1,10 +1,8 @@
 package io.github.agimaulana.radio.feature.stationlist
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
-import app.cash.turbine.turbineScope
 import io.github.agimaulana.radio.core.network.test.CoroutineMainDispatcherRule
-import io.github.agimaulana.radio.core.network.test.randomizer.randomString
-import io.github.agimaulana.radio.core.network.test.randomizer.randomUrl
 import io.github.agimaulana.radio.core.radioplayer.PlaybackEvent
 import io.github.agimaulana.radio.core.radioplayer.RadioMediaItem
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
@@ -12,20 +10,15 @@ import io.github.agimaulana.radio.core.radioplayer.RadioPlayerControllerFactory
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
-import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.Action.LoadMore
 import io.github.agimaulana.radio.feature.stationlist.datafactories.newRadioStation
 import io.github.agimaulana.radio.feature.stationlist.datafactories.newUiStateStation
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
-import io.mockk.coVerify
 import io.mockk.every
+import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.RelaxedMockK
-import io.mockk.verify
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.test.runTest
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -43,6 +36,9 @@ abstract class StationListViewModelTest__Fixtures {
 
     @RelaxedMockK
     protected lateinit var radioPlayerController: RadioPlayerController
+
+    @MockK
+    protected lateinit var context: Context
 
     protected lateinit var playbackEventChannel: Channel<PlaybackEvent>
 
@@ -79,7 +75,8 @@ abstract class StationListViewModelTest__Fixtures {
         viewModel = StationListViewModel(
             getRadioStationsUseCase = getRadioStationsUseCase,
             getRadioStationUseCase = getRadioStationUseCase,
-            radioPlayerControllerFactory = radioPlayerControllerFactory
+            radioPlayerControllerFactory = radioPlayerControllerFactory,
+            context = context
         )
     }
 

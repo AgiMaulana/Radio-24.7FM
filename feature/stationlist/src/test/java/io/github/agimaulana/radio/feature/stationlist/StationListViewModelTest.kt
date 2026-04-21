@@ -487,6 +487,62 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
     }
 
     @Test
+    fun `given currently loading when load more then do not fetch again`() = runTest {
+        turbineScope {
+            val uiState = viewModel.uiState.testIn(backgroundScope)
+            uiState.awaitItem() // Initial state
+
+            // Mock a delayed response
+            coEvery {
+                getRadioStationsUseCase.execute(any(), any())
+            } coAnswers {
+                kotlinx.coroutines.delay(1000)
+                emptyList()
+            }
+
+            // Trigger first load
+            viewModel.onAction(LoadMore)
+            
+            // Wait for the isLoading = true state
+            assertEquals(true, uiState.awaitItem().isLoading)
+
+            // Try to trigger another load immediately
+            viewModel.onAction(LoadMore)
+
+            // Verify only one call was made despite multiple triggers
+            coVerify(exactly = 1) {
+                getRadioStationsUseCase.execute(page = 1, searchName = null)
+            }
+            uiState.cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `when fetch radio stations then isLoading state is updated correctly`() = runTest {
+        turbineScope {
+            val uiState = viewModel.uiState.testIn(backgroundScope)
+            uiState.awaitItem() // Initial state
+
+            coEvery {
+                getRadioStationsUseCase.execute(any(), any())
+            } coAnswers {
+                kotlinx.coroutines.delay(100)
+                emptyList()
+            }
+
+            viewModel.onAction(LoadMore)
+
+            // First state update: isLoading = true
+            assertEquals(true, uiState.awaitItem().isLoading)
+
+            // Second state update: isLoading = false after fetch completion
+            assertEquals(false, uiState.awaitItem().isLoading)
+            
+            uiState.cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `given station is playing when search then station shows as playing in search results`() = runTest {
         turbineScope {
             val playingMediaId = "playing-radio-id"

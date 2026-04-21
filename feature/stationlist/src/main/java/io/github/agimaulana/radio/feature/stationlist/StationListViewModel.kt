@@ -129,25 +129,32 @@ class StationListViewModel @Inject constructor(
     }
 
     private suspend fun fetchRadioStations() {
-        if (!_uiState.value.hasMorePages) return
+        if (_uiState.value.isLoading || !_uiState.value.hasMorePages) return
 
-        val nextPage = _uiState.value.currentPage + 1
-        val fetchedStations = getRadioStationsUseCase.execute(
-            page = nextPage,
-            searchName = _uiState.value.filterStationName
-        )
-            .map {
-                val isCurrentlyPlaying = radioPlayerController?.currentMediaId == it.stationUuid
-                        && radioPlayerController?.isPlaying == true
-                it.toUiStateStation().copy(isPlaying = isCurrentlyPlaying)
-            }
-            .toPersistentList()
-        _uiState.update {
-            it.copy(
-                currentPage = nextPage,
-                stations = (it.stations + fetchedStations).toPersistentList(),
-                hasMorePages = fetchedStations.isNotEmpty() && fetchedStations.size >= PAGE_SIZE
+        _uiState.update { it.copy(isLoading = true) }
+
+        try {
+            val nextPage = _uiState.value.currentPage + 1
+            val fetchedStations = getRadioStationsUseCase.execute(
+                page = nextPage,
+                searchName = _uiState.value.filterStationName
             )
+                .map {
+                    val isCurrentlyPlaying = radioPlayerController?.currentMediaId == it.stationUuid
+                            && radioPlayerController?.isPlaying == true
+                    it.toUiStateStation().copy(isPlaying = isCurrentlyPlaying)
+                }
+                .toPersistentList()
+            _uiState.update {
+                it.copy(
+                    currentPage = nextPage,
+                    stations = (it.stations + fetchedStations).toPersistentList(),
+                    hasMorePages = fetchedStations.isNotEmpty() && fetchedStations.size >= PAGE_SIZE,
+                    isLoading = false
+                )
+            }
+        } catch (e: Exception) {
+            _uiState.update { it.copy(isLoading = false) }
         }
     }
 
@@ -250,6 +257,7 @@ class StationListViewModel @Inject constructor(
         val stations: ImmutableList<Station> = persistentListOf(),
         val selectedStation: Station? = null,
         val hasMorePages: Boolean = true,
+        val isLoading: Boolean = false,
         val playerColors: PlayerColors = PlayerColors(
             dominant = Color(0xFF1C1A24),
             vibrant = Color(0xFF3a1040),

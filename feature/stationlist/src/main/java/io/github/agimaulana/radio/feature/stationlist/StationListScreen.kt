@@ -259,6 +259,7 @@ private fun StationListContent(
             stations = uiState.stations,
             listState = listState,
             onClick = { onAction(Action.Click(it)) },
+            onReachEnd = { onAction(Action.LoadMore) },
             contentPadding = PaddingValues(
                 top = lerp(expandedHeight, collapsedHeight, progress) + 16.dp,
                 bottom = innerPadding.calculateBottomPadding() + 80.dp,
