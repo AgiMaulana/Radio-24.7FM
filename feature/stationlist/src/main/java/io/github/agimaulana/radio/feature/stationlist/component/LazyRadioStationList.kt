@@ -3,6 +3,7 @@ package io.github.agimaulana.radio.feature.stationlist.component
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
@@ -18,11 +19,10 @@ internal fun LazyRadioStationList(
     stations: ImmutableList<Station>,
     onClick: (Station) -> Unit,
     modifier: Modifier = Modifier,
+    listState: LazyListState = rememberLazyListState(),
     contentPadding: PaddingValues = PaddingValues(0.dp),
     onReachEnd: () -> Unit = {},
 ) {
-    val listState = rememberLazyListState()
-
     LaunchedEffect(listState) {
         snapshotFlow {
             val layoutInfo = listState.layoutInfo

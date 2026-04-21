@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    ic_toolbar_rings_bg.xml
+    Place in res/drawable/
+
+    Usage — inside your CollapsingToolbarLayout or Box in Compose:
+
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:src="@drawable/ic_toolbar_rings_bg"
+            android:scaleType="fitXY" />
+
+    In Compose:
+        Image(
+            painter = painterResource(R.drawable.ic_toolbar_rings_bg),
+            contentDescription = null,
+            contentScale = ContentScale.FillWidth,
+            modifier = Modifier.fillMaxSize()
+        )
+
+    The rings radiate from the bottom-center, exactly like the home
+    screen hero in the lo-fi mockup. Designed for a ~220dp tall toolbar.
+    viewportWidth=360, viewportHeight=220 matches a standard phone width.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="360dp"
+    android:height="220dp"
+    android:viewportWidth="360"
+    android:viewportHeight="220">
+
+    <!-- Deep background glow — outermost, widest -->
+    <path
+        android:pathData="M180,220 m-310,0 a310,310 0 1,1 620,0"
+        android:fillColor="#8a0f3a"
+        android:fillAlpha="0.18"/>
+
+    <!-- Inner warm glow blob -->
+    <path
+        android:pathData="M180,220 m-185,0 a185,185 0 1,1 370,0"
+        android:fillColor="#c01860"
+        android:fillAlpha="0.12"/>
+
+    <!-- Ring 1 — outermost stroke -->
+    <path
+        android:pathData="M180,220 m-295,0 a295,295 0 1,1 590,0"
+        android:fillColor="#00000000"
+        android:strokeColor="#9a1045"
+        android:strokeWidth="1.2"
+        android:strokeAlpha="0.30"/>
+
+    <!-- Ring 2 -->
+    <path
+        android:pathData="M180,220 m-265,0 a265,265 0 1,1 530,0"
+        android:fillColor="#00000000"
+        android:strokeColor="#b4165a"
+        android:strokeWidth="1.5"
+        android:strokeAlpha="0.42"/>
+
+    <!-- Ring 3 -->
+    <path
+        android:pathData="M180,220 m-233,0 a233,233 0 1,1 466,0"
+        android:fillColor="#00000000"
+        android:strokeColor="#cc1c6a"
+        android:strokeWidth="2"
+        android:strokeAlpha="0.55"/>
+
+    <!-- Ring 4 -->
+    <path
+        android:pathData="M180,220 m-198,0 a198,198 0 1,1 396,0"
+        android:fillColor="#00000000"
+        android:strokeColor="#da1e72"
+        android:strokeWidth="2.5"
+        android:strokeAlpha="0.68"/>
+
+    <!-- Ring 5 — innermost, brightest -->
+    <path
+        android:pathData="M180,220 m-160,0 a160,160 0 1,1 320,0"
+        android:fillColor="#00000000"
+        android:strokeColor="#e82080"
+        android:strokeWidth="3"
+        android:strokeAlpha="0.82"/>
+
+</vector>
