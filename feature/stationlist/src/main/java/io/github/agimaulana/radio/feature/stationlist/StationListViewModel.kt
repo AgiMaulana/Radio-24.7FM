@@ -83,6 +83,10 @@ class StationListViewModel @Inject constructor(
                 fetchRadioStations()
             }
 
+            Action.RefreshLocation -> {
+                // TODO: Implement actual location refresh logic
+            }
+
             is Action.Search -> {
                 searchJob?.cancel()
                 _uiState.update {
@@ -255,6 +259,7 @@ class StationListViewModel @Inject constructor(
 
     data class UiState(
         val filterStationName: String? = null,
+        val locationName: String = "Jakarta, Indonesia",
         val currentPage: Int = 0,
         val stations: ImmutableList<Station> = persistentListOf(),
         val selectedStation: Station? = null,
@@ -286,6 +291,7 @@ class StationListViewModel @Inject constructor(
 
     sealed interface Action {
         data object LoadMore : Action
+        data object RefreshLocation : Action
         data class Search(val stationName: String): Action
         data class Click(val station: UiState.Station) : Action
         data class Play(val station: UiState.Station) : Action

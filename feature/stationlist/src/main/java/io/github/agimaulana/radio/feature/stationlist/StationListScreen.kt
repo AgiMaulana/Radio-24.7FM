@@ -79,7 +79,6 @@ import io.github.agimaulana.radio.feature.stationlist.player.FullPlayer
 import io.github.agimaulana.radio.feature.stationlist.player.MiniPlayer
 import kotlinx.collections.immutable.persistentListOf
 
-private const val EXPANDED_CONTENT_THRESHOLD = 0.2f
 private val HeroBackgroundColor = Color(0xFF1C1A24)
 private const val DarkScrimAlpha = 0.50f
 private const val LightScrimAlpha = 0.82f
@@ -178,6 +177,7 @@ private fun StationListScreen(
             )
         }
     ) {
+<<<<<<< Updated upstream
         StationListContent(
             uiState = uiState,
             listState = listState,
@@ -225,6 +225,20 @@ private fun StationFullPlayer(
             onStop = {
                 onCollapse()
                 onAction(Action.Stop(station))
+=======
+        Scaffold(
+            topBar = {
+                StationListToolbar(
+                    progress = progress,
+                    locationName = uiState.locationName,
+                    filterStationName = uiState.filterStationName,
+                    stationCount = uiState.stations.size,
+                    onSearch = { onAction(Action.Search(it)) },
+                    onRefreshLocation = { onAction(Action.RefreshLocation) },
+                    expandedHeight = expandedHeight,
+                    collapsedHeight = collapsedHeight
+                )
+>>>>>>> Stashed changes
             },
             onCollapse = onCollapse,
             modifier = Modifier.fillMaxWidth()
@@ -303,9 +317,11 @@ private fun StationListNestedScrollConnection(
 @Composable
 private fun StationListToolbar(
     progress: Float,
+    locationName: String,
     filterStationName: String?,
     stationCount: Int,
     onSearch: (String) -> Unit,
+    onRefreshLocation: () -> Unit,
     expandedHeight: Dp,
     collapsedHeight: Dp,
     modifier: Modifier = Modifier
@@ -367,7 +383,7 @@ private fun StationListToolbar(
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .offset(
-                        y = lerp(155.dp, 20.dp, progress)
+                        y = lerp(155.dp, 12.dp, progress)
                     )
             )
 
@@ -377,18 +393,19 @@ private fun StationListToolbar(
                 placeholder = if (progress < 0.5f) "Search your favourite station..." else "Search...",
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(start = lerp(0.dp, 95.dp, progress))
-                    .offset(y = lerp(205.dp, 8.dp, progress))
+                    .padding(start = lerp(0.dp, 105.dp, progress))
+                    .offset(y = lerp(205.dp, 12.dp, progress))
                     .fillMaxWidth()
             )
 
-            val featureFlagEnabled = false // not enabled yet
-            if (featureFlagEnabled && progress < EXPANDED_CONTENT_THRESHOLD) {
+            val locationAlpha = (1f - progress * 5f).coerceIn(0f, 1f)
+            if (locationAlpha > 0f) {
                 Row(
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .offset(y = lerp(264.dp, 200.dp, progress))
-                        .graphicsLayer { alpha = (1f - progress * 5f).coerceAtLeast(0f) },
+                        .graphicsLayer { alpha = locationAlpha }
+                        .clickable { onRefreshLocation() },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
@@ -399,7 +416,7 @@ private fun StationListToolbar(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Jakarta, Indonesia",
+                        text = locationName,
                         color = RadioTheme.colors.primary,
                         style = RadioTheme.typography.stationTitle.copy(
                             fontSize = 14.sp,
@@ -480,6 +497,7 @@ private fun StationListScreenPreview() {
     PreviewTheme {
         StationListScreen(
             uiState = UiState(
+                locationName = "Jakarta, Indonesia",
                 stations = persistentListOf(
                     Station(
                         serverUuid = "1",
@@ -512,6 +530,7 @@ private fun StationListScreenDarkPreview() {
     PreviewTheme {
         StationListScreen(
             uiState = UiState(
+                locationName = "Jakarta, Indonesia",
                 stations = persistentListOf(
                     Station(
                         serverUuid = "1",
