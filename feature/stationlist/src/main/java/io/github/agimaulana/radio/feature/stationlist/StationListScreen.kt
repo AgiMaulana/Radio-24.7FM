@@ -138,112 +138,163 @@ private fun StationListScreen(
     } else {
         0f
     }
-    val isLight = isLightTheme(MaterialTheme.colorScheme.background)
 
     val view = LocalView.current
     SideEffect {
         val window = (view.context as Activity).window
         WindowCompat.getInsetsController(window, view).apply {
-            // Force light icons because the toolbar background is always dark on this screen
             isAppearanceLightStatusBars = false
         }
     }
 
     val nestedScrollConnection = remember(toolbarHeightRangePx) {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                val delta = available.y
-                if (delta < 0) { // Scrolling up
-                    val oldOffset = toolbarOffsetPx
-                    toolbarOffsetPx = (toolbarOffsetPx - delta).coerceAtMost(toolbarHeightRangePx)
-                    val consumed = oldOffset - toolbarOffsetPx
-                    return Offset(0f, consumed)
-                }
-                return Offset.Zero
-            }
-
-            override fun onPostScroll(
-                consumed: Offset,
-                available: Offset,
-                source: NestedScrollSource
-            ): Offset {
-                val delta = available.y
-                if (delta > 0 && listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0) {
-                    val oldOffset = toolbarOffsetPx
-                    toolbarOffsetPx = (toolbarOffsetPx - delta).coerceAtLeast(0f)
-                    val consumedOffset = oldOffset - toolbarOffsetPx
-                    return Offset(0f, consumedOffset)
-                }
-                return Offset.Zero
-            }
-        }
+        StationListNestedScrollConnection(
+            onScroll = { delta ->
+                val oldOffset = toolbarOffsetPx
+                toolbarOffsetPx = (toolbarOffsetPx - delta).coerceIn(0f, toolbarHeightRangePx)
+                oldOffset - toolbarOffsetPx
+            },
+            canScrollDown = { listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0 }
+        )
     }
 
     GlassSlidingPlayerLayout(
         state = playerState,
         modifier = modifier.fillMaxSize(),
-        miniPlayerContent = { playerProgress ->
-            uiState.selectedStation?.let { station ->
-                MiniPlayer(
-                    station = station,
-                    onPlay = { onAction(Action.Play(station)) },
-                    onPause = { onAction(Action.Pause(station)) },
-                    modifier = Modifier.clickable { playerState.expand() }
-                )
-            }
+        miniPlayerContent = { _ ->
+            StationMiniPlayer(
+                station = uiState.selectedStation,
+                onPlay = { onAction(Action.Play(it)) },
+                onPause = { onAction(Action.Pause(it)) },
+                onExpand = { playerState.expand() }
+            )
         },
         fullPlayerContent = { playerProgress ->
-            uiState.selectedStation?.let { station ->
-                FullPlayer(
-                    progress = playerProgress,
-                    station = station,
-                    playerColors = uiState.playerColors,
-                    featureFlag = uiState.featureFlag,
-                    onPlay = {
-                        onAction(Action.Play(station))
-                    },
-                    onPause = {
-                        onAction(Action.Pause(station))
-                    },
-                    onStop = {
-                        playerState.collapse()
-                        onAction(Action.Stop(station))
-                    },
-                    onCollapse = {
-                        playerState.collapse()
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+            StationFullPlayer(
+                progress = playerProgress,
+                uiState = uiState,
+                onAction = onAction,
+                onCollapse = { playerState.collapse() }
+            )
         }
     ) {
-        Scaffold(
-            topBar = {
-                StationListToolbar(
-                    progress = progress,
-                    filterStationName = uiState.filterStationName,
-                    stationCount = uiState.stations.size,
-                    onSearch = { onAction(Action.Search(it)) },
-                    expandedHeight = expandedHeight,
-                    collapsedHeight = collapsedHeight
-                )
+        StationListContent(
+            uiState = uiState,
+            listState = listState,
+            progress = progress,
+            expandedHeight = expandedHeight,
+            collapsedHeight = collapsedHeight,
+            nestedScrollConnection = nestedScrollConnection,
+            onAction = onAction
+        )
+    }
+}
+
+@Composable
+private fun StationMiniPlayer(
+    station: Station?,
+    onPlay: (Station) -> Unit,
+    onPause: (Station) -> Unit,
+    onExpand: () -> Unit,
+) {
+    station?.let {
+        MiniPlayer(
+            station = it,
+            onPlay = { onPlay(it) },
+            onPause = { onPause(it) },
+            modifier = Modifier.clickable { onExpand() }
+        )
+    }
+}
+
+@Composable
+private fun StationFullPlayer(
+    progress: Float,
+    uiState: UiState,
+    onAction: (Action) -> Unit,
+    onCollapse: () -> Unit,
+) {
+    uiState.selectedStation?.let { station ->
+        FullPlayer(
+            progress = progress,
+            station = station,
+            playerColors = uiState.playerColors,
+            featureFlag = uiState.featureFlag,
+            onPlay = { onAction(Action.Play(station)) },
+            onPause = { onAction(Action.Pause(station)) },
+            onStop = {
+                onCollapse()
+                onAction(Action.Stop(station))
             },
-            containerColor = MaterialTheme.colorScheme.background
-        ) { innerPadding ->
-            LazyRadioStationList(
-                stations = uiState.stations,
-                listState = listState,
-                onClick = { onAction(Action.Click(it)) },
-                contentPadding = PaddingValues(
-                    top = lerp(expandedHeight, collapsedHeight, progress),
-                    bottom = innerPadding.calculateBottomPadding() + 80.dp,
-                    start = 16.dp,
-                    end = 16.dp
-                ),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .nestedScroll(nestedScrollConnection)
+            onCollapse = onCollapse,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+private fun StationListContent(
+    uiState: UiState,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    progress: Float,
+    expandedHeight: Dp,
+    collapsedHeight: Dp,
+    nestedScrollConnection: NestedScrollConnection,
+    onAction: (Action) -> Unit,
+) {
+    Scaffold(
+        topBar = {
+            StationListToolbar(
+                progress = progress,
+                filterStationName = uiState.filterStationName,
+                stationCount = uiState.stations.size,
+                onSearch = { onAction(Action.Search(it)) },
+                expandedHeight = expandedHeight,
+                collapsedHeight = collapsedHeight
             )
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { innerPadding ->
+        LazyRadioStationList(
+            stations = uiState.stations,
+            listState = listState,
+            onClick = { onAction(Action.Click(it)) },
+            contentPadding = PaddingValues(
+                top = lerp(expandedHeight, collapsedHeight, progress),
+                bottom = innerPadding.calculateBottomPadding() + 80.dp,
+                start = 16.dp,
+                end = 16.dp
+            ),
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(nestedScrollConnection)
+        )
+    }
+}
+
+private fun StationListNestedScrollConnection(
+    onScroll: (Float) -> Float,
+    canScrollDown: () -> Boolean
+): NestedScrollConnection = object : NestedScrollConnection {
+    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+        val delta = available.y
+        return if (delta < 0) { // Scrolling up
+            Offset(0f, onScroll(delta))
+        } else {
+            Offset.Zero
+        }
+    }
+
+    override fun onPostScroll(
+        consumed: Offset,
+        available: Offset,
+        source: NestedScrollSource
+    ): Offset {
+        val delta = available.y
+        return if (delta > 0 && canScrollDown()) {
+            Offset(0f, onScroll(delta))
+        } else {
+            Offset.Zero
         }
     }
 }

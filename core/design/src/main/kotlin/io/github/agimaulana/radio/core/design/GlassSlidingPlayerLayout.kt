@@ -46,8 +46,6 @@ fun GlassSlidingPlayerLayout(
         derivedStateOf { ((maxOffset - state.offsetY.value) / maxOffset).coerceIn(0f, 1f) }
     }
 
-    val dynamicInset = rememberPlayerOffset(state)
-
     Box(modifier.fillMaxSize()) {
         Box(
             modifier = Modifier.fillMaxSize()
@@ -58,7 +56,7 @@ fun GlassSlidingPlayerLayout(
 
         Box(
             modifier = Modifier
-                .offset { IntOffset(0, (state.offsetY.value-dynamicInset).roundToInt()) }
+                .offset { IntOffset(0, state.offsetY.value.roundToInt()) }
                 .background(MaterialTheme.colorScheme.background.copy(alpha = 0.6f))
                 .draggable(
                     orientation = Orientation.Vertical,
@@ -91,31 +89,6 @@ fun GlassSlidingPlayerLayout(
             ) {
                 fullPlayerContent(progress)
             }
-        }
-    }
-}
-
-@Composable
-private fun rememberPlayerOffset(glassPlayerState: GlassPlayerState): Float {
-    val density = LocalDensity.current
-    val navigationBarInset = WindowInsets.navigationBars.getBottom(density)
-
-    // On Android 15+, Edge-to-Edge is mandatory.
-    // On Android 14 and below, we should only apply this lift if we are
-    // certain the miniplayer is being covered by the nav bar.
-    val isSupportEdge2EdgeByDefault = Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM // API 35+
-
-    return remember(glassPlayerState.offsetY.value, navigationBarInset) {
-        if (navigationBarInset <= 0) {
-            0f
-        } else if (!isSupportEdge2EdgeByDefault) {
-            // On Android 14, even if inset is 126, the system usually
-            // pads the root view. If we subtract here, it floats.
-            0f
-        } else {
-            // Android 15/16 logic: Lift the player smoothly
-            val dragFactor = (glassPlayerState.offsetY.value / navigationBarInset).coerceIn(0f, 1f)
-            navigationBarInset * dragFactor
         }
     }
 }
