@@ -1,5 +1,6 @@
 package io.github.agimaulana.radio.feature.stationlist
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -154,6 +155,7 @@ class StationListViewModel @Inject constructor(
                 )
             }
         } catch (e: Exception) {
+            Log.e("StationListViewModel", "Error fetching radio stations", e)
             _uiState.update { it.copy(isLoading = false) }
         }
     }
