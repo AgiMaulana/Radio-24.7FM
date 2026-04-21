@@ -260,7 +260,7 @@ private fun StationListContent(
             listState = listState,
             onClick = { onAction(Action.Click(it)) },
             contentPadding = PaddingValues(
-                top = lerp(expandedHeight, collapsedHeight, progress),
+                top = lerp(expandedHeight, collapsedHeight, progress) + 16.dp,
                 bottom = innerPadding.calculateBottomPadding() + 80.dp,
                 start = 16.dp,
                 end = 16.dp
