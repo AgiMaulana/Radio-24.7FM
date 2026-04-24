@@ -1,6 +1,5 @@
 package io.github.agimaulana.radio.feature.stationlist
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,6 +25,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
@@ -33,6 +33,7 @@ class StationListViewModel @Inject constructor(
     private val getRadioStationsUseCase: GetRadioStationsUseCase,
     private val getRadioStationUseCase: GetRadioStationUseCase,
     private val radioPlayerControllerFactory: RadioPlayerControllerFactory,
+    private val stationListTracker: StationListTracker,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(UiState())
@@ -42,6 +43,7 @@ class StationListViewModel @Inject constructor(
     private var searchJob: Job? = null
 
     fun init() {
+        stationListTracker.trackScreenViewed()
         viewModelScope.launch {
             fetchRadioStations()
         }
@@ -80,6 +82,7 @@ class StationListViewModel @Inject constructor(
     fun onAction(action: Action) {
         when (action) {
             Action.LoadMore -> viewModelScope.launch {
+                stationListTracker.trackLoadMore(page = _uiState.value.currentPage + 1)
                 fetchRadioStations()
             }
 
@@ -95,6 +98,9 @@ class StationListViewModel @Inject constructor(
                 }
                 searchJob = viewModelScope.launch {
                     delay(SEARCH_DEBOUNCE_MS)
+                    if (!action.stationName.isNullOrBlank()) {
+                        stationListTracker.trackSearchSubmitted(action.stationName)
+                    }
                     fetchRadioStations()
                 }
             }
@@ -102,29 +108,58 @@ class StationListViewModel @Inject constructor(
             is Action.Click -> {
                 if (radioPlayerController?.currentMediaId == action.station.serverUuid) {
                     if (radioPlayerController?.isPlaying == true) {
+                        stationListTracker.trackPlaybackPaused(action.station.serverUuid)
                         radioPlayerController?.pause()
                     } else {
+                        stationListTracker.trackPlaybackResumed(action.station.serverUuid)
                         radioPlayerController?.play()
                     }
                 } else {
+                    stationListTracker.trackStationSelected(
+                        stationId = action.station.serverUuid,
+                        stationName = action.station.name,
+                    )
                     radioPlayerController?.playImmediately(action.station.toRadioMediaItem())
                     updatePlayerColors(action.station.imageUrl)
                 }
             }
 
             is Action.Pause -> {
+                stationListTracker.trackPlaybackPaused(_uiState.value.selectedStation?.serverUuid)
                 radioPlayerController?.pause()
             }
 
             is Action.Play -> {
+                stationListTracker.trackPlaybackResumed(_uiState.value.selectedStation?.serverUuid)
                 radioPlayerController?.play()
             }
 
             is Action.Stop -> {
+                stationListTracker.trackPlaybackStopped(_uiState.value.selectedStation?.serverUuid)
                 radioPlayerController?.stop()
                 _uiState.update {
                     it.copy(selectedStation = null)
                 }
+            }
+
+            is Action.ExpandPlayer -> {
+                val selectedStation = _uiState.value.selectedStation
+                stationListTracker.trackPlayerExpanded(
+                    source = action.source,
+                    stationId = selectedStation?.serverUuid,
+                    stationName = selectedStation?.name,
+                    isPlaying = selectedStation?.isPlaying == true,
+                )
+            }
+
+            is Action.CollapsePlayer -> {
+                val selectedStation = _uiState.value.selectedStation
+                stationListTracker.trackPlayerCollapsed(
+                    source = action.source,
+                    stationId = selectedStation?.serverUuid,
+                    stationName = selectedStation?.name,
+                    isPlaying = selectedStation?.isPlaying == true,
+                )
             }
         }
     }
@@ -155,7 +190,7 @@ class StationListViewModel @Inject constructor(
                 )
             }
         } catch (e: Exception) {
-            Log.e("StationListViewModel", "Error fetching radio stations", e)
+            Timber.tag("StationListViewModel").e(e, "Error fetching radio stations")
             _uiState.update { it.copy(isLoading = false) }
         }
     }
@@ -291,6 +326,8 @@ class StationListViewModel @Inject constructor(
         data class Play(val station: UiState.Station) : Action
         data class Pause(val station: UiState.Station) : Action
         data class Stop(val station: UiState.Station) : Action
+        data class ExpandPlayer(val source: String) : Action
+        data class CollapsePlayer(val source: String) : Action
     }
 
     companion object {

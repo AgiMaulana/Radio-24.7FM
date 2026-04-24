@@ -1,0 +1,39 @@
+name: respond-to-pr-reviews
+version: "1.0.0"
+description: "Handle PR review comments end-to-end: triage, fix or argue, reply, and push."
+long_description: >
+  Fetch GitHub PR review comments, triage each one (agree or argue), apply code fixes
+  for agreed comments, post structured replies, then amend the commit and force push.
+
+author:
+  team: mobile-android
+  contact: "#mobile-android-dev"
+  github: AgiMaulana-GDT
+
+contributors: []
+
+tags:
+  - pull-request
+  - code-review
+  - github
+  - automation
+
+compatible_with:
+  - claude
+  - opencode
+
+context:
+  variables:
+    GITHUB_ORG:
+      description: "GitHub organization or owner"
+      example: "good-doctor-technology"
+      required: true
+    GITHUB_REPO:
+      description: "GitHub repository name"
+      example: "MobileAppGDAndroid"
+      required: true
+    LINT_COMMAND:
+      description: "Command to run lint/static analysis before pushing"
+      example: "./gradlew gdtektStagedOnly"
+      required: false
+      default: ""

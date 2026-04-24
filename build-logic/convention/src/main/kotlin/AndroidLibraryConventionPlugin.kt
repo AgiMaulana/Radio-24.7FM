@@ -27,6 +27,7 @@ class AndroidLibraryConventionPlugin : Plugin<Project> {
             val libs = extensions.getByType<VersionCatalogsExtension>().named("libs")
 
             dependencies {
+                add("implementation", libs.findLibrary("timber").get())
                 add("implementation", libs.findLibrary("kotlinx.coroutines.core").get())
                 add("implementation", libs.findLibrary("retrofit.converter.moshi").get())
                 add("ksp", libs.findLibrary("moshi.codegen").get())

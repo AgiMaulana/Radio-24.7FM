@@ -98,6 +98,7 @@ fun StationListRoute(
     val playerState = rememberGlassPlayerState(peekHeight = 80.dp)
 
     BackHandler(enabled = playerState.canCollapse) {
+        viewModel.onAction(Action.CollapsePlayer(source = "back_press"))
         playerState.collapse()
     }
 
@@ -166,7 +167,10 @@ private fun StationListScreen(
                 station = uiState.selectedStation,
                 onPlay = { onAction(Action.Play(it)) },
                 onPause = { onAction(Action.Pause(it)) },
-                onExpand = { playerState.expand() }
+                onExpand = {
+                    onAction(Action.ExpandPlayer(source = "mini_player_tap"))
+                    playerState.expand()
+                }
             )
         },
         fullPlayerContent = { playerProgress ->
@@ -174,7 +178,10 @@ private fun StationListScreen(
                 progress = playerProgress,
                 uiState = uiState,
                 onAction = onAction,
-                onCollapse = { playerState.collapse() }
+                onCollapse = {
+                    onAction(Action.CollapsePlayer(source = "collapse_button"))
+                    playerState.collapse()
+                }
             )
         }
     ) {

@@ -12,6 +12,7 @@ java {
 dependencies {
     compileOnly(libs.android.gradlePlugin)
     compileOnly(libs.kotlin.gradlePlugin)
+    implementation(libs.sentry.android.gradle.plugin)
 }
 
 gradlePlugin {
@@ -43,6 +44,10 @@ gradlePlugin {
         register("androidHilt") {
             id = libs.plugins.boilerplate.android.hilt.get().pluginId
             implementationClass = "HiltConventionPlugin"
+        }
+        register("androidSentry") {
+            id = libs.plugins.boilerplate.android.sentry.get().pluginId
+            implementationClass = "SentryConventionPlugin"
         }
         register("kotlinDetekt") {
             id = libs.plugins.boilerplate.kotlin.detekt.get().pluginId

@@ -17,6 +17,7 @@ class ApplicationConventionPlugin : Plugin<Project> {
                 apply("com.android.application")
                 apply("org.jetbrains.kotlin.android")
                 apply("boilerplate.android.hilt")
+                apply("boilerplate.android.sentry")
                 apply("boilerplate.kotlin.detekt")
                 apply("boilerplate.android.application.jacoco")
             }
@@ -29,6 +30,7 @@ class ApplicationConventionPlugin : Plugin<Project> {
 
             dependencies {
                 add("implementation", libs.findLibrary("androidx.core.ktx").get())
+                add("implementation", libs.findLibrary("timber").get())
             }
         }
     }

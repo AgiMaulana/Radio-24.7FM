@@ -1,7 +1,6 @@
 package io.github.agimaulana.radio.feature.stationlist.component
 
 import android.content.res.Configuration
-import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -41,6 +40,7 @@ import io.github.agimaulana.radio.core.design.RadioTheme
 import io.github.agimaulana.radio.core.design.theme.PreviewTheme
 import io.github.agimaulana.radio.feature.stationlist.R
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.UiState.Station
+import timber.log.Timber
 
 @Composable
 internal fun StationTile(
@@ -136,13 +136,13 @@ private fun RadioImage(
         placeholder = painterResource(id = R.drawable.station_default),
         error = painterResource(id = R.drawable.station_default),
         onLoading = {
-            Log.d("ketai", "Loading image for ${stationName}: ${imageUrl}")
+            Timber.tag("StationTile").d("Loading image for %s: %s", stationName, imageUrl)
         },
         onSuccess = {
-            Log.d("ketai", "Image loaded for ${stationName}: ${imageUrl}")
+            Timber.tag("StationTile").d("Image loaded for %s: %s", stationName, imageUrl)
         },
         onError = {
-            Log.d("ketai", "Error loading image for ${stationName}: ${imageUrl}")
+            Timber.tag("StationTile").d("Error loading image for %s: %s", stationName, imageUrl)
         }
     )
     Box {
