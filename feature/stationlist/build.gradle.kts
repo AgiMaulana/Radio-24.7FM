@@ -10,6 +10,7 @@ dependencies {
     implementation(project(":core:design"))
     implementation(project(":core:radioplayer"))
     implementation(project(":core:shared-test"))
+    implementation(project(":core:tracker"))
     implementation(project(":domain:api"))
 
     implementation(libs.androidx.palette)

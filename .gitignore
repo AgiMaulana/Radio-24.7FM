@@ -17,3 +17,7 @@ keystore.properties
 app/prod/release
 /.claude/settings.local.json
 /.kotlin
+.serena/
+
+# Skola skill context (local values)
+**/.skola/context.local.yaml

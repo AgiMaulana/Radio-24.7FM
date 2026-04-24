@@ -35,6 +35,7 @@ include(
     ":core:network:test",
     ":core:radioplayer",
     ":core:shared-test",
+    ":core:tracker",
 )
 
 include(

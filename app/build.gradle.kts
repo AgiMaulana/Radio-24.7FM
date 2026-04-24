@@ -92,6 +92,7 @@ dependencies {
     implementation(project(":feature:stationlist"))
     implementation(libs.android.material)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.startup)
 
     testImplementation(libs.junit)
 

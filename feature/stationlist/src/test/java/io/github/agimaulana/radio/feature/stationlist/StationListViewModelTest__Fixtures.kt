@@ -17,6 +17,7 @@ import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.RelaxedMockK
+import io.mockk.mockk
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import org.junit.Before
@@ -36,6 +37,9 @@ abstract class StationListViewModelTest__Fixtures {
 
     @RelaxedMockK
     protected lateinit var radioPlayerController: RadioPlayerController
+
+    @RelaxedMockK
+    protected lateinit var stationListTracker: StationListTracker
 
     @MockK
     protected lateinit var context: Context
@@ -76,6 +80,7 @@ abstract class StationListViewModelTest__Fixtures {
             getRadioStationsUseCase = getRadioStationsUseCase,
             getRadioStationUseCase = getRadioStationUseCase,
             radioPlayerControllerFactory = radioPlayerControllerFactory,
+            stationListTracker = stationListTracker,
             context = context
         )
     }
