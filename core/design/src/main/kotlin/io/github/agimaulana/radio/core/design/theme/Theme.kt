@@ -100,7 +100,6 @@ fun RadioTheme(
 
     CompositionLocalProvider(
         LocalRadioColors provides radioColors
-        // LocalBoilerplateTypography provides ... (if you have it)
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
@@ -116,4 +115,3 @@ fun PreviewTheme(
 ) {
     RadioTheme(darkTheme, content)
 }
-

@@ -88,7 +88,6 @@ dependencies {
     implementation(project(":core:design"))
     implementation(project(":domain:impl"))
     implementation(project(":infrastructure"))
-    implementation(project(":feature:sample"))
     implementation(project(":feature:stationlist"))
     implementation(libs.android.material)
     implementation(libs.androidx.core.ktx)

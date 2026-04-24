@@ -5,7 +5,6 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import io.github.agimaulana.radio.core.network.RetrofitBuilderFactory
-import io.github.agimaulana.radio.core.network.interceptor.SampleCustomInterceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -13,12 +12,6 @@ import retrofit2.Retrofit
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
-
-    @Provides
-    fun provideSampleCustomInterceptor(): SampleCustomInterceptor {
-        return SampleCustomInterceptor()
-    }
-
 
     @Provides
     fun provideRetrofit(): Retrofit {

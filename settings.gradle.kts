@@ -20,11 +20,10 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Boilerplate"
+rootProject.name = "Radio247Fm"
 include(":app")
 
 include(
-    ":feature:sample",
     ":feature:stationlist"
 )
 
