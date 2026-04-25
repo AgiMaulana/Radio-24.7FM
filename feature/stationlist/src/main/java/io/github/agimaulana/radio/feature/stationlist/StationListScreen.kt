@@ -54,7 +54,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Density
@@ -77,6 +76,7 @@ import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.UiSta
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.UiState.Station
 import io.github.agimaulana.radio.feature.stationlist.component.LazyRadioStationList
 import io.github.agimaulana.radio.feature.stationlist.component.LocationPermissionBottomSheet
+import io.github.agimaulana.radio.feature.stationlist.player.BufferingIcon
 import io.github.agimaulana.radio.feature.stationlist.player.FullPlayer
 import io.github.agimaulana.radio.feature.stationlist.player.MiniPlayer
 import kotlinx.collections.immutable.persistentListOf
@@ -296,21 +296,36 @@ private fun StationListContent(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
-        LazyRadioStationList(
-            stations = uiState.stations,
-            listState = listState,
-            onClick = { onAction(Action.Click(it)) },
-            onReachEnd = { onAction(Action.LoadMore) },
-            contentPadding = PaddingValues(
-                top = lerp(dims.expandedHeight, dims.collapsedHeight, dims.progress) + 16.dp,
-                bottom = innerPadding.calculateBottomPadding() + 80.dp,
-                start = 16.dp,
-                end = 16.dp
-            ),
-            modifier = Modifier
-                .fillMaxSize()
-                .nestedScroll(nestedScrollConnection)
-        )
+        if (uiState.isLoading && uiState.stations.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                BufferingIcon(
+                    modifier = Modifier.size(96.dp),
+                    tint = RadioTheme.colors.primary,
+                    tweenDurationMillis = 1500,
+                )
+            }
+        } else {
+            LazyRadioStationList(
+                stations = uiState.stations,
+                listState = listState,
+                onClick = { onAction(Action.Click(it)) },
+                onReachEnd = { onAction(Action.LoadMore) },
+                contentPadding = PaddingValues(
+                    top = lerp(dims.expandedHeight, dims.collapsedHeight, dims.progress) + 16.dp,
+                    bottom = innerPadding.calculateBottomPadding() + 80.dp,
+                    start = 16.dp,
+                    end = 16.dp
+                ),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(nestedScrollConnection)
+            )
+        }
     }
 }
 

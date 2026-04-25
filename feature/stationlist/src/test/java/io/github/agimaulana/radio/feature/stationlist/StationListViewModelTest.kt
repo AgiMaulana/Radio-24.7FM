@@ -18,6 +18,11 @@ import org.junit.Test
 class StationListViewModelTest : StationListViewModelTest__Fixtures() {
 
     @Test
+    fun `initial state should have isLoading true`() = runTest {
+        assertTrue(viewModel.uiState.value.isLoading)
+    }
+
+    @Test
     fun `when init then fetch first page of radio stations and create radio controller`() = runTest {
         turbineScope {
             val uiState = viewModel.uiState.testIn(backgroundScope)
@@ -70,6 +75,12 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
                 assertEquals(GeoLatLong(-6.2, 106.8), currentPosition)
             }
 
+            // Third emission: fetch complete
+            with(uiState.awaitItem()) {
+                assertEquals(1, currentPage)
+                assertFalse(isLoading)
+            }
+
             coVerify {
                 getRadioStationsUseCase.execute(
                     page = 1,
@@ -96,8 +107,12 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
             with(uiState.awaitItem()) {
                 assertFalse(showLocationPermissionSheet)
             }
-            // Second emission: fetch complete (hasMorePages updated)
-            uiState.awaitItem()
+
+            // Second emission: fetch complete
+            with(uiState.awaitItem()) {
+                assertEquals(1, currentPage)
+                assertFalse(isLoading)
+            }
 
             coVerify {
                 getRadioStationsUseCase.execute(page = 1, searchName = null, location = null)

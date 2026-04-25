@@ -18,14 +18,15 @@ import io.github.agimaulana.radio.feature.stationlist.R
 @Composable
 fun BufferingIcon(
     modifier: Modifier = Modifier,
-    tint: Color = Color.Unspecified
+    tint: Color = Color.Unspecified,
+    tweenDurationMillis: Int = 1000,
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "BufferingIconTransition")
     val rotation by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = LinearEasing),
+            animation = tween(tweenDurationMillis, easing = LinearEasing),
         ),
         label = "BufferingIconRotation"
     )

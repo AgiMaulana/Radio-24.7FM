@@ -44,8 +44,9 @@ class StationListViewModel @Inject constructor(
 
     private var radioPlayerController: RadioPlayerController? = null
     private var searchJob: Job? = null
+    private var fetchJob: Job? = null
 
-fun init() {
+    fun init() {
         stationListTracker.trackScreenViewed()
         viewModelScope.launch {
             radioPlayerController = radioPlayerControllerFactory.get().apply {
@@ -72,7 +73,7 @@ fun init() {
 
     fun onAction(action: Action) {
         when (action) {
-            Action.LoadMore -> viewModelScope.launch {
+            Action.LoadMore -> {
                 stationListTracker.trackLoadMore(page = _uiState.value.currentPage + 1)
                 fetchRadioStations()
             }
@@ -111,7 +112,7 @@ fun init() {
         searchJob = viewModelScope.launch {
             delay(SEARCH_DEBOUNCE_MS)
             if (stationName.isNotBlank()) stationListTracker.trackSearchSubmitted(stationName)
-            fetchRadioStations()
+            fetchRadioStations(force = true)
         }
     }
 
@@ -138,7 +139,7 @@ fun init() {
     private fun handleLocationPermissionGranted(isGranted: Boolean) {
         _uiState.update { it.copy(showLocationPermissionSheet = false) }
         if (!isGranted) {
-            viewModelScope.launch { fetchRadioStations() }
+            fetchRadioStations()
             return
         }
         viewModelScope.launch {
@@ -152,7 +153,7 @@ fun init() {
                     hasMorePages = true,
                 )
             }
-            fetchRadioStations()
+            fetchRadioStations(force = true)
         }
     }
 
@@ -162,27 +163,36 @@ fun init() {
         else stationListTracker.trackPlayerCollapsed(source, s?.serverUuid, s?.name, s?.isPlaying == true)
     }
 
-    private suspend fun fetchRadioStations() {
-        if (_uiState.value.isLoading || !_uiState.value.hasMorePages) return
-        _uiState.update { it.copy(isLoading = true) }
-        try {
-            val nextPage = _uiState.value.currentPage + 1
-            val fetchedStations = getRadioStationsUseCase.execute(
-                page = nextPage,
-                searchName = _uiState.value.filterStationName,
-                location = _uiState.value.currentPosition,
-            ).map {
-                val isCurrentlyPlaying = (radioPlayerController?.currentMediaId == it.stationUuid)
-                        && (radioPlayerController?.isPlaying == true)
-                it.toUiStateStation().copy(isPlaying = isCurrentlyPlaying)
-            }.toPersistentList()
-            _uiState.update {
-                it.copy(currentPage = nextPage, stations = (it.stations + fetchedStations).toPersistentList(),
-                    hasMorePages = fetchedStations.isNotEmpty() && fetchedStations.size >= PAGE_SIZE, isLoading = false)
+    private fun fetchRadioStations(force: Boolean = false) {
+        if (!force && fetchJob?.isActive == true) return
+        if (!_uiState.value.hasMorePages) return
+
+        fetchJob?.cancel()
+        fetchJob = viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                val nextPage = _uiState.value.currentPage + 1
+                val fetchedStations = getRadioStationsUseCase.execute(
+                    page = nextPage,
+                    searchName = _uiState.value.filterStationName,
+                    location = _uiState.value.currentPosition,
+                ).map {
+                    val isCurrentlyPlaying = (radioPlayerController?.currentMediaId == it.stationUuid)
+                            && (radioPlayerController?.isPlaying == true)
+                    it.toUiStateStation().copy(isPlaying = isCurrentlyPlaying)
+                }.toPersistentList()
+                _uiState.update {
+                    it.copy(
+                        currentPage = nextPage,
+                        stations = (it.stations + fetchedStations).toPersistentList(),
+                        hasMorePages = fetchedStations.isNotEmpty() && fetchedStations.size >= PAGE_SIZE,
+                        isLoading = false
+                    )
+                }
+            } catch (e: Exception) {
+                Timber.tag("StationListViewModel").e(e, "Error fetching radio stations")
+                _uiState.update { it.copy(isLoading = false) }
             }
-        } catch (e: Exception) {
-            Timber.tag("StationListViewModel").e(e, "Error fetching radio stations")
-            _uiState.update { it.copy(isLoading = false) }
         }
     }
 
@@ -230,7 +240,7 @@ fun init() {
         val stations: ImmutableList<Station> = persistentListOf(),
         val selectedStation: Station? = null,
         val hasMorePages: Boolean = true,
-        val isLoading: Boolean = false,
+        val isLoading: Boolean = true,
         val playerColors: PlayerColors = PlayerColors(
             Color(0xFF1C1A24),
             Color(0xFF3a1040),
