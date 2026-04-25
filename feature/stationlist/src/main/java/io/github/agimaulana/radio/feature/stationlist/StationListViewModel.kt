@@ -45,9 +45,8 @@ class StationListViewModel @Inject constructor(
     private var radioPlayerController: RadioPlayerController? = null
     private var searchJob: Job? = null
 
-    fun init() {
+fun init() {
         stationListTracker.trackScreenViewed()
-        viewModelScope.launch { fetchRadioStations() }
         viewModelScope.launch {
             radioPlayerController = radioPlayerControllerFactory.get().apply {
                 viewModelScope.launch { event.collect(::onPlaybackEventReceived) }
@@ -94,14 +93,21 @@ class StationListViewModel @Inject constructor(
             }
             is Action.ExpandPlayer -> trackPlayerEvent(action.source, true)
             is Action.CollapsePlayer -> trackPlayerEvent(action.source, false)
-            Action.OnLocationPermissionGranted -> handleLocationPermissionGranted()
+            is Action.OnLocationPermissionGranted -> handleLocationPermissionGranted(action.isGranted)
             Action.DismissLocationPermission -> _uiState.update { it.copy(showLocationPermissionSheet = false) }
         }
     }
 
     private fun handleSearch(stationName: String) {
         searchJob?.cancel()
-        _uiState.update { it.copy(filterStationName = stationName, currentPage = 0, stations = persistentListOf(), hasMorePages = true) }
+        _uiState.update {
+            it.copy(
+                filterStationName = stationName,
+                currentPage = 0,
+                stations = persistentListOf(),
+                hasMorePages = true
+            )
+        }
         searchJob = viewModelScope.launch {
             delay(SEARCH_DEBOUNCE_MS)
             if (stationName.isNotBlank()) stationListTracker.trackSearchSubmitted(stationName)
@@ -129,8 +135,12 @@ class StationListViewModel @Inject constructor(
         }
     }
 
-    private fun handleLocationPermissionGranted() {
+    private fun handleLocationPermissionGranted(isGranted: Boolean) {
         _uiState.update { it.copy(showLocationPermissionSheet = false) }
+        if (!isGranted) {
+            viewModelScope.launch { fetchRadioStations() }
+            return
+        }
         viewModelScope.launch {
             val location = locationProvider.getCurrentLocation() ?: return@launch
             _uiState.update {
@@ -221,7 +231,11 @@ class StationListViewModel @Inject constructor(
         val selectedStation: Station? = null,
         val hasMorePages: Boolean = true,
         val isLoading: Boolean = false,
-        val playerColors: PlayerColors = PlayerColors(Color(0xFF1C1A24), Color(0xFF3a1040), Color(0xFF0e0c14)),
+        val playerColors: PlayerColors = PlayerColors(
+            Color(0xFF1C1A24),
+            Color(0xFF3a1040),
+            Color(0xFF0e0c14)
+        ),
         val featureFlag: FeatureFlag = FeatureFlag(),
         val locationName: String? = null,
         val currentPosition: GeoLatLong? = null,
@@ -252,7 +266,7 @@ class StationListViewModel @Inject constructor(
         data class Stop(val station: UiState.Station) : Action
         data class ExpandPlayer(val source: String) : Action
         data class CollapsePlayer(val source: String) : Action
-        data object OnLocationPermissionGranted : Action
+        data class OnLocationPermissionGranted(val isGranted: Boolean) : Action
         data object DismissLocationPermission : Action
     }
 
@@ -262,10 +276,31 @@ class StationListViewModel @Inject constructor(
     }
 }
 
-private fun RadioStation.toUiStateStation() = StationListViewModel.UiState.Station(stationUuid, name, tags.getOrNull(0).orEmpty(), imageUrl, url, false, false)
+private fun RadioStation.toUiStateStation() = StationListViewModel.UiState.Station(
+    serverUuid = stationUuid,
+    name = name,
+    genre = tags.getOrNull(0).orEmpty(),
+    imageUrl = imageUrl,
+    streamUrl = url,
+    isBuffering = false,
+    isPlaying = false
+)
 
-private fun StationListViewModel.UiState.Station.toRadioMediaItem() = RadioMediaItem(serverUuid, streamUrl, RadioMediaItem.RadioMetadata(name, genre, imageUrl))
+private fun StationListViewModel.UiState.Station.toRadioMediaItem() = RadioMediaItem(
+    mediaId = serverUuid,
+    streamUrl = streamUrl,
+    radioMetadata = RadioMediaItem.RadioMetadata(name, genre, imageUrl)
+)
 
-private fun ImmutableList<StationListViewModel.UiState.Station>.togglePlayingStateForStations(targetUuid: String, isPlaying: Boolean): ImmutableList<StationListViewModel.UiState.Station> {
-    return map { s -> if (s.serverUuid == targetUuid) s.copy(isPlaying = isPlaying) else s.copy(isPlaying = false) }.toPersistentList()
+private fun ImmutableList<StationListViewModel.UiState.Station>.togglePlayingStateForStations(
+    targetUuid: String,
+    isPlaying: Boolean
+): ImmutableList<StationListViewModel.UiState.Station> {
+    return map { s ->
+        if (s.serverUuid == targetUuid) {
+            s.copy(isPlaying = isPlaying)
+        } else {
+            s.copy(isPlaying = false)
+        }
+    }.toPersistentList()
 }

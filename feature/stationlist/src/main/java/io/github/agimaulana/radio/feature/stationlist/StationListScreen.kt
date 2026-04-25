@@ -108,9 +108,7 @@ fun StationListRoute(
     )
 
     LaunchedEffect(locationPermissionState.allPermissionsGranted) {
-        if (locationPermissionState.allPermissionsGranted) {
-            viewModel.onAction(Action.OnLocationPermissionGranted)
-        }
+        viewModel.onAction(Action.OnLocationPermissionGranted(locationPermissionState.allPermissionsGranted))
     }
 
     BackHandler(enabled = playerState.canCollapse) {

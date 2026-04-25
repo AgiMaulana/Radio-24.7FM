@@ -58,7 +58,7 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
                 getRadioStationsUseCase.execute(page = 1, searchName = null, location = any())
             } returns emptyList()
 
-            viewModel.onAction(StationListViewModel.Action.OnLocationPermissionGranted)
+            viewModel.onAction(StationListViewModel.Action.OnLocationPermissionGranted(isGranted = true))
 
             // Sheet hidden immediately
             with(uiState.awaitItem()) {
@@ -76,6 +76,31 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
                     searchName = null,
                     location = GeoLatLong(-6.2, 106.8)
                 )
+            }
+        }
+    }
+
+    @Test
+    fun `given location permission denied when OnLocationPermissionGranted then fetch without location`() = runTest {
+        turbineScope {
+            val uiState = viewModel.uiState.testIn(backgroundScope)
+            uiState.awaitItem() // initial
+
+            coEvery {
+                getRadioStationsUseCase.execute(page = 1, searchName = null, location = null)
+            } returns emptyList()
+
+            viewModel.onAction(StationListViewModel.Action.OnLocationPermissionGranted(isGranted = false))
+
+            // First emission: sheet hidden
+            with(uiState.awaitItem()) {
+                assertFalse(showLocationPermissionSheet)
+            }
+            // Second emission: fetch complete (hasMorePages updated)
+            uiState.awaitItem()
+
+            coVerify {
+                getRadioStationsUseCase.execute(page = 1, searchName = null, location = null)
             }
         }
     }
