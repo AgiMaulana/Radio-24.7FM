@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    ic_perm_radio.xml — Radio/antenna icon for permission benefit rows
+    Tint with your primary or muted color.
+    Recommended size: 22dp in benefit rows.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Outer arc -->
+    <path android:pathData="M4.22,4.22 A11,11 0 0,1 19.78,19.78"
+        android:fillColor="#00000000" android:strokeColor="#FF69B4"
+        android:strokeWidth="2" android:strokeLineCap="round"/>
+    <!-- Middle arc -->
+    <path android:pathData="M6.7,6.7 A8,8 0 0,1 17.3,17.3"
+        android:fillColor="#00000000" android:strokeColor="#FF69B4"
+        android:strokeWidth="2" android:strokeLineCap="round"/>
+    <!-- Inner arc -->
+    <path android:pathData="M9.17,9.17 A5,5 0 0,1 14.83,14.83"
+        android:fillColor="#00000000" android:strokeColor="#FF69B4"
+        android:strokeWidth="2" android:strokeLineCap="round"/>
+    <!-- Center dot -->
+    <path android:pathData="M12,12 A2,2 0 1,1 11.99,12 Z"
+        android:fillColor="#FF69B4"/>
+
+</vector>

@@ -1,6 +1,7 @@
 package io.github.agimaulana.radio.infrastructure.repository
 
 import io.github.agimaulana.radio.core.common.DispatcherProvider
+import io.github.agimaulana.radio.domain.api.entity.GeoLatLong
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
 import io.github.agimaulana.radio.domain.api.repository.RadioStationRepository
 import io.github.agimaulana.radio.infrastructure.api.RadioStationApi
@@ -13,9 +14,29 @@ class RadioStationRepositoryImpl @Inject constructor(
     private val dispatcherProvider: DispatcherProvider,
 ) : RadioStationRepository {
 
-    override suspend fun getRadioStations(offset: Int, limit: Int): List<RadioStation> {
+    override suspend fun getRadioStations(
+        location: GeoLatLong?,
+        distance: Int?,
+        country: String?,
+        offset: Int,
+        limit: Int
+    ): List<RadioStation> {
         return withContext(dispatcherProvider.io) {
-            radioStationApi.getRadioStations(offset = offset, limit = limit).map { it.toEntity() }
+            radioStationApi.getRadioStations(
+                lat = location?.latitude,
+                lon = location?.longitude,
+                geoDistance = distance,
+                offset = offset,
+                limit = limit,
+                order = if (location != null) "distance" else "votes",
+                reverse = location == null
+            ).map { it.toEntity() }
+        }
+    }
+
+    override suspend fun getRadioStationsByCountry(offset: Int, limit: Int): List<RadioStation> {
+        return withContext(dispatcherProvider.io) {
+            radioStationApi.getRadioStationsByCountry(offset = offset, limit = limit).map { it.toEntity() }
         }
     }
 

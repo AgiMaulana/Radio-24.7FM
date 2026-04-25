@@ -15,4 +15,7 @@ dependencies {
 
     implementation(libs.androidx.palette)
     implementation(libs.androidx.compose.animation.graphics)
+    implementation(libs.accompanist.permissions)
+    implementation(libs.play.services.location)
+    implementation(libs.kotlinx.coroutines.play.services)
 }

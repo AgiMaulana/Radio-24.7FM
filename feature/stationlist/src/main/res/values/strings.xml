@@ -1,3 +1,13 @@
 <resources>
     <string name="app_name">stationlist</string>
+    <string name="location_perm_title">Discover stations\nnear you</string>
+    <string name="location_perm_description">Allow 24.7 FM to use your location to show local stations first and count stations nearby.</string>
+    <string name="location_perm_local_stations_title">Local stations first</string>
+    <string name="location_perm_local_stations_desc">Sorted by your city</string>
+    <string name="location_perm_private_title">Private</string>
+    <string name="location_perm_private_desc">Never stored or shared</string>
+    <string name="location_perm_revokable_title">Revokable</string>
+    <string name="location_perm_revokable_desc">Change anytime in Settings</string>
+    <string name="location_perm_allow_button">Allow Location Access</string>
+    <string name="location_perm_not_now_button">Not now</string>
 </resources>
