@@ -143,7 +143,11 @@ class StationListViewModel @Inject constructor(
             return
         }
         viewModelScope.launch {
-            val location = locationProvider.getCurrentLocation() ?: return@launch
+            val location = locationProvider.getCurrentLocation()
+            if (location == null) {
+                fetchRadioStations()
+                return@launch
+            }
             _uiState.update {
                 it.copy(
                     locationName = if (location.city.isNotEmpty()) "${location.city}, ${location.country}" else null,

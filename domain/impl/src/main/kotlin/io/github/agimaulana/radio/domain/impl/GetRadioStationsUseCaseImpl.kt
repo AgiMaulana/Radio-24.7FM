@@ -18,14 +18,14 @@ class GetRadioStationsUseCaseImpl @Inject constructor(
             if (location != null) {
                 val tier2 = radioStationRepository.getRadioStations(
                     location = location,
-                    distance = 50000,
+                    distance = DISTANCE_TIER_2,
                     offset = offset,
                     limit = PAGE_SIZE
                 )
-                if (tier2.isEmpty() && page == 1) {
+                if (tier2.isEmpty()) {
                     radioStationRepository.getRadioStations(
                         location = location,
-                        distance = 150000,
+                        distance = DISTANCE_TIER_3,
                         offset = offset,
                         limit = PAGE_SIZE
                     )
@@ -45,5 +45,7 @@ class GetRadioStationsUseCaseImpl @Inject constructor(
 
     companion object {
         private const val PAGE_SIZE = 10
+        private const val DISTANCE_TIER_2 = 50_000
+        private const val DISTANCE_TIER_3 = 150_000
     }
 }

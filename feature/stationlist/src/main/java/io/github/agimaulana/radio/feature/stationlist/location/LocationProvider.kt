@@ -7,7 +7,9 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.util.Locale
 import javax.inject.Inject
@@ -21,7 +23,7 @@ class LocationProvider @Inject constructor(
     suspend fun getCurrentLocation(): LocationInfo? {
         val location = try {
             fusedLocationClient.getCurrentLocation(
-                Priority.PRIORITY_HIGH_ACCURACY,
+                Priority.PRIORITY_BALANCED_POWER_ACCURACY,
                 CancellationTokenSource().token
             ).await()
         } catch (e: Exception) {
@@ -33,7 +35,9 @@ class LocationProvider @Inject constructor(
             val geocoder = Geocoder(context, Locale.getDefault())
             
             @Suppress("DEPRECATION")
-            val addresses = geocoder.getFromLocation(location.latitude, location.longitude, 1)
+            val addresses = withContext(Dispatchers.IO) {
+                geocoder.getFromLocation(location.latitude, location.longitude, 1)
+            }
             val address = addresses?.firstOrNull()
             
             LocationInfo(
