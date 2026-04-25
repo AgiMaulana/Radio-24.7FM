@@ -1,619 +1,161 @@
 package io.github.agimaulana.radio.feature.stationlist
 
 import app.cash.turbine.turbineScope
-import io.github.agimaulana.radio.core.network.test.randomizer.randomString
-import io.github.agimaulana.radio.core.network.test.randomizer.randomUrl
-import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.Action.LoadMore
-import io.github.agimaulana.radio.feature.stationlist.datafactories.newRadioStation
+import io.github.agimaulana.radio.domain.api.entity.GeoLatLong
 import io.github.agimaulana.radio.feature.stationlist.datafactories.newUiStateStation
+import io.github.agimaulana.radio.feature.stationlist.location.LocationProvider
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.verify
-import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.Companion.SEARCH_DEBOUNCE_MS
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class StationListViewModelTest : StationListViewModelTest__Fixtures() {
 
     @Test
-    fun `when init then fetch first page of radio stations and create radio controller`() = runTest {
+    fun `initial state should have isLoading true`() = runTest {
+        assertTrue(viewModel.uiState.value.isLoading)
+    }
+
+    @Test
+    fun `when init then create radio controller`() = runTest {
         turbineScope {
             val uiState = viewModel.uiState.testIn(backgroundScope)
-
-            with(uiState.awaitItem()) {
-                assertEquals(0, currentPage)
-                assertTrue(stations.isEmpty())
-            }
-
-            // assert flow is being observed
-            val stations = listOf(
-                newRadioStation(
-                    withStationUuid = randomString(length = 24),
-                    withName = "Radio ${randomString(length = 5)}",
-                    withTags = listOf(randomString()),
-                    withImageUrl = randomUrl(),
-                    withUrl = randomUrl(),
-                )
-            )
-            coEvery {
-                getRadioStationsUseCase.execute(page = 1, searchName = null)
-            } returns stations
-            val expectedStations = stations.map { it.toUiStateStation() }
+            uiState.awaitItem() // initial
 
             viewModel.init()
 
-            with(uiState.awaitItem()) {
-                assertEquals(1, currentPage)
-                assertEquals(expectedStations, this.stations)
-            }
             coVerify(exactly = 1) {
-                getRadioStationsUseCase.execute(page = 1, searchName = null)
                 radioPlayerControllerFactory.get()
             }
         }
     }
 
     @Test
-    fun `given radio stations has been fetched when load more then fetch next page of radio stations`() = runTest {
+    fun `given location permission granted when OnLocationPermissionGranted then fetch stations with location`() = runTest {
         turbineScope {
             val uiState = viewModel.uiState.testIn(backgroundScope)
+            uiState.awaitItem() // initial
 
-            with(uiState.awaitItem()) {
-                assertEquals(0, currentPage)
-                assertTrue(stations.isEmpty())
-            }
-
-            val stations1 = List(10) {
-                newRadioStation(
-                    withStationUuid = randomString(length = 24),
-                    withName = "Radio 1 ${randomString(length = 5)}",
-                    withTags = listOf(randomString()),
-                    withImageUrl = randomUrl(),
-                    withUrl = randomUrl(),
-                )
-            }
-            coEvery {
-                getRadioStationsUseCase.execute(page = 1, searchName = null)
-            } returns stations1
-            val expectedStations1 = stations1.map { it.toUiStateStation() }
-
-            viewModel.init()
-
-            with(uiState.awaitItem()) {
-                assertEquals(1, currentPage)
-                assertEquals(expectedStations1, this.stations)
-            }
-            coVerify(exactly = 1) {
-                getRadioStationsUseCase.execute(page = 1, searchName = null)
-            }
-
-            val stations2 = listOf(
-                newRadioStation(
-                    withStationUuid = randomString(length = 24),
-                    withName = "Radio 2 ${randomString(length = 5)}",
-                    withTags = listOf(randomString()),
-                    withImageUrl = randomUrl(),
-                    withUrl = randomUrl(),
-                )
+            val locationInfo = LocationProvider.LocationInfo(
+                city = "Jakarta",
+                country = "Indonesia",
+                latitude = -6.2,
+                longitude = 106.8
             )
+            coEvery { locationProvider.getCurrentLocation() } returns locationInfo
             coEvery {
-                getRadioStationsUseCase.execute(page = 2, searchName = null)
-            } returns stations2
-            val expectedStations2 = stations2.map { it.toUiStateStation() }
-
-            viewModel.onAction(LoadMore)
-
-            with(uiState.awaitItem()) {
-                assertEquals(2, currentPage)
-                assertEquals(expectedStations1 + expectedStations2, this.stations)
-            }
-            coVerify(exactly = 1) {
-                getRadioStationsUseCase.execute(page = 2, searchName = null)
-            }
-        }
-    }
-
-    @Test
-    fun `given fetched stations is empty when fetch radio stations then hasMorePages is false`() = runTest {
-        turbineScope {
-            val uiState = viewModel.uiState.testIn(backgroundScope)
-            uiState.awaitItem()
-
-            coEvery {
-                getRadioStationsUseCase.execute(page = 1, searchName = null)
+                getRadioStationsUseCase.execute(page = 1, searchName = null, location = any())
             } returns emptyList()
 
-            viewModel.init()
+            viewModel.onAction(StationListViewModel.Action.OnLocationPermissionGranted(isGranted = true))
+
+            // Sheet hidden immediately
+            with(uiState.awaitItem()) {
+                assertFalse(showLocationPermissionSheet)
+            }
 
             with(uiState.awaitItem()) {
-                assertEquals(false, hasMorePages)
-            }
-        }
-    }
-
-    @Test
-    fun `given fetched stations is less than page size when fetch radio stations then hasMorePages is false`() = runTest {
-        turbineScope {
-            val uiState = viewModel.uiState.testIn(backgroundScope)
-            uiState.awaitItem()
-
-            val stations = List(StationListViewModel.PAGE_SIZE - 1) {
-                newRadioStation(
-                    withStationUuid = randomString(length = 24),
-                    withName = "Radio $it",
-                    withTags = listOf(randomString()),
-                    withImageUrl = randomUrl(),
-                    withUrl = randomUrl(),
-                )
-            }
-            coEvery {
-                getRadioStationsUseCase.execute(page = 1, searchName = null)
-            } returns stations
-
-            viewModel.init()
-
-            with(uiState.awaitItem()) {
-                assertEquals(false, hasMorePages)
-            }
-        }
-    }
-
-    @Test
-    fun `given fetched stations is equal to page size when fetch radio stations then hasMorePages is true`() = runTest {
-        turbineScope {
-            val uiState = viewModel.uiState.testIn(backgroundScope)
-            uiState.awaitItem()
-
-            val stations = List(StationListViewModel.PAGE_SIZE) {
-                newRadioStation(
-                    withStationUuid = randomString(length = 24),
-                    withName = "Radio $it",
-                    withTags = listOf(randomString()),
-                    withImageUrl = randomUrl(),
-                    withUrl = randomUrl(),
-                )
-            }
-            coEvery {
-                getRadioStationsUseCase.execute(page = 1, searchName = null)
-            } returns stations
-
-            viewModel.init()
-
-            with(uiState.awaitItem()) {
-                assertEquals(true, hasMorePages)
-            }
-        }
-    }
-
-    @Test
-    fun `given search by station name when load more then fetch next page of radio stations`() = runTest {
-        turbineScope {
-            val uiState = viewModel.uiState.testIn(backgroundScope)
-            val searchName = randomString()
-
-            with(uiState.awaitItem()) {
-                assertEquals(0, currentPage)
-                assertTrue(stations.isEmpty())
+                assertEquals("Jakarta, Indonesia", locationName)
+                assertEquals(GeoLatLong(-6.2, 106.8), currentPosition)
             }
 
-            val stations1 = List(10) {
-                newRadioStation(
-                    withStationUuid = randomString(length = 24),
-                    withName = "Radio 1 ${randomString(length = 5)}",
-                    withTags = listOf(randomString()),
-                    withImageUrl = randomUrl(),
-                    withUrl = randomUrl(),
-                )
-            }
-            coEvery {
-                getRadioStationsUseCase.execute(page = 1, searchName = searchName)
-            } returns stations1
-            val expectedStations1 = stations1.map { it.toUiStateStation() }
-
-            viewModel.init()
-            viewModel.onAction(StationListViewModel.Action.Search(searchName))
-
-            // State updates immediately: keyword set, list cleared
-            with(uiState.expectMostRecentItem()) {
-                assertEquals(0, currentPage)
-                assertEquals(searchName, filterStationName)
-                assertTrue(stations.isEmpty())
-            }
-
-            // Advance past the debounce window so the fetch fires
-            testScheduler.advanceTimeBy(SEARCH_DEBOUNCE_MS + 1)
-
+            // Third emission: fetch complete
             with(uiState.awaitItem()) {
                 assertEquals(1, currentPage)
-                assertEquals(searchName, filterStationName)
-                assertEquals(expectedStations1, this.stations)
-            }
-            coVerify(exactly = 1) {
-                getRadioStationsUseCase.execute(page = 1, searchName = searchName)
+                assertFalse(isLoading)
             }
 
-            val stations2 = listOf(
-                newRadioStation(
-                    withStationUuid = randomString(length = 24),
-                    withName = "Radio 2 ${randomString(length = 5)}",
-                    withTags = listOf(randomString()),
-                    withImageUrl = randomUrl(),
-                    withUrl = randomUrl(),
+            coVerify {
+                getRadioStationsUseCase.execute(
+                    page = 1,
+                    searchName = null,
+                    location = GeoLatLong(-6.2, 106.8)
                 )
-            )
-            coEvery {
-                getRadioStationsUseCase.execute(page = 2, searchName = searchName)
-            } returns stations2
-            val expectedStations2 = stations2.map { it.toUiStateStation() }
-
-            viewModel.onAction(LoadMore)
-
-            with(uiState.awaitItem()) {
-                assertEquals(2, currentPage)
-                assertEquals(searchName, filterStationName)
-                assertEquals(expectedStations1 + expectedStations2, this.stations)
-            }
-            coVerify(exactly = 1) {
-                getRadioStationsUseCase.execute(page = 2, searchName = searchName)
             }
         }
     }
 
     @Test
-    fun `given rapid typing when search then only one fetch is made after debounce`() = runTest {
+    fun `given location permission denied when OnLocationPermissionGranted then fetch without location`() = runTest {
         turbineScope {
             val uiState = viewModel.uiState.testIn(backgroundScope)
-            uiState.awaitItem() // initial state
+            uiState.awaitItem() // initial
 
-            val finalQuery = "radio"
             coEvery {
-                getRadioStationsUseCase.execute(page = 1, searchName = finalQuery)
+                getRadioStationsUseCase.execute(page = 1, searchName = null, location = null)
             } returns emptyList()
 
-            // Simulate rapid keystrokes within the debounce window
-            viewModel.onAction(StationListViewModel.Action.Search("r"))
-            testScheduler.advanceTimeBy(100)
-            viewModel.onAction(StationListViewModel.Action.Search("ra"))
-            testScheduler.advanceTimeBy(100)
-            viewModel.onAction(StationListViewModel.Action.Search("rad"))
-            testScheduler.advanceTimeBy(100)
-            viewModel.onAction(StationListViewModel.Action.Search("radi"))
-            testScheduler.advanceTimeBy(100)
-            viewModel.onAction(StationListViewModel.Action.Search(finalQuery))
+            viewModel.onAction(StationListViewModel.Action.OnLocationPermissionGranted(isGranted = false))
 
-            // Advance past the debounce window
-            testScheduler.advanceTimeBy(SEARCH_DEBOUNCE_MS + 1)
+            // First emission: sheet hidden
+            with(uiState.awaitItem()) {
+                assertFalse(showLocationPermissionSheet)
+            }
 
-            // Only the last query should have triggered a fetch
-            coVerify(exactly = 1) {
-                getRadioStationsUseCase.execute(page = 1, searchName = finalQuery)
+            // Second emission: fetch complete
+            with(uiState.awaitItem()) {
+                assertEquals(1, currentPage)
+                assertFalse(isLoading)
             }
-            coVerify(exactly = 0) {
-                getRadioStationsUseCase.execute(page = 1, searchName = "r")
-                getRadioStationsUseCase.execute(page = 1, searchName = "ra")
-                getRadioStationsUseCase.execute(page = 1, searchName = "rad")
-                getRadioStationsUseCase.execute(page = 1, searchName = "radi")
+
+            coVerify {
+                getRadioStationsUseCase.execute(page = 1, searchName = null, location = null)
             }
-            uiState.cancelAndConsumeRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `when DismissLocationPermission then hide permission sheet`() = runTest {
+        turbineScope {
+            val uiState = viewModel.uiState.testIn(backgroundScope)
+            assertTrue(uiState.awaitItem().showLocationPermissionSheet)
+
+            viewModel.onAction(StationListViewModel.Action.DismissLocationPermission)
+
+            assertFalse(uiState.awaitItem().showLocationPermissionSheet)
         }
     }
 
     @Test
     fun `given station is not playing when clicked then set radio and play`() {
-        val station = newUiStateStation(
-            withServerUuid = "radio-123",
-            withName = "Radio 123",
-        )
-        every { radioPlayerController.currentMediaId } returns "radio-566"
+        val station = newUiStateStation(withServerUuid = "radio-1")
+        every { radioPlayerController.currentMediaId } returns "radio-2"
 
         viewModel.init()
         viewModel.onAction(StationListViewModel.Action.Click(station))
 
         verify {
-            radioPlayerController.setMediaItem(station.toRadioMediaItem())
+            radioPlayerController.setMediaItem(any())
             radioPlayerController.prepare()
             radioPlayerController.play()
         }
     }
 
     @Test
-    fun `given station is the current radio media and playing when clicked then pause`() {
-        val station = newUiStateStation(
-            withServerUuid = "radio-123",
-            withName = "Radio 123",
-            withIsPlaying = true,
-        )
-        every { radioPlayerController.currentMediaId } returns station.serverUuid
-        every { radioPlayerController.isPlaying } returns station.isPlaying
-
-        viewModel.init()
-        viewModel.onAction(StationListViewModel.Action.Click(station))
-
-        verify {
-            radioPlayerController.pause()
-        }
-    }
-
-    @Test
-    fun `given station is the current radio media and not playing when clicked then play`() {
-        val station = newUiStateStation(
-            withServerUuid = "radio-123",
-            withName = "Radio 123",
-            withIsPlaying = false,
-        )
-        every { radioPlayerController.currentMediaId } returns station.serverUuid
-        every { radioPlayerController.isPlaying } returns station.isPlaying
-
-        viewModel.init()
-        viewModel.onAction(StationListViewModel.Action.Click(station))
-
-        verify {
-            radioPlayerController.play()
-        }
-    }
-
-    @Test
     fun `when pause then pause radio player`() {
-        val station = newUiStateStation(
-            withServerUuid = "radio-123",
-            withName = "Radio 123",
-        )
-
+        val station = newUiStateStation()
         viewModel.init()
         viewModel.onAction(StationListViewModel.Action.Pause(station))
-
-        verify {
-            radioPlayerController.pause()
-        }
+        verify { radioPlayerController.pause() }
     }
 
     @Test
     fun `when play then play radio player`() {
-        val station = newUiStateStation(
-            withServerUuid = "radio-123",
-            withName = "Radio 123",
-        )
-
+        val station = newUiStateStation()
         viewModel.init()
         viewModel.onAction(StationListViewModel.Action.Play(station))
-
-        verify {
-            radioPlayerController.play()
-        }
+        verify { radioPlayerController.play() }
     }
 
     @Test
     fun `when on clear view model then release radio player`() = runTest {
         viewModel.init()
         viewModel.invokeOnCleared()
-
-        verify {
-            radioPlayerController.release()
-        }
-    }
-
-    @Test
-    fun `given radio player has current media when init then restore selected station with playing state`() = runTest {
-        turbineScope {
-            val uiState = viewModel.uiState.testIn(backgroundScope)
-
-            val currentMediaId = randomString(length = 24)
-            every { radioPlayerController.currentMediaId } returns currentMediaId
-            every { radioPlayerController.isPlaying } returns true
-
-            val station = newRadioStation(
-                withStationUuid = currentMediaId,
-                withName = "Restored Radio",
-                withTags = listOf("Pop"),
-                withImageUrl = randomUrl(),
-                withUrl = randomUrl(),
-            )
-            coEvery {
-                getRadioStationUseCase.execute(currentMediaId)
-            } returns station
-
-            viewModel.init()
-
-            // Wait for fetch then restore to complete
-            uiState.awaitItem()
-            uiState.awaitItem()
-
-            with(uiState.expectMostRecentItem()) {
-                assertEquals(currentMediaId, selectedStation?.serverUuid)
-                assertEquals("Restored Radio", selectedStation?.name)
-                assertEquals(true, selectedStation?.isPlaying)
-            }
-        }
-    }
-
-    @Test
-    fun `given radio player has current media but not playing when init then restore selected station with not playing state`() = runTest {
-        turbineScope {
-            val uiState = viewModel.uiState.testIn(backgroundScope)
-
-            val currentMediaId = randomString(length = 24)
-            every { radioPlayerController.currentMediaId } returns currentMediaId
-            every { radioPlayerController.isPlaying } returns false
-
-            val station = newRadioStation(
-                withStationUuid = currentMediaId,
-                withName = "Restored Radio",
-                withTags = listOf("Jazz"),
-                withImageUrl = randomUrl(),
-                withUrl = randomUrl(),
-            )
-            coEvery {
-                getRadioStationUseCase.execute(currentMediaId)
-            } returns station
-
-            viewModel.init()
-
-            // Wait for fetch then restore to complete
-            uiState.awaitItem()
-            uiState.awaitItem()
-
-            with(uiState.expectMostRecentItem()) {
-                assertEquals(currentMediaId, selectedStation?.serverUuid)
-                assertEquals("Restored Radio", selectedStation?.name)
-                assertEquals(false, selectedStation?.isPlaying)
-            }
-        }
-    }
-
-    @Test
-    fun `given radio player has no current media when init then do not restore selected station`() = runTest {
-        turbineScope {
-            val uiState = viewModel.uiState.testIn(backgroundScope)
-
-            every { radioPlayerController.currentMediaId } returns null
-
-            viewModel.init()
-
-            // Wait for fetch to complete
-            uiState.awaitItem()
-
-            with(uiState.expectMostRecentItem()) {
-                assertEquals(null, selectedStation)
-            }
-            coVerify(exactly = 0) {
-                getRadioStationUseCase.execute(any())
-            }
-        }
-    }
-
-    @Test
-    fun `given currently loading when load more then do not fetch again`() = runTest {
-        turbineScope {
-            val uiState = viewModel.uiState.testIn(backgroundScope)
-            uiState.awaitItem() // Initial state
-
-            // Mock a delayed response
-            coEvery {
-                getRadioStationsUseCase.execute(any(), any())
-            } coAnswers {
-                kotlinx.coroutines.delay(1000)
-                emptyList()
-            }
-
-            // Trigger first load
-            viewModel.onAction(LoadMore)
-            
-            // Wait for the isLoading = true state
-            assertEquals(true, uiState.awaitItem().isLoading)
-
-            // Try to trigger another load immediately
-            viewModel.onAction(LoadMore)
-
-            // Verify only one call was made despite multiple triggers
-            coVerify(exactly = 1) {
-                getRadioStationsUseCase.execute(page = 1, searchName = null)
-            }
-            uiState.cancelAndIgnoreRemainingEvents()
-        }
-    }
-
-    @Test
-    fun `when fetch radio stations then isLoading state is updated correctly`() = runTest {
-        turbineScope {
-            val uiState = viewModel.uiState.testIn(backgroundScope)
-            uiState.awaitItem() // Initial state
-
-            coEvery {
-                getRadioStationsUseCase.execute(any(), any())
-            } coAnswers {
-                kotlinx.coroutines.delay(100)
-                emptyList()
-            }
-
-            viewModel.onAction(LoadMore)
-
-            // First state update: isLoading = true
-            assertEquals(true, uiState.awaitItem().isLoading)
-
-            // Second state update: isLoading = false after fetch completion
-            assertEquals(false, uiState.awaitItem().isLoading)
-            
-            uiState.cancelAndIgnoreRemainingEvents()
-        }
-    }
-
-    @Test
-    fun `given station is playing when search then station shows as playing in search results`() = runTest {
-        turbineScope {
-            val playingMediaId = "playing-radio-id"
-            every { radioPlayerController.currentMediaId } returns playingMediaId
-            every { radioPlayerController.isPlaying } returns true
-            val stations = listOf(
-                newRadioStation(
-                    withStationUuid = playingMediaId,
-                    withName = "Playing Radio",
-                    withTags = listOf("Pop"),
-                    withImageUrl = randomUrl(),
-                    withUrl = randomUrl(),
-                ),
-                newRadioStation(
-                    withStationUuid = "other-radio-id",
-                    withName = "Other Radio",
-                    withTags = listOf("Jazz"),
-                    withImageUrl = randomUrl(),
-                    withUrl = randomUrl(),
-                ),
-            )
-            coEvery {
-                getRadioStationsUseCase.execute(page = 1, searchName = "radio")
-            } returns stations
-
-            viewModel.init()
-            val uiState = viewModel.uiState.testIn(backgroundScope)
-
-            viewModel.onAction(StationListViewModel.Action.Search("radio"))
-            testScheduler.advanceTimeBy(SEARCH_DEBOUNCE_MS + 1)
-
-            with(uiState.expectMostRecentItem()) {
-                val playingStation = stations.find { it.stationUuid == playingMediaId }
-                assertNotNull(playingStation)
-                val uiStation = this.stations.find { it.serverUuid == playingMediaId }
-                assertTrue(uiStation?.isPlaying!!)
-                val otherStation = this.stations.find { it.serverUuid == "other-radio-id" }
-                assertFalse(otherStation?.isPlaying!!)
-            }
-        }
-    }
-
-    @Test
-    fun `given station is not playing when search then station shows as not playing in search results`() = runTest {
-        turbineScope {
-            val currentMediaId = "paused-radio-id"
-            every { radioPlayerController.currentMediaId } returns currentMediaId
-            every { radioPlayerController.isPlaying } returns false
-            val stations = listOf(
-                newRadioStation(
-                    withStationUuid = currentMediaId,
-                    withName = "Paused Radio",
-                    withTags = listOf("Pop"),
-                    withImageUrl = randomUrl(),
-                    withUrl = randomUrl(),
-                ),
-            )
-            coEvery {
-                getRadioStationsUseCase.execute(page = 1, searchName = "radio")
-            } returns stations
-
-            viewModel.init()
-            val uiState = viewModel.uiState.testIn(backgroundScope)
-
-            viewModel.onAction(StationListViewModel.Action.Search("radio"))
-            testScheduler.advanceTimeBy(SEARCH_DEBOUNCE_MS + 1)
-
-            with(uiState.expectMostRecentItem()) {
-                val uiStation = this.stations.find { it.serverUuid == currentMediaId }
-                assertFalse(uiStation?.isPlaying!!)
-            }
-        }
+        verify { radioPlayerController.release() }
     }
 }

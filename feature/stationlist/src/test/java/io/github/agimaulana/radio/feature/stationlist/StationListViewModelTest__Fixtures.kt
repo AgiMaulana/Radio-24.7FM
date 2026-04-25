@@ -12,6 +12,7 @@ import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
 import io.github.agimaulana.radio.feature.stationlist.datafactories.newRadioStation
 import io.github.agimaulana.radio.feature.stationlist.datafactories.newUiStateStation
+import io.github.agimaulana.radio.feature.stationlist.location.LocationProvider
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.every
@@ -40,6 +41,9 @@ abstract class StationListViewModelTest__Fixtures {
 
     @RelaxedMockK
     protected lateinit var stationListTracker: StationListTracker
+
+    @RelaxedMockK
+    protected lateinit var locationProvider: LocationProvider
 
     @MockK
     protected lateinit var context: Context
@@ -74,13 +78,14 @@ abstract class StationListViewModelTest__Fixtures {
             withName = "Test",
         )
         coEvery {
-            getRadioStationsUseCase.execute(page = 1, searchName = null)
+            getRadioStationsUseCase.execute(page = 1, searchName = null, location = null)
         } returns emptyList()
         viewModel = StationListViewModel(
             getRadioStationsUseCase = getRadioStationsUseCase,
             getRadioStationUseCase = getRadioStationUseCase,
             radioPlayerControllerFactory = radioPlayerControllerFactory,
             stationListTracker = stationListTracker,
+            locationProvider = locationProvider,
             context = context
         )
     }

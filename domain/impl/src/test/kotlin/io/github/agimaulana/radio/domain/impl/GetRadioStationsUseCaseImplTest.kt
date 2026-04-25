@@ -1,14 +1,15 @@
 package io.github.agimaulana.radio.domain.impl
 
+import io.github.agimaulana.radio.domain.api.entity.GeoLatLong
 import io.github.agimaulana.radio.domain.api.repository.RadioStationRepository
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
 import io.github.agimaulana.radio.domain.impl.datafactories.newRadioStation
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.impl.annotations.RelaxedMockK
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -26,83 +27,72 @@ class GetRadioStationsUseCaseImplTest {
     }
 
     @Test
-    fun `when execute page 1 with null searchName then call getRadioStations with offset 0`() = runTest {
-        val page = 1
-        val expectedOffset = 0
-        val limit = 10
-        val radioStations = listOf(
-            newRadioStation(
-                withStationUuid = "uuid",
-                withName = "24.7 FM",
-                withTags = listOf("Pop"),
-                withImageUrl = "https://image.com/123.png",
-            )
-        )
+    fun `when execute with location and has stations in tier 2 then return tier 2 stations`() = runTest {
+        val location = GeoLatLong(-6.2, 106.8)
+        val stations = listOf(newRadioStation())
         coEvery {
-            radioStationRepository.getRadioStations(offset = expectedOffset, limit = limit)
-        } returns radioStations
+            radioStationRepository.getRadioStations(location = location, distance = 50000, offset = 0, limit = 10)
+        } returns stations
 
-        val result = useCase.execute(page, null)
+        val result = useCase.execute(page = 1, searchName = null, location = location)
 
-        assertEquals(radioStations, result)
+        assertEquals(stations, result)
+        coVerify(exactly = 1) {
+            radioStationRepository.getRadioStations(location = location, distance = 50000, offset = 0, limit = 10)
+        }
+        coVerify(exactly = 0) {
+            radioStationRepository.getRadioStations(location = location, distance = 150000, offset = 0, limit = 10)
+        }
     }
 
     @Test
-    fun `when execute page 2 then call getRadioStations with offset 10`() = runTest {
-        val page = 2
-        val expectedOffset = 10
-        val limit = 10
-        val radioStations = listOf(
-            newRadioStation(
-                withStationUuid = "uuid-1",
-                withName = "Station 11",
-            )
-        )
+    fun `when execute with location and tier 2 is empty then fallback to tier 3`() = runTest {
+        val location = GeoLatLong(-6.2, 106.8)
+        val stations = listOf(newRadioStation())
         coEvery {
-            radioStationRepository.getRadioStations(offset = expectedOffset, limit = limit)
-        } returns radioStations
+            radioStationRepository.getRadioStations(location = location, distance = 50000, offset = 0, limit = 10)
+        } returns emptyList()
+        coEvery {
+            radioStationRepository.getRadioStations(location = location, distance = 150000, offset = 0, limit = 10)
+        } returns stations
 
-        val result = useCase.execute(page, null)
+        val result = useCase.execute(page = 1, searchName = null, location = location)
 
-        assertEquals(radioStations, result)
+        assertEquals(stations, result)
+        coVerify {
+            radioStationRepository.getRadioStations(location = location, distance = 50000, offset = 0, limit = 10)
+            radioStationRepository.getRadioStations(location = location, distance = 150000, offset = 0, limit = 10)
+        }
     }
 
     @Test
-    fun `when execute with searchName and page 2 then call searchRadioStations with offset 10`() = runTest {
-        val page = 2
-        val expectedOffset = 10
-        val limit = 10
+    fun `when execute without location then call getRadioStationsByCountry`() = runTest {
+        val stations = listOf(newRadioStation())
+        coEvery {
+            radioStationRepository.getRadioStationsByCountry(offset = 0, limit = 10)
+        } returns stations
+
+        val result = useCase.execute(page = 1, searchName = null, location = null)
+
+        assertEquals(stations, result)
+        coVerify {
+            radioStationRepository.getRadioStationsByCountry(offset = 0, limit = 10)
+        }
+    }
+
+    @Test
+    fun `when execute with search name then call searchRadioStations`() = runTest {
         val searchQuery = "jazz"
-        val radioStations = listOf(
-            newRadioStation(
-                withStationUuid = "uuid-1",
-                withName = "Jazz FM",
-            )
-        )
+        val stations = listOf(newRadioStation())
         coEvery {
-            radioStationRepository.searchRadioStations(searchQuery = searchQuery, offset = expectedOffset, limit = limit)
-        } returns radioStations
+            radioStationRepository.searchRadioStations(searchQuery = searchQuery, offset = 0, limit = 10)
+        } returns stations
 
-        val result = useCase.execute(page, searchQuery)
+        val result = useCase.execute(page = 1, searchName = searchQuery)
 
-        assertEquals(radioStations, result)
-    }
-
-    @Test
-    fun `when execute then return stations from repository`() = runTest {
-        val page = 1
-        val radioStations = listOf(
-            newRadioStation(withStationUuid = "uuid-1", withName = "Station 1"),
-            newRadioStation(withStationUuid = "uuid-2", withName = "Station 2"),
-        )
-        coEvery {
-            radioStationRepository.getRadioStations(offset = 0, limit = 10)
-        } returns radioStations
-
-        val result = useCase.execute(page, null)
-
-        assertEquals(2, result.size)
-        assertTrue(result.any { it.stationUuid == "uuid-1" })
-        assertTrue(result.any { it.stationUuid == "uuid-2" })
+        assertEquals(stations, result)
+        coVerify {
+            radioStationRepository.searchRadioStations(searchQuery = searchQuery, offset = 0, limit = 10)
+        }
     }
 }

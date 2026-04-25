@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    ic_perm_lock.xml — Lock icon for privacy benefit row
+    Recommended size: 22dp in benefit rows.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Shackle (top arc) -->
+    <path android:pathData="M8,11 L8,7 A4,4 0 0,1 16,7 L16,11"
+        android:fillColor="#00000000" android:strokeColor="#FF69B4"
+        android:strokeWidth="2" android:strokeLineCap="round"
+        android:strokeLineJoin="round"/>
+    <!-- Lock body -->
+    <path android:pathData="M5,11 L19,11 L19,21 A1,1 0 0,1 18,22 L6,22 A1,1 0 0,1 5,21 Z"
+        android:fillColor="#FF69B4" android:fillAlpha="0.85"/>
+    <!-- Keyhole outer -->
+    <path android:pathData="M12,15 A2,2 0 1,1 11.99,15 Z"
+        android:fillColor="#1C1A24"/>
+    <!-- Keyhole stem -->
+    <path android:pathData="M12,17 L12,19.5"
+        android:fillColor="#00000000" android:strokeColor="#1C1A24"
+        android:strokeWidth="2" android:strokeLineCap="round"/>
+
+</vector>
