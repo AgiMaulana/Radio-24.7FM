@@ -2,7 +2,6 @@ package io.github.agimaulana.radio.feature.stationlist
 
 import app.cash.turbine.turbineScope
 import io.github.agimaulana.radio.domain.api.entity.GeoLatLong
-import io.github.agimaulana.radio.feature.stationlist.datafactories.newRadioStation
 import io.github.agimaulana.radio.feature.stationlist.datafactories.newUiStateStation
 import io.github.agimaulana.radio.feature.stationlist.location.LocationProvider
 import io.mockk.coEvery
@@ -23,24 +22,14 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
     }
 
     @Test
-    fun `when init then fetch first page of radio stations and create radio controller`() = runTest {
+    fun `when init then create radio controller`() = runTest {
         turbineScope {
             val uiState = viewModel.uiState.testIn(backgroundScope)
             uiState.awaitItem() // initial
 
-            val stations = listOf(newRadioStation())
-            coEvery {
-                getRadioStationsUseCase.execute(page = 1, searchName = null, location = null)
-            } returns stations
-
             viewModel.init()
 
-            with(uiState.awaitItem()) {
-                assertEquals(1, currentPage)
-                assertEquals(stations.size, this.stations.size)
-            }
             coVerify(exactly = 1) {
-                getRadioStationsUseCase.execute(page = 1, searchName = null, location = null)
                 radioPlayerControllerFactory.get()
             }
         }
