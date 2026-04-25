@@ -61,12 +61,15 @@ Edit the code to implement the suggestion. Keep changes minimal — don't refact
 
 ### 4. Post replies
 
-**Via MCP:**
-```
-mcp__github__add_reply_to_pull_request_comment(owner="AgiMaulana", repo="Radio-24.7FM", pullNumber=<pr_number>, commentId=<id>, body=<reply>)
+**Via gh CLI:**
+```bash
+gh api "repos/OWNER/REPO/pulls/PR_NUM/comments/COMMENT_ID/replies" --method POST --field body="REPLY_BODY"
 ```
 
-Post all replies in parallel when possible.
+Example:
+```bash
+gh api "repos/AgiMaulana/Radio-24.7FM/pulls/23/comments/3142356051/replies" --method POST --field body="👍 Good catch"
+```
 
 Reply format:
 - **Agreed**: `"👍 [One sentence: what was fixed and why the reviewer was right.]"`

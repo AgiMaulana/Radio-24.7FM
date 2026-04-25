@@ -1,3 +1,4 @@
 GITHUB_ORG: AgiMaulana
 GITHUB_REPO: Radio-24.7FM
 LINT_COMMAND: ''
+REPLY_COMMAND: gh api "repos/$ORG/$REPO/pulls/$PR/comments/$COMMENT_ID/replies" --method POST --field body="$BODY"
