@@ -46,8 +46,16 @@ class StationListViewModel @Inject constructor(
     private var searchJob: Job? = null
     private var fetchJob: Job? = null
 
-    fun init() {
+fun init(
+        hasLocationPermission: Boolean = false,
+        hasAskedPermission: Boolean = false,
+        shouldShowRationale: Boolean = false
+    ) {
         stationListTracker.trackScreenViewed()
+        val shouldShowSheet = !hasLocationPermission && (
+            !hasAskedPermission || shouldShowRationale
+        )
+        _uiState.update { it.copy(showLocationPermissionSheet = shouldShowSheet) }
         viewModelScope.launch {
             radioPlayerController = radioPlayerControllerFactory.get().apply {
                 viewModelScope.launch { event.collect(::onPlaybackEventReceived) }
@@ -95,7 +103,8 @@ class StationListViewModel @Inject constructor(
             is Action.ExpandPlayer -> trackPlayerEvent(action.source, true)
             is Action.CollapsePlayer -> trackPlayerEvent(action.source, false)
             is Action.OnLocationPermissionGranted -> handleLocationPermissionGranted(action.isGranted)
-            Action.DismissLocationPermission -> _uiState.update { it.copy(showLocationPermissionSheet = false) }
+            // RequestLocationPermission action removed: permission requests are initiated from the UI
+            // via rememberMultiplePermissionsState.launchPermissionRequest() and resolved via ActivityResult.
         }
     }
 
@@ -281,7 +290,7 @@ class StationListViewModel @Inject constructor(
         data class ExpandPlayer(val source: String) : Action
         data class CollapsePlayer(val source: String) : Action
         data class OnLocationPermissionGranted(val isGranted: Boolean) : Action
-        data object DismissLocationPermission : Action
+        // RequestLocationPermission removed — kept permission flow in the UI layer
     }
 
     companion object {

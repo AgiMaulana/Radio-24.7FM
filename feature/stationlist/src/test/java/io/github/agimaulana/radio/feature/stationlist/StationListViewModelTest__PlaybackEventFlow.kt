@@ -23,7 +23,7 @@ class StationListViewModelTest__PlaybackEventFlow  : StationListViewModelTest__F
             } returns station
             val uiState = viewModel.uiState.testIn(backgroundScope)
 
-            viewModel.init()
+            viewModel.init(hasLocationPermission = false, hasAskedPermission = false, shouldShowRationale = false)
             // region start: when media item transitioned then update selected station
             playbackEventChannel.send(PlaybackEvent.MediaItemTransition(station.stationUuid))
 

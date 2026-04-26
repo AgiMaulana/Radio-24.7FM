@@ -33,7 +33,6 @@ internal fun Project.configureView(
         add("implementation", libs.findLibrary("compose.constraint").get())
         add("implementation", libs.findLibrary("coil.compose").get())
         add("implementation", libs.findLibrary("androidx.window").get())
-        add("implementation", libs.findLibrary("accompanist.permissions").get())
         add("implementation", libs.findLibrary("activity.compose").get())
         add("implementation", libs.findLibrary("collections.immutable").get())
         add("implementation", libs.findLibrary("lottie.compose").get())

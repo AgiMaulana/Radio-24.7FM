@@ -9,6 +9,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.verify
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.runCurrent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -28,11 +29,75 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
             uiState.awaitItem() // initial
 
             viewModel.init()
+            runCurrent()
 
             coVerify(exactly = 1) {
                 radioPlayerControllerFactory.get()
             }
         }
+    }
+
+    @Test
+    fun `given permission granted when init then do not show permission sheet`() = runTest {
+        turbineScope {
+            val uiState = viewModel.uiState.testIn(backgroundScope)
+            uiState.awaitItem() // initial
+
+            viewModel.init(hasLocationPermission = true)
+            runCurrent()
+
+            // Sheet should remain false (already granted)
+            assertFalse(uiState.awaitItem().showLocationPermissionSheet)
+        }
+    }
+
+    @Test
+    fun `given no permission and shouldShowRationale false when init then do not show permission sheet`() = runTest {
+        turbineScope {
+            val uiState = viewModel.uiState.testIn(backgroundScope)
+            uiState.awaitItem() // initial
+
+            // Permanently denied: hasAskedPermission=true + shouldShowRationale=false
+            viewModel.init(hasLocationPermission = false, hasAskedPermission = true, shouldShowRationale = false)
+            runCurrent()
+
+            // Sheet stays false (permanently denied)
+            assertFalse(uiState.awaitItem().showLocationPermissionSheet)
+        }
+    }
+
+    @Test
+    fun `given no permission and shouldShowRationale true when init then show permission sheet`() = runTest {
+        viewModel.init(hasLocationPermission = false, hasAskedPermission = true, shouldShowRationale = true)
+        runCurrent()
+
+        // Sheet should show (previously denied, can ask again)
+        assertTrue(viewModel.uiState.value.showLocationPermissionSheet)
+    }
+
+    @Test
+    fun `given hasAskedPermission and shouldShowRationale false when init then hide sheet`() = runTest {
+        viewModel.init(hasLocationPermission = false, hasAskedPermission = true, shouldShowRationale = false)
+        runCurrent()
+
+        // Permanently denied - hide sheet
+        assertFalse(viewModel.uiState.value.showLocationPermissionSheet)
+    }
+
+    @Test
+    fun `given hasLocationPermission when init then hide sheet`() = runTest {
+        viewModel.init(hasLocationPermission = true, hasAskedPermission = true, shouldShowRationale = false)
+        runCurrent()
+
+        assertFalse(viewModel.uiState.value.showLocationPermissionSheet)
+    }
+
+    @Test
+    fun `given never asked and no permission when init then show sheet`() = runTest {
+        viewModel.init(hasLocationPermission = false, hasAskedPermission = false, shouldShowRationale = false)
+        runCurrent()
+
+        assertTrue(viewModel.uiState.value.showLocationPermissionSheet)
     }
 
     @Test
@@ -110,23 +175,11 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
     }
 
     @Test
-    fun `when DismissLocationPermission then hide permission sheet`() = runTest {
-        turbineScope {
-            val uiState = viewModel.uiState.testIn(backgroundScope)
-            assertTrue(uiState.awaitItem().showLocationPermissionSheet)
-
-            viewModel.onAction(StationListViewModel.Action.DismissLocationPermission)
-
-            assertFalse(uiState.awaitItem().showLocationPermissionSheet)
-        }
-    }
-
-    @Test
     fun `given station is not playing when clicked then set radio and play`() {
         val station = newUiStateStation(withServerUuid = "radio-1")
         every { radioPlayerController.currentMediaId } returns "radio-2"
 
-        viewModel.init()
+        viewModel.init(hasLocationPermission = false, shouldShowRationale = false)
         viewModel.onAction(StationListViewModel.Action.Click(station))
 
         verify {
@@ -139,7 +192,7 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
     @Test
     fun `when pause then pause radio player`() {
         val station = newUiStateStation()
-        viewModel.init()
+        viewModel.init(hasLocationPermission = false, shouldShowRationale = false)
         viewModel.onAction(StationListViewModel.Action.Pause(station))
         verify { radioPlayerController.pause() }
     }
@@ -147,14 +200,14 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
     @Test
     fun `when play then play radio player`() {
         val station = newUiStateStation()
-        viewModel.init()
+        viewModel.init(hasLocationPermission = false, shouldShowRationale = false)
         viewModel.onAction(StationListViewModel.Action.Play(station))
         verify { radioPlayerController.play() }
     }
 
     @Test
     fun `when on clear view model then release radio player`() = runTest {
-        viewModel.init()
+        viewModel.init(hasLocationPermission = false, shouldShowRationale = false)
         viewModel.invokeOnCleared()
         verify { radioPlayerController.release() }
     }

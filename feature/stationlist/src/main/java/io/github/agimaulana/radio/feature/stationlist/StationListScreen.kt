@@ -64,12 +64,11 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import io.github.agimaulana.radio.core.design.GlassPlayerState
 import io.github.agimaulana.radio.core.design.GlassSlidingPlayerLayout
 import io.github.agimaulana.radio.core.design.RadioTheme
 import io.github.agimaulana.radio.core.design.rememberGlassPlayerState
+import io.github.agimaulana.radio.core.design.rememberMultiplePermissionsState
 import io.github.agimaulana.radio.core.design.theme.PreviewTheme
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.Action
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.UiState
@@ -80,6 +79,7 @@ import io.github.agimaulana.radio.feature.stationlist.player.BufferingIcon
 import io.github.agimaulana.radio.feature.stationlist.player.FullPlayer
 import io.github.agimaulana.radio.feature.stationlist.player.MiniPlayer
 import kotlinx.collections.immutable.persistentListOf
+import timber.log.Timber
 
 private const val EXPANDED_CONTENT_THRESHOLD = 0.2f
 private val HeroBackgroundColor = Color(0xFF1C1A24)
@@ -92,7 +92,7 @@ private data class ToolbarDimensions(
     val progress: Float
 )
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StationListRoute(
     viewModel: StationListViewModel = hiltViewModel()
@@ -100,16 +100,18 @@ fun StationListRoute(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val playerState = rememberGlassPlayerState(peekHeight = 80.dp)
 
-    val locationPermissionState = rememberMultiplePermissionsState(
-        permissions = listOf(
-            android.Manifest.permission.ACCESS_COARSE_LOCATION,
-            android.Manifest.permission.ACCESS_FINE_LOCATION
-        )
-    )
-
-    LaunchedEffect(locationPermissionState.allPermissionsGranted) {
-        viewModel.onAction(Action.OnLocationPermissionGranted(locationPermissionState.allPermissionsGranted))
+    // Provide an explicit callback so the permission state can be resolved from the
+    // ActivityResult callback (the source of truth) — this avoids races with
+    // snapshot-based permission checks on some OEM devices.
+    fun resolveLocationPermission(isGranted: Boolean) {
+        viewModel.onAction(Action.OnLocationPermissionGranted(isGranted))
     }
+
+    val locationPermissionState = rememberMultiplePermissionsState(
+        android.Manifest.permission.ACCESS_COARSE_LOCATION,
+        android.Manifest.permission.ACCESS_FINE_LOCATION,
+        onPermissionResolved = ::resolveLocationPermission
+    )
 
     BackHandler(enabled = playerState.canCollapse) {
         viewModel.onAction(Action.CollapsePlayer(source = "back_press"))
@@ -117,16 +119,24 @@ fun StationListRoute(
     }
 
     LaunchedEffect(Unit) {
-        viewModel.init()
+        viewModel.init(
+            hasLocationPermission = locationPermissionState.allGranted,
+            hasAskedPermission = locationPermissionState.hasAskedPermission,
+            shouldShowRationale = locationPermissionState.shouldShowRationale
+        )
     }
 
     StationListScreen(
         uiState = uiState,
         playerState = playerState,
         onAction = viewModel::onAction,
+        showLocationPermissionSheet = uiState.showLocationPermissionSheet,
         onLaunchLocationPermissionRequest = {
-            locationPermissionState.launchMultiplePermissionRequest()
-        }
+            locationPermissionState.launchPermissionRequest()
+        },
+        onDismissLocationPermission = {
+            resolveLocationPermission(isGranted = false)
+        },
     )
 }
 
@@ -135,17 +145,19 @@ fun StationListRoute(
 private fun StationListScreen(
     uiState: UiState,
     playerState: GlassPlayerState,
+    showLocationPermissionSheet: Boolean,
     onLaunchLocationPermissionRequest: () -> Unit,
+    onDismissLocationPermission: () -> Unit,
     modifier: Modifier = Modifier,
     onAction: (Action) -> Unit = {},
 ) {
     val listState = rememberLazyListState()
     val density = LocalDensity.current
 
-    if (uiState.showLocationPermissionSheet) {
+    if (showLocationPermissionSheet) {
         LocationPermissionBottomSheet(
             onAllowClick = onLaunchLocationPermissionRequest,
-            onDismissRequest = { onAction(Action.DismissLocationPermission) }
+            onDismissRequest = onDismissLocationPermission,
         )
     }
 
@@ -558,7 +570,9 @@ private fun StationListScreenPreview() {
                 )
             ),
             playerState = rememberGlassPlayerState(peekHeight = 80.dp),
-            onLaunchLocationPermissionRequest = {}
+            showLocationPermissionSheet = false,
+            onLaunchLocationPermissionRequest = {},
+            onDismissLocationPermission = {},
         )
     }
 }
