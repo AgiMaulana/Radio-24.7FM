@@ -126,7 +126,15 @@ fun StationListRoute(
         )
     }
 
-    // ...existing code...
+    // Safeguard for OEMs or race conditions where the ActivityResult
+    // callback isn't delivered on cold start. If permission is granted
+    // but the ViewModel hasn't recorded that fact, dispatch the resolved
+    // permission.
+    LaunchedEffect(locationPermissionState.allGranted, uiState.locationPermissionResolved) {
+        if (locationPermissionState.allGranted && !uiState.locationPermissionResolved) {
+            resolveLocationPermission(isGranted = true)
+        }
+    }
 
     StationListScreen(
         uiState = uiState,

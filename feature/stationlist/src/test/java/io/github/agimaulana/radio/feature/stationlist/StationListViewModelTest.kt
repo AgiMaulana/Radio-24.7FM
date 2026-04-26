@@ -34,7 +34,6 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
             coVerify(exactly = 1) {
                 radioPlayerControllerFactory.get()
             }
-            uiState.cancelAndIgnoreRemainingEvents()
         }
     }
 
@@ -49,7 +48,6 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
 
             // Sheet should remain false (already granted)
             assertFalse(uiState.awaitItem().showLocationPermissionSheet)
-            uiState.cancelAndIgnoreRemainingEvents()
         }
     }
 
@@ -65,7 +63,6 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
 
             // Sheet stays false (permanently denied)
             assertFalse(uiState.awaitItem().showLocationPermissionSheet)
-            uiState.cancelAndIgnoreRemainingEvents()
         }
     }
 
@@ -93,14 +90,6 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
         runCurrent()
 
         assertFalse(viewModel.uiState.value.showLocationPermissionSheet)
-    }
-
-    @Test
-    fun `locationPermissionResolved set when init with hasLocationPermission true`() = runTest {
-        viewModel.init(hasLocationPermission = true)
-        runCurrent()
-
-        assertTrue(viewModel.uiState.value.locationPermissionResolved)
     }
 
     @Test
@@ -153,66 +142,6 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
                     location = GeoLatLong(-6.2, 106.8)
                 )
             }
-            uiState.cancelAndIgnoreRemainingEvents()
-        }
-    }
-
-    @Test
-    fun `given hasLocationPermission when init then fetch stations with location`() = runTest {
-        turbineScope {
-            val uiState = viewModel.uiState.testIn(backgroundScope)
-            uiState.awaitItem() // initial
-
-            val locationInfo = LocationProvider.LocationInfo(
-                city = "Jakarta",
-                country = "Indonesia",
-                latitude = -6.2,
-                longitude = 106.8
-            )
-            coEvery { locationProvider.getCurrentLocation() } returns locationInfo
-            coEvery {
-                getRadioStationsUseCase.execute(page = 1, searchName = null, location = any())
-            } returns emptyList()
-
-            viewModel.init(hasLocationPermission = true)
-            // Advance the test dispatcher so the controller initialization and
-            // subsequent permission handling run.
-            runCurrent()
-
-            // Sheet hidden immediately
-            with(uiState.awaitItem()) {
-                assertFalse(showLocationPermissionSheet)
-            }
-
-            // The location lookup and fetch are performed asynchronously after
-            // the radio controller is initialized. Wait for the emission that
-            // contains the resolved location info.
-            var foundLocation = false
-            repeat(5) {
-                val state = uiState.awaitItem()
-                if (state.locationName != null) {
-                    assertEquals("Jakarta, Indonesia", state.locationName)
-                    assertEquals(GeoLatLong(-6.2, 106.8), state.currentPosition)
-                    foundLocation = true
-                    return@repeat
-                }
-            }
-            assertTrue("Expected locationName to be emitted", foundLocation)
-
-            // Next emission: fetch complete
-            with(uiState.awaitItem()) {
-                assertEquals(1, currentPage)
-                assertFalse(isLoading)
-            }
-
-            coVerify {
-                getRadioStationsUseCase.execute(
-                    page = 1,
-                    searchName = null,
-                    location = GeoLatLong(-6.2, 106.8)
-                )
-            }
-            uiState.cancelAndIgnoreRemainingEvents()
         }
     }
 
@@ -242,7 +171,6 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
             coVerify {
                 getRadioStationsUseCase.execute(page = 1, searchName = null, location = null)
             }
-            uiState.cancelAndIgnoreRemainingEvents()
         }
     }
 

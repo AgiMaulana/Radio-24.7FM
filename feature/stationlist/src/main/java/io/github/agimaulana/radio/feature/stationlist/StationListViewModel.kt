@@ -56,28 +56,11 @@ fun init(
             !hasAskedPermission || shouldShowRationale
         )
         _uiState.update { it.copy(showLocationPermissionSheet = shouldShowSheet) }
-        // If the app already has location permission on cold start, mark the
-        // permission as resolved synchronously so the UI doesn't attempt to
-        // re-dispatch it. The actual permission handling (which may trigger
-        // network fetches) is deferred until after the radio controller is
-        // initialized below to avoid races where fetched stations rely on the
-        // controller state.
-        val permissionAlreadyGranted = hasLocationPermission
-        if (permissionAlreadyGranted) {
-            _uiState.update { it.copy(showLocationPermissionSheet = false, locationPermissionResolved = true) }
-        }
-
         viewModelScope.launch {
             radioPlayerController = radioPlayerControllerFactory.get().apply {
                 viewModelScope.launch { event.collect(::onPlaybackEventReceived) }
             }
             restoreSelectedStation()
-
-            // Now that the controller is ready, handle the already-granted
-            // permission which may perform a location lookup and fetch.
-            if (permissionAlreadyGranted) {
-                handleLocationPermissionGranted(isGranted = true)
-            }
         }
     }
 
@@ -163,9 +146,6 @@ fun init(
     }
 
     private fun handleLocationPermissionGranted(isGranted: Boolean) {
-        // Mark the permission result as resolved and hide the sheet. This
-        // prevents the UI from redundantly re-dispatching results on cold
-        // starts when permission is already granted.
         _uiState.update {
             it.copy(
                 showLocationPermissionSheet = false,
