@@ -1,7 +1,8 @@
-package io.github.agimaulana.radio
+package io.github.agimaulana.radio.initializer
 
 import android.content.Context
 import androidx.startup.Initializer
+import io.github.agimaulana.radio.BuildConfig
 import io.sentry.Sentry
 import io.sentry.SentryLevel
 import io.sentry.android.core.SentryAndroid
