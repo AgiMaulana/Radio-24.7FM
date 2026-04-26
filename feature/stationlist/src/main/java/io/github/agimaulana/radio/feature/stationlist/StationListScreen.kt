@@ -122,23 +122,32 @@ fun StationListRoute(
         }
     }
 
+    LaunchedEffect(uiState.showLocationPermissionSheet) {
+        if (uiState.showLocationPermissionSheet && permissionResolutionDone) {
+            if (!locationPermissionState.hasAskedPermission || locationPermissionState.shouldShowRationale) {
+                permissionResolutionDone = false
+            }
+        }
+    }
+
     BackHandler(enabled = playerState.canCollapse) {
         viewModel.onAction(Action.CollapsePlayer(source = "back_press"))
         playerState.collapse()
     }
 
     LaunchedEffect(Unit) {
-        viewModel.init()
+        viewModel.init(
+            hasLocationPermission = locationPermissionState.allGranted,
+            hasAskedPermission = locationPermissionState.hasAskedPermission,
+            shouldShowRationale = locationPermissionState.shouldShowRationale
+        )
     }
 
     StationListScreen(
         uiState = uiState,
         playerState = playerState,
         onAction = viewModel::onAction,
-        showLocationPermissionSheet = uiState.showLocationPermissionSheet &&
-            !permissionResolutionDone &&
-            !locationPermissionState.hasAskedPermission &&
-            !locationPermissionState.allGranted,
+        showLocationPermissionSheet = uiState.showLocationPermissionSheet,
         onLaunchLocationPermissionRequest = {
             locationPermissionState.launchPermissionRequest()
         },
