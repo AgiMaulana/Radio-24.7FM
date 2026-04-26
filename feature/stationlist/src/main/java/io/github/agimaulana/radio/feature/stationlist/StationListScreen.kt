@@ -1,7 +1,11 @@
 package io.github.agimaulana.radio.feature.stationlist
 
 import android.app.Activity
+import android.content.IntentSender
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -114,6 +118,24 @@ fun StationListRoute(
         android.Manifest.permission.ACCESS_FINE_LOCATION,
         onPermissionResolved = ::resolveLocationPermission
     )
+
+    val locationSettingsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        viewModel.onAction(Action.OnLocationSettingsResolved(result.resultCode == Activity.RESULT_OK))
+    }
+
+    LaunchedEffect(uiState.locationSettingsResolution) {
+        uiState.locationSettingsResolution?.let { exception ->
+            try {
+                val intentSenderRequest = IntentSenderRequest.Builder(exception.resolution.intentSender).build()
+                locationSettingsLauncher.launch(intentSenderRequest)
+            } catch (e: IntentSender.SendIntentException) {
+                Timber.e(e, "Failed to launch location settings resolution")
+                viewModel.onAction(Action.OnLocationSettingsResolved(false))
+            }
+        }
+    }
 
     BackHandler(enabled = playerState.canCollapse) {
         viewModel.onAction(Action.CollapsePlayer(source = "back_press"))
