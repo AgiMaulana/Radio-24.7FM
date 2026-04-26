@@ -146,7 +146,12 @@ fun init(
     }
 
     private fun handleLocationPermissionGranted(isGranted: Boolean) {
-        _uiState.update { it.copy(showLocationPermissionSheet = false) }
+        _uiState.update {
+            it.copy(
+                showLocationPermissionSheet = false,
+                locationPermissionResolved = true
+            )
+        }
         if (!isGranted) {
             fetchRadioStations()
             return
@@ -266,6 +271,7 @@ fun init(
         val featureFlag: FeatureFlag = FeatureFlag(),
         val locationName: String? = null,
         val currentPosition: GeoLatLong? = null,
+        val locationPermissionResolved: Boolean = false,
         val showLocationPermissionSheet: Boolean = true,
     ) {
         data class Station(
