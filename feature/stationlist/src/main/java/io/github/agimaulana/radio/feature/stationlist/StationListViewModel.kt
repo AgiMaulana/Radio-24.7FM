@@ -95,7 +95,6 @@ class StationListViewModel @Inject constructor(
             is Action.ExpandPlayer -> trackPlayerEvent(action.source, true)
             is Action.CollapsePlayer -> trackPlayerEvent(action.source, false)
             is Action.OnLocationPermissionGranted -> handleLocationPermissionGranted(action.isGranted)
-            Action.DismissLocationPermission -> _uiState.update { it.copy(showLocationPermissionSheet = false) }
         }
     }
 
@@ -281,7 +280,6 @@ class StationListViewModel @Inject constructor(
         data class ExpandPlayer(val source: String) : Action
         data class CollapsePlayer(val source: String) : Action
         data class OnLocationPermissionGranted(val isGranted: Boolean) : Action
-        data object DismissLocationPermission : Action
     }
 
     companion object {

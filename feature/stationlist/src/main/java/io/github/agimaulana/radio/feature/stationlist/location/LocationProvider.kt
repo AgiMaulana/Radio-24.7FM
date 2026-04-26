@@ -19,15 +19,15 @@ class LocationProvider @Inject constructor(
 ) {
     private val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
 
-    @SuppressLint("MissingPermission")
+@SuppressLint("MissingPermission")
     suspend fun getCurrentLocation(): LocationInfo? {
         val location = try {
             fusedLocationClient.getCurrentLocation(
-                Priority.PRIORITY_BALANCED_POWER_ACCURACY,
+                Priority.PRIORITY_HIGH_ACCURACY,
                 CancellationTokenSource().token
             ).await()
         } catch (e: Exception) {
-            Timber.e(e, "Failed to last location")
+            Timber.e(e, "Failed to get location")
             null
         } ?: return null
 

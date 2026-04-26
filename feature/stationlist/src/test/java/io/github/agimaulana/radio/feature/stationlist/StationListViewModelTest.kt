@@ -110,18 +110,6 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
     }
 
     @Test
-    fun `when DismissLocationPermission then hide permission sheet`() = runTest {
-        turbineScope {
-            val uiState = viewModel.uiState.testIn(backgroundScope)
-            assertTrue(uiState.awaitItem().showLocationPermissionSheet)
-
-            viewModel.onAction(StationListViewModel.Action.DismissLocationPermission)
-
-            assertFalse(uiState.awaitItem().showLocationPermissionSheet)
-        }
-    }
-
-    @Test
     fun `given station is not playing when clicked then set radio and play`() {
         val station = newUiStateStation(withServerUuid = "radio-1")
         every { radioPlayerController.currentMediaId } returns "radio-2"

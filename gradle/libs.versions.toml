@@ -34,7 +34,6 @@ retrofit = "3.0.0"
 moshi = "1.15.2"
 joda = "2.14.0"
 coilCompose = "2.7.0"
-accompanistPermissions = "0.37.3"
 activityCompose = "1.10.1"
 collectionsImmutable = "0.4.0"
 lottieCompose = "6.6.7"
@@ -106,7 +105,6 @@ androidx-compose-materialWindow = { module = "androidx.compose.material3:materia
 compose-constraint = { module = "androidx.constraintlayout:constraintlayout-compose", version.ref = "composeConstraint" }
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coilCompose" }
 coil-compose-test = { module = "io.coil-kt:coil-test", version.ref = "coilCompose" }
-accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanistPermissions" }
 activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 compose-navigation-testing = { module = "androidx.navigation:navigation-testing", version.ref = "composeNavigation" }
 compose-ui-testing = { module = "androidx.compose.ui:ui-test-junit4", version.ref = "compose" }
