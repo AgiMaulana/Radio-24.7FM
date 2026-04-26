@@ -159,7 +159,11 @@ fun init(
             }
             _uiState.update {
                 it.copy(
-                    locationName = if (location.city.isNotEmpty()) "${location.city}, ${location.country}" else null,
+                    locationName = listOf(location.adminArea, location.city)
+                        .filter { it.isNotEmpty() }
+                        .distinct()
+                        .joinToString(", ")
+                        .takeIf { it.isNotEmpty() },
                     currentPosition = GeoLatLong(location.latitude, location.longitude),
                     currentPage = 0,
                     stations = persistentListOf(),

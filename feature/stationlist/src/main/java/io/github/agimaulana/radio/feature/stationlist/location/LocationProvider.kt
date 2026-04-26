@@ -23,7 +23,7 @@ class LocationProvider @Inject constructor(
     @Named("highAccuracyTimeoutMs") private val highAccuracyTimeoutMs: Long = 5_000L
 ) {
 
-@SuppressLint("MissingPermission")
+    @SuppressLint("MissingPermission")
     suspend fun getCurrentLocation(): LocationInfo? {
         // Prefer a small chain of progressively less demanding providers. Each helper
         // ensures its CancellationTokenSource is cancelled to avoid resource leaks.
@@ -44,7 +44,8 @@ class LocationProvider @Inject constructor(
             val address = addresses?.firstOrNull()
             
             LocationInfo(
-                city = address?.locality ?: address?.subAdminArea ?: "",
+                city = address?.adminArea ?: "",
+                adminArea = address?.locality ?: address?.subAdminArea ?: "",
                 country = address?.countryName ?: "",
                 latitude = location.latitude,
                 longitude = location.longitude
@@ -53,6 +54,7 @@ class LocationProvider @Inject constructor(
             Timber.e(e, "Failed to get location info")
             LocationInfo(
                 city = "",
+                adminArea = "",
                 country = "",
                 latitude = location.latitude,
                 longitude = location.longitude
@@ -135,6 +137,7 @@ class LocationProvider @Inject constructor(
 
     data class LocationInfo(
         val city: String,
+        val adminArea: String,
         val country: String,
         val latitude: Double,
         val longitude: Double
