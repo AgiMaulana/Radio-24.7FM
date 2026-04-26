@@ -36,7 +36,8 @@ A modern Android application for streaming radio stations, built with Jetpack Co
  ├── core/             # Shared low-level modules (design, network, radioplayer, tracker)
  ├── domain/           # Domain layer (api, impl)
  ├── infrastructure/   # Infrastructure implementations
- └── build-logic/      # Custom Gradle convention plugins
+ ├── build-logic/      # Custom Gradle convention plugins
+ └── docs/             # Documentation and screenshots
 ```
 
 ## 🚀 Getting Started
