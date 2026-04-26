@@ -107,7 +107,8 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
             uiState.awaitItem() // initial
 
             val locationInfo = LocationProvider.LocationInfo(
-                city = "Jakarta",
+                city = "Indonesia",
+                adminArea = "Jakarta",
                 country = "Indonesia",
                 latitude = -6.2,
                 longitude = 106.8
