@@ -1,7 +1,8 @@
-package io.github.agimaulana.radio
+package io.github.agimaulana.radio.initializer
 
 import android.content.Context
 import androidx.startup.Initializer
+import io.github.agimaulana.radio.BuildConfig
 import timber.log.Timber
 
 class LoggingInitializer : Initializer<Unit> {

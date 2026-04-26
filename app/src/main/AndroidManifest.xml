@@ -30,11 +30,11 @@
             tools:node="merge">
 
             <meta-data
-                android:name="io.github.agimaulana.radio.LoggingInitializer"
+                android:name="io.github.agimaulana.radio.initializer.LoggingInitializer"
                 android:value="androidx.startup" />
 
             <meta-data
-                android:name="io.github.agimaulana.radio.SentryInitializer"
+                android:name="io.github.agimaulana.radio.initializer.SentryInitializer"
                 android:value="androidx.startup" />
         </provider>
 
