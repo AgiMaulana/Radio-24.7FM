@@ -10,6 +10,7 @@ import com.google.android.gms.tasks.CancellationTokenSource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withTimeoutOrNull
+import javax.inject.Named
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -19,7 +20,7 @@ import javax.inject.Inject
 class LocationProvider @Inject constructor(
     @ApplicationContext private val context: Context,
     private val fusedLocationClient: FusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(context),
-    private val highAccuracyTimeoutMs: Long = 5_000L
+    @Named("highAccuracyTimeoutMs") private val highAccuracyTimeoutMs: Long = 5_000L
 ) {
 
 @SuppressLint("MissingPermission")
