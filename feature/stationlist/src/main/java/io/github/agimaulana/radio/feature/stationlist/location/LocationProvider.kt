@@ -8,6 +8,7 @@ import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -18,6 +19,11 @@ class LocationProvider @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+
+    companion object {
+        // Timeout for high-accuracy location (ms). Tune as needed.
+        private const val HIGH_ACCURACY_TIMEOUT_MS = 5_000L
+    }
 
 @SuppressLint("MissingPermission")
     suspend fun getCurrentLocation(): LocationInfo? {
@@ -59,13 +65,18 @@ class LocationProvider @Inject constructor(
     // Helper: try high accuracy (GPS)
     @SuppressLint("MissingPermission")
     private suspend fun getHighAccuracyLocation(): android.location.Location? {
+        // Try high-accuracy but don't wait indefinitely — fall back after timeout.
         return try {
             val cts = CancellationTokenSource()
             try {
-                fusedLocationClient.getCurrentLocation(
-                    Priority.PRIORITY_HIGH_ACCURACY,
-                    cts.token
-                ).await()
+                // Limit the wait time for high-accuracy location to avoid long delays
+                // (e.g., when GPS is cold or unavailable on some devices).
+                withTimeoutOrNull(HIGH_ACCURACY_TIMEOUT_MS) {
+                    fusedLocationClient.getCurrentLocation(
+                        Priority.PRIORITY_HIGH_ACCURACY,
+                        cts.token
+                    ).await()
+                }
             } finally {
                 cts.cancel()
             }
