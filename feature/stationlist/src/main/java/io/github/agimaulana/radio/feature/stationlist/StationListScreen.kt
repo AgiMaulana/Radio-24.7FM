@@ -100,35 +100,18 @@ fun StationListRoute(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val playerState = rememberGlassPlayerState(peekHeight = 80.dp)
 
-    val locationPermissionState = rememberMultiplePermissionsState(
-        android.Manifest.permission.ACCESS_COARSE_LOCATION,
-        android.Manifest.permission.ACCESS_FINE_LOCATION,
-    )
-    var permissionResolutionDone by remember { mutableStateOf(false) }
-
+    // Provide an explicit callback so the permission state can be resolved from the
+    // ActivityResult callback (the source of truth) — this avoids races with
+    // snapshot-based permission checks on some OEM devices.
     fun resolveLocationPermission(isGranted: Boolean) {
-        permissionResolutionDone = true
         viewModel.onAction(Action.OnLocationPermissionGranted(isGranted))
     }
 
-    LaunchedEffect(
-        locationPermissionState.statusMap,
-        locationPermissionState.requestResultCount,
-        permissionResolutionDone
-    ) {
-        if (!permissionResolutionDone && locationPermissionState.hasAskedPermission) {
-            val isGranted = locationPermissionState.statusMap.values.all { it }
-            resolveLocationPermission(isGranted)
-        }
-    }
-
-    LaunchedEffect(uiState.showLocationPermissionSheet) {
-        if (uiState.showLocationPermissionSheet && permissionResolutionDone) {
-            if (!locationPermissionState.hasAskedPermission || locationPermissionState.shouldShowRationale) {
-                permissionResolutionDone = false
-            }
-        }
-    }
+    val locationPermissionState = rememberMultiplePermissionsState(
+        android.Manifest.permission.ACCESS_COARSE_LOCATION,
+        android.Manifest.permission.ACCESS_FINE_LOCATION,
+        onPermissionResolved = ::resolveLocationPermission
+    )
 
     BackHandler(enabled = playerState.canCollapse) {
         viewModel.onAction(Action.CollapsePlayer(source = "back_press"))

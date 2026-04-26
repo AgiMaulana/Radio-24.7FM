@@ -21,15 +21,41 @@ class LocationProvider @Inject constructor(
 
 @SuppressLint("MissingPermission")
     suspend fun getCurrentLocation(): LocationInfo? {
-        val location = try {
-            fusedLocationClient.getCurrentLocation(
-                Priority.PRIORITY_HIGH_ACCURACY,
-                CancellationTokenSource().token
-            ).await()
+        // Try high accuracy first, then fall back to balanced power accuracy if needed.
+        var location = try {
+            val cts = CancellationTokenSource()
+            try {
+                fusedLocationClient.getCurrentLocation(
+                    Priority.PRIORITY_HIGH_ACCURACY,
+                    cts.token
+                ).await()
+            } finally {
+                cts.cancel()
+            }
         } catch (e: Exception) {
-            Timber.e(e, "Failed to get location")
+            Timber.e(e, "Failed to get high-accuracy location")
             null
-        } ?: return null
+        }
+
+        if (location == null) {
+            // Fallback to balanced power accuracy
+            location = try {
+                val cts2 = CancellationTokenSource()
+                try {
+                    fusedLocationClient.getCurrentLocation(
+                        Priority.PRIORITY_BALANCED_POWER_ACCURACY,
+                        cts2.token
+                    ).await()
+                } finally {
+                    cts2.cancel()
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to get fallback location")
+                null
+            }
+        }
+
+        if (location == null) return null
 
         return try {
             val geocoder = Geocoder(context, Locale.getDefault())

@@ -103,7 +103,8 @@ fun init(
             is Action.ExpandPlayer -> trackPlayerEvent(action.source, true)
             is Action.CollapsePlayer -> trackPlayerEvent(action.source, false)
             is Action.OnLocationPermissionGranted -> handleLocationPermissionGranted(action.isGranted)
-            Action.RequestLocationPermission -> _uiState.update { it.copy(showLocationPermissionSheet = true) }
+            // RequestLocationPermission action removed: permission requests are initiated from the UI
+            // via rememberMultiplePermissionsState.launchPermissionRequest() and resolved via ActivityResult.
         }
     }
 
@@ -289,7 +290,7 @@ fun init(
         data class ExpandPlayer(val source: String) : Action
         data class CollapsePlayer(val source: String) : Action
         data class OnLocationPermissionGranted(val isGranted: Boolean) : Action
-        data object RequestLocationPermission : Action
+        // RequestLocationPermission removed — kept permission flow in the UI layer
     }
 
     companion object {

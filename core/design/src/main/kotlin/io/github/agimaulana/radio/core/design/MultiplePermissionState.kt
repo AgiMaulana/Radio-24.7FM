@@ -20,7 +20,10 @@ private const val PermissionPreferencesName = "core_design_permissions"
 private const val PermissionAskedKeyPrefix = "has_asked_permission_"
 
 @Composable
-fun rememberMultiplePermissionsState(vararg permissions: String): MultiplePermissionState {
+fun rememberMultiplePermissionsState(
+    vararg permissions: String,
+    onPermissionResolved: ((Boolean) -> Unit)? = null
+): MultiplePermissionState {
     val context = LocalContext.current
     val permissionList = remember(*permissions) { permissions.toList() }
     val permissionKey = remember(permissionList) { permissionList.sorted().joinToString(separator = "|") }
@@ -56,15 +59,15 @@ fun rememberMultiplePermissionsState(vararg permissions: String): MultiplePermis
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
     ) { result ->
+        // ActivityResult callback is the source of truth for whether permissions were granted.
+        val isGranted = result.values.all { it }
         context.markPermissionAsked(permissionKey)
         hasAskedPermission = true
         permissionsStatus = context.checkPermissionStatuses(permissionList)
         shouldShowRationale = context.shouldShowAnyPermissionRationale(permissionList)
         requestResultCount += 1
-    }
-
-    SideEffect {
-        refreshPermissionSnapshot()
+        // Notify caller immediately so they can act on the definitive result (avoids race conditions).
+        onPermissionResolved?.invoke(isGranted)
     }
 
     return remember(permissionsStatus, shouldShowRationale, hasAskedPermission, requestResultCount, permissionKey) {
