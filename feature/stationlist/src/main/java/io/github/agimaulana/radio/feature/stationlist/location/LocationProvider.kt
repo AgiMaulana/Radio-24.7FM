@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Geocoder
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -16,14 +17,10 @@ import java.util.Locale
 import javax.inject.Inject
 
 class LocationProvider @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val fusedLocationClient: FusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(context),
+    private val highAccuracyTimeoutMs: Long = 5_000L
 ) {
-    private val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
-
-    companion object {
-        // Timeout for high-accuracy location (ms). Tune as needed.
-        private const val HIGH_ACCURACY_TIMEOUT_MS = 5_000L
-    }
 
 @SuppressLint("MissingPermission")
     suspend fun getCurrentLocation(): LocationInfo? {
@@ -64,14 +61,14 @@ class LocationProvider @Inject constructor(
 
     // Helper: try high accuracy (GPS)
     @SuppressLint("MissingPermission")
-    private suspend fun getHighAccuracyLocation(): android.location.Location? {
+    internal suspend fun getHighAccuracyLocation(): android.location.Location? {
         // Try high-accuracy but don't wait indefinitely — fall back after timeout.
         return try {
             val cts = CancellationTokenSource()
             try {
                 // Limit the wait time for high-accuracy location to avoid long delays
                 // (e.g., when GPS is cold or unavailable on some devices).
-                withTimeoutOrNull(HIGH_ACCURACY_TIMEOUT_MS) {
+                withTimeoutOrNull(highAccuracyTimeoutMs) {
                     fusedLocationClient.getCurrentLocation(
                         Priority.PRIORITY_HIGH_ACCURACY,
                         cts.token
@@ -88,7 +85,7 @@ class LocationProvider @Inject constructor(
 
     // Helper: try balanced power accuracy (network/GPS hybrid)
     @SuppressLint("MissingPermission")
-    private suspend fun getBalancedPowerAccuracyLocation(): android.location.Location? {
+    internal suspend fun getBalancedPowerAccuracyLocation(): android.location.Location? {
         return try {
             val cts = CancellationTokenSource()
             try {
@@ -107,7 +104,7 @@ class LocationProvider @Inject constructor(
 
     // Helper: try low power (may use cached or coarse sources)
     @SuppressLint("MissingPermission")
-    private suspend fun getLowPowerLocation(): android.location.Location? {
+    internal suspend fun getLowPowerLocation(): android.location.Location? {
         return try {
             val cts = CancellationTokenSource()
             try {
@@ -126,7 +123,7 @@ class LocationProvider @Inject constructor(
 
     // Helper: fall back to last known location (may be stale but better than nothing)
     @SuppressLint("MissingPermission")
-    private suspend fun getLastKnownLocation(): android.location.Location? {
+    internal suspend fun getLastKnownLocation(): android.location.Location? {
         return try {
             fusedLocationClient.lastLocation.await()
         } catch (e: Exception) {
