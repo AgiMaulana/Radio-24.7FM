@@ -21,39 +21,12 @@ class LocationProvider @Inject constructor(
 
 @SuppressLint("MissingPermission")
     suspend fun getCurrentLocation(): LocationInfo? {
-        // Try high accuracy first, then fall back to balanced power accuracy if needed.
-        var location = try {
-            val cts = CancellationTokenSource()
-            try {
-                fusedLocationClient.getCurrentLocation(
-                    Priority.PRIORITY_HIGH_ACCURACY,
-                    cts.token
-                ).await()
-            } finally {
-                cts.cancel()
-            }
-        } catch (e: Exception) {
-            Timber.e(e, "Failed to get high-accuracy location")
-            null
-        }
-
-        if (location == null) {
-            // Fallback to balanced power accuracy
-            location = try {
-                val cts2 = CancellationTokenSource()
-                try {
-                    fusedLocationClient.getCurrentLocation(
-                        Priority.PRIORITY_BALANCED_POWER_ACCURACY,
-                        cts2.token
-                    ).await()
-                } finally {
-                    cts2.cancel()
-                }
-            } catch (e: Exception) {
-                Timber.e(e, "Failed to get fallback location")
-                null
-            }
-        }
+        // Prefer a small chain of progressively less demanding providers. Each helper
+        // ensures its CancellationTokenSource is cancelled to avoid resource leaks.
+        val location = getHighAccuracyLocation()
+            ?: getBalancedPowerAccuracyLocation()
+            ?: getLowPowerLocation()
+            ?: getLastKnownLocation()
 
         if (location == null) return null
 
@@ -80,6 +53,74 @@ class LocationProvider @Inject constructor(
                 latitude = location.latitude,
                 longitude = location.longitude
             )
+        }
+    }
+
+    // Helper: try high accuracy (GPS)
+    @SuppressLint("MissingPermission")
+    private suspend fun getHighAccuracyLocation(): android.location.Location? {
+        return try {
+            val cts = CancellationTokenSource()
+            try {
+                fusedLocationClient.getCurrentLocation(
+                    Priority.PRIORITY_HIGH_ACCURACY,
+                    cts.token
+                ).await()
+            } finally {
+                cts.cancel()
+            }
+        } catch (e: Exception) {
+            Timber.d(e, "high-accuracy failed")
+            null
+        }
+    }
+
+    // Helper: try balanced power accuracy (network/GPS hybrid)
+    @SuppressLint("MissingPermission")
+    private suspend fun getBalancedPowerAccuracyLocation(): android.location.Location? {
+        return try {
+            val cts = CancellationTokenSource()
+            try {
+                fusedLocationClient.getCurrentLocation(
+                    Priority.PRIORITY_BALANCED_POWER_ACCURACY,
+                    cts.token
+                ).await()
+            } finally {
+                cts.cancel()
+            }
+        } catch (e: Exception) {
+            Timber.d(e, "balanced-power failed")
+            null
+        }
+    }
+
+    // Helper: try low power (may use cached or coarse sources)
+    @SuppressLint("MissingPermission")
+    private suspend fun getLowPowerLocation(): android.location.Location? {
+        return try {
+            val cts = CancellationTokenSource()
+            try {
+                fusedLocationClient.getCurrentLocation(
+                    Priority.PRIORITY_LOW_POWER,
+                    cts.token
+                ).await()
+            } finally {
+                cts.cancel()
+            }
+        } catch (e: Exception) {
+            Timber.d(e, "low-power failed")
+            null
+        }
+    }
+
+    // Helper: fall back to last known location (may be stale but better than nothing)
+    @SuppressLint("MissingPermission")
+    private suspend fun getLastKnownLocation(): android.location.Location? {
+        return try {
+            fusedLocationClient.lastLocation.await()
+        } catch (e: Exception) {
+            Timber.d(e, "last-known failed")
+            null
         }
     }
 
