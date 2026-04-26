@@ -3,9 +3,13 @@ package io.github.agimaulana.radio.feature.stationlist.location
 import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Geocoder
+import android.location.LocationManager
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.Priority
+import com.google.android.gms.location.SettingsClient
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationSettingsRequest
 import com.google.android.gms.tasks.CancellationTokenSource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -20,14 +24,59 @@ import javax.inject.Inject
 class LocationProvider @Inject constructor(
     @ApplicationContext private val context: Context,
     private val fusedLocationClient: FusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(context),
+    private val settingsClient: SettingsClient = LocationServices.getSettingsClient(context),
     @Named("highAccuracyTimeoutMs") private val highAccuracyTimeoutMs: Long = 5_000L
 ) {
 
+    /**
+     * Checks if location services (GPS or Network) are enabled on the device.
+     */
+    fun isLocationEnabled(): Boolean {
+        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+                locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+    }
+
+    /**
+     * Checks if GPS is enabled on the device.
+     */
+    fun isGpsEnabled(): Boolean {
+        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+    }
+
+    /**
+     * Checks if the current location settings satisfy the requirement for the given priority.
+     * Defaults to [Priority.PRIORITY_BALANCED_POWER_ACCURACY] to allow coarse location
+     * without forcing GPS to be enabled.
+     *
+     * Returns a [Result] which may contain a [com.google.android.gms.common.api.ResolvableApiException]
+     * if the settings can be resolved by the user.
+     */
+    suspend fun checkLocationSettings(
+        priority: Int = Priority.PRIORITY_BALANCED_POWER_ACCURACY
+    ): Result<Unit> {
+        val locationRequest = LocationRequest.Builder(priority, 1000).build()
+        val builder = LocationSettingsRequest.Builder().addLocationRequest(locationRequest)
+        
+        return try {
+            settingsClient.checkLocationSettings(builder.build()).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     @SuppressLint("MissingPermission")
     suspend fun getCurrentLocation(): LocationInfo? {
-        // Prefer a small chain of progressively less demanding providers. Each helper
-        // ensures its CancellationTokenSource is cancelled to avoid resource leaks.
-        val location = getHighAccuracyLocation()
+        if (!isLocationEnabled()) {
+            Timber.d("Location is disabled on device")
+            return null
+        }
+
+        // Prefer a small chain of progressively less demanding providers.
+        // If GPS is disabled, we skip the high-accuracy request to avoid timeouts.
+        val location = (if (isGpsEnabled()) getHighAccuracyLocation() else null)
             ?: getBalancedPowerAccuracyLocation()
             ?: getLowPowerLocation()
             ?: getLastKnownLocation()

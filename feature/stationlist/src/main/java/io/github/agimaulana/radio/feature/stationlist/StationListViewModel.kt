@@ -22,6 +22,7 @@ import io.github.agimaulana.radio.domain.api.usecase.UnpinStationUseCase
 import io.github.agimaulana.radio.feature.stationlist.location.LocationProvider
 import io.github.agimaulana.radio.feature.stationlist.player.PlayerColors
 import io.github.agimaulana.radio.feature.stationlist.player.extractPlayerColors
+import com.google.android.gms.common.api.ResolvableApiException
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -133,6 +134,9 @@ class StationListViewModel @Inject constructor(
             is Action.ExpandPlayer -> trackPlayerEvent(action.source, true)
             is Action.CollapsePlayer -> trackPlayerEvent(action.source, false)
             is Action.OnLocationPermissionGranted -> handleLocationPermissionGranted(action.isGranted)
+            is Action.OnLocationSettingsResolved -> handleLocationSettingsResolved(action.isResolved)
+            // RequestLocationPermission action removed: permission requests are initiated from the UI
+            // via rememberMultiplePermissionsState.launchPermissionRequest() and resolved via ActivityResult.
             is Action.PinStation -> handlePinStation(action.station)
             is Action.UnpinStation -> handleUnpinStation(action.stationUuid)
         }
@@ -204,6 +208,15 @@ class StationListViewModel @Inject constructor(
             return
         }
         viewModelScope.launch {
+            val settingsResult = locationProvider.checkLocationSettings()
+            if (settingsResult.isFailure) {
+                val exception = settingsResult.exceptionOrNull()
+                if (exception is ResolvableApiException) {
+                    _uiState.update { it.copy(locationSettingsResolution = exception) }
+                    return@launch
+                }
+            }
+
             val location = locationProvider.getCurrentLocation()
             if (location == null) {
                 fetchRadioStations()
@@ -223,6 +236,15 @@ class StationListViewModel @Inject constructor(
                 )
             }
             fetchRadioStations(force = true)
+        }
+    }
+
+    private fun handleLocationSettingsResolved(isResolved: Boolean) {
+        _uiState.update { it.copy(locationSettingsResolution = null) }
+        if (isResolved) {
+            handleLocationPermissionGranted(true)
+        } else {
+            fetchRadioStations()
         }
     }
 
@@ -331,6 +353,7 @@ class StationListViewModel @Inject constructor(
         val currentPosition: GeoLatLong? = null,
         val locationPermissionResolved: Boolean = false,
         val showLocationPermissionSheet: Boolean = true,
+        val locationSettingsResolution: ResolvableApiException? = null,
     ) {
         data class Station(
             val serverUuid: String,
@@ -359,6 +382,7 @@ class StationListViewModel @Inject constructor(
         data class ExpandPlayer(val source: String) : Action
         data class CollapsePlayer(val source: String) : Action
         data class OnLocationPermissionGranted(val isGranted: Boolean) : Action
+        data class OnLocationSettingsResolved(val isResolved: Boolean) : Action
         data class PinStation(val station: UiState.Station) : Action
         data class UnpinStation(val stationUuid: String) : Action
     }
