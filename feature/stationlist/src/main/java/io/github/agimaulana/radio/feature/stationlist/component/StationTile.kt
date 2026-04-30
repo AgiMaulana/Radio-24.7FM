@@ -54,7 +54,7 @@ internal fun StationTile(
 
     val contentColor = contentColorFor(background)
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .border(
@@ -66,7 +66,7 @@ internal fun StationTile(
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = modifier
+            modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
                 .combinedClickable(
