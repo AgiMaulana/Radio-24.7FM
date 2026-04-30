@@ -1,23 +1,28 @@
 package io.github.agimaulana.radio.feature.stationlist.component
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material3.contentColorFor
+import io.github.agimaulana.radio.core.design.RadioTheme
+import io.github.agimaulana.radio.feature.stationlist.player.BufferingIcon
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.UiState.Station
 import kotlinx.collections.immutable.ImmutableList
 
@@ -25,6 +30,8 @@ import kotlinx.collections.immutable.ImmutableList
 internal fun LazyRadioStationList(
     stations: ImmutableList<Station>,
     pinnedStations: ImmutableList<Station>,
+    isPinnedStationsLoading: Boolean,
+    isStationsLoading: Boolean,
     onClick: (Station) -> Unit,
     onLongClick: (Station) -> Unit,
     modifier: Modifier = Modifier,
@@ -53,14 +60,26 @@ internal fun LazyRadioStationList(
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        if (pinnedStations.isNotEmpty()) {
+        if (isPinnedStationsLoading || pinnedStations.isNotEmpty()) {
             item {
-                PinnedStationRow(
-                    pinnedStations = pinnedStations,
-                    onStationClick = onClick,
-                    onStationLongClick = onLongClick,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+                if (isPinnedStationsLoading && pinnedStations.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        SectionLoading(
+                            label = "PINNED",
+                            modifier = Modifier.padding(bottom = 8.dp)
+                                .align(Alignment.Center)
+                        )
+                    }
+                } else {
+                    PinnedStationRow(
+                        pinnedStations = pinnedStations,
+                        onStationClick = onClick,
+                        onStationLongClick = onLongClick,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
             }
         }
         item {
@@ -78,16 +97,65 @@ internal fun LazyRadioStationList(
                 )
             )
         }
-        items(stations, key = { it.serverUuid }) {
-            StationTile(
-                station = it,
-                onClick = { onClick(it) },
-                onLongClick = { onLongClick(it) },
-                modifier = Modifier.padding(
-                    start = 16.dp,
-                    end = 16.dp
+        if (isStationsLoading && stations.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    SectionLoading(
+                        label = null,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                            .align(Alignment.Center)
+                    )
+                }
+            }
+        } else {
+            items(stations, key = { it.serverUuid }) {
+                StationTile(
+                    station = it,
+                    onClick = { onClick(it) },
+                    onLongClick = { onLongClick(it) },
+                    modifier = Modifier.padding(
+                        start = 16.dp,
+                        end = 16.dp
+                    )
                 )
-            )
+            }
         }
+        if (isStationsLoading && stations.isNotEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    BufferingIcon(
+                        modifier = Modifier.size(32.dp),
+                        tint = RadioTheme.colors.primary,
+                        tweenDurationMillis = 1500,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionLoading(
+    label: String?,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        BufferingIcon(
+            modifier = Modifier.size(if (label == null) 64.dp else 40.dp),
+            tint = RadioTheme.colors.primary,
+            tweenDurationMillis = 1500,
+        )
     }
 }
