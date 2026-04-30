@@ -8,8 +8,11 @@ import io.github.agimaulana.radio.core.radioplayer.RadioMediaItem
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerControllerFactory
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
+import io.github.agimaulana.radio.domain.api.usecase.GetPinnedStationsUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
+import io.github.agimaulana.radio.domain.api.usecase.PinStationUseCase
+import io.github.agimaulana.radio.domain.api.usecase.UnpinStationUseCase
 import io.github.agimaulana.radio.feature.stationlist.datafactories.newRadioStation
 import io.github.agimaulana.radio.feature.stationlist.datafactories.newUiStateStation
 import io.github.agimaulana.radio.feature.stationlist.location.LocationProvider
@@ -20,6 +23,7 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.mockk
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.receiveAsFlow
 import org.junit.Before
 import org.junit.Rule
@@ -35,6 +39,15 @@ abstract class StationListViewModelTest__Fixtures {
 
     @RelaxedMockK
     protected lateinit var getRadioStationUseCase: GetRadioStationUseCase
+
+    @RelaxedMockK
+    protected lateinit var getPinnedStationsUseCase: GetPinnedStationsUseCase
+
+    @RelaxedMockK
+    protected lateinit var pinStationUseCase: PinStationUseCase
+
+    @RelaxedMockK
+    protected lateinit var unpinStationUseCase: UnpinStationUseCase
 
     @RelaxedMockK
     protected lateinit var radioPlayerController: RadioPlayerController
@@ -80,9 +93,16 @@ abstract class StationListViewModelTest__Fixtures {
         coEvery {
             getRadioStationsUseCase.execute(page = 1, searchName = null, location = null)
         } returns emptyList()
+        every {
+            getPinnedStationsUseCase.execute()
+        } returns flowOf(emptyList())
+
         viewModel = StationListViewModel(
             getRadioStationsUseCase = getRadioStationsUseCase,
             getRadioStationUseCase = getRadioStationUseCase,
+            getPinnedStationsUseCase = getPinnedStationsUseCase,
+            pinStationUseCase = pinStationUseCase,
+            unpinStationUseCase = unpinStationUseCase,
             radioPlayerControllerFactory = radioPlayerControllerFactory,
             stationListTracker = stationListTracker,
             locationProvider = locationProvider,

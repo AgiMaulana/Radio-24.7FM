@@ -2,6 +2,7 @@ package io.github.agimaulana.radio.feature.stationlist
 
 import app.cash.turbine.turbineScope
 import io.github.agimaulana.radio.domain.api.entity.GeoLatLong
+import io.github.agimaulana.radio.feature.stationlist.datafactories.newRadioStation
 import io.github.agimaulana.radio.feature.stationlist.datafactories.newUiStateStation
 import io.github.agimaulana.radio.feature.stationlist.location.LocationProvider
 import io.mockk.coEvery
@@ -204,6 +205,26 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
         viewModel.init(hasLocationPermission = false, shouldShowRationale = false)
         viewModel.onAction(StationListViewModel.Action.Play(station))
         verify { radioPlayerController.play() }
+    }
+
+    @Test
+    fun `when pin station then execute use case`() = runTest {
+        val station = newUiStateStation(withServerUuid = "uuid-1")
+        val domainStation = newRadioStation(withStationUuid = "uuid-1")
+        coEvery { getRadioStationUseCase.execute("uuid-1") } returns domainStation
+
+        viewModel.onAction(StationListViewModel.Action.PinStation(station))
+        runCurrent()
+
+        coVerify { pinStationUseCase.execute(domainStation) }
+    }
+
+    @Test
+    fun `when unpin station then execute use case`() = runTest {
+        viewModel.onAction(StationListViewModel.Action.UnpinStation("uuid-1"))
+        runCurrent()
+
+        coVerify { unpinStationUseCase.execute("uuid-1") }
     }
 
     @Test

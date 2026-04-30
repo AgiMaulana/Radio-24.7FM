@@ -6,6 +6,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,8 +15,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.material3.MaterialTheme
@@ -42,11 +46,13 @@ import io.github.agimaulana.radio.feature.stationlist.R
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.UiState.Station
 import timber.log.Timber
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun StationTile(
     station: Station,
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
+    onLongClick: () -> Unit = {},
 ) {
     val border = if (station.isPlaying) RadioTheme.colors.ring else RadioTheme.colors.border
     val background = if (station.isPlaying) {
@@ -72,7 +78,10 @@ internal fun StationTile(
             modifier = modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
-                .clickable(onClick = onClick)
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongClick
+                )
                 .padding(vertical = 16.dp)
                 .padding(start = 16.dp, end = 48.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -81,6 +90,25 @@ internal fun StationTile(
                 station = station,
                 contentColor = contentColor,
             )
+        }
+
+        if (station.isPinned) {
+            Box(
+                modifier = Modifier
+                    .offset(x = 8.dp, y = (-8).dp)
+                    .align(Alignment.TopStart)
+                    .size(28.dp)
+                    .background(RadioTheme.colors.ring, CircleShape)
+                    .border(2.dp, MaterialTheme.colorScheme.surface, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                androidx.compose.material3.Icon(
+                    painter = painterResource(id = R.drawable.ic_star_filled),
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         }
 
         AnimatedVisibility(
@@ -213,7 +241,8 @@ internal class StationPreviewProvider : PreviewParameterProvider<Station> {
                 imageUrl = "",
                 streamUrl = "",
                 isBuffering = false,
-                isPlaying = false
+                isPlaying = false,
+                isPinned = false
             ),
             Station(
                 serverUuid = "uuid",
@@ -222,7 +251,8 @@ internal class StationPreviewProvider : PreviewParameterProvider<Station> {
                 imageUrl = "",
                 streamUrl = "",
                 isBuffering = false,
-                isPlaying = true
+                isPlaying = true,
+                isPinned = true
             ),
         )
 

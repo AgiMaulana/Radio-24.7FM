@@ -13,13 +13,17 @@ import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerControllerFactory
 import io.github.agimaulana.radio.domain.api.entity.GeoLatLong
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
+import io.github.agimaulana.radio.domain.api.usecase.GetPinnedStationsUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
+import io.github.agimaulana.radio.domain.api.usecase.PinStationUseCase
+import io.github.agimaulana.radio.domain.api.usecase.UnpinStationUseCase
 import io.github.agimaulana.radio.feature.stationlist.location.LocationProvider
 import io.github.agimaulana.radio.feature.stationlist.player.PlayerColors
 import io.github.agimaulana.radio.feature.stationlist.player.extractPlayerColors
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -34,6 +38,9 @@ import javax.inject.Inject
 class StationListViewModel @Inject constructor(
     private val getRadioStationsUseCase: GetRadioStationsUseCase,
     private val getRadioStationUseCase: GetRadioStationUseCase,
+    private val getPinnedStationsUseCase: GetPinnedStationsUseCase,
+    private val pinStationUseCase: PinStationUseCase,
+    private val unpinStationUseCase: UnpinStationUseCase,
     private val radioPlayerControllerFactory: RadioPlayerControllerFactory,
     private val stationListTracker: StationListTracker,
     private val locationProvider: LocationProvider,
@@ -45,8 +52,9 @@ class StationListViewModel @Inject constructor(
     private var radioPlayerController: RadioPlayerController? = null
     private var searchJob: Job? = null
     private var fetchJob: Job? = null
+    private var pinnedStationsJob: Job? = null
 
-fun init(
+    fun init(
         hasLocationPermission: Boolean = false,
         hasAskedPermission: Boolean = false,
         shouldShowRationale: Boolean = false
@@ -62,13 +70,29 @@ fun init(
             }
             restoreSelectedStation()
         }
+        observePinnedStations()
+    }
+
+    private fun observePinnedStations() {
+        pinnedStationsJob?.cancel()
+        pinnedStationsJob = viewModelScope.launch {
+            getPinnedStationsUseCase.execute().collect { pinned ->
+                val pinnedUuids = pinned.map { it.stationUuid }.toSet()
+                _uiState.update { state ->
+                    state.copy(
+                        pinnedStations = pinned.map { it.toUiStateStation(pinnedUuids) }.toImmutableList(),
+                        stations = state.stations.map { it.copy(isPinned = it.serverUuid in pinnedUuids) }.toPersistentList()
+                    )
+                }
+            }
+        }
     }
 
     private suspend fun restoreSelectedStation() {
         val mediaId = radioPlayerController?.currentMediaId ?: return
         if (mediaId.isNotEmpty()) {
             val station = getRadioStationUseCase.execute(mediaId)
-            val uiStation = station.toUiStateStation().copy(isPlaying = radioPlayerController?.isPlaying == true)
+            val uiStation = station.toUiStateStation(emptySet()).copy(isPlaying = radioPlayerController?.isPlaying == true)
             _uiState.update { it.copy(selectedStation = uiStation) }
             updatePlayerColors(uiStation.imageUrl)
         }
@@ -103,8 +127,21 @@ fun init(
             is Action.ExpandPlayer -> trackPlayerEvent(action.source, true)
             is Action.CollapsePlayer -> trackPlayerEvent(action.source, false)
             is Action.OnLocationPermissionGranted -> handleLocationPermissionGranted(action.isGranted)
-            // RequestLocationPermission action removed: permission requests are initiated from the UI
-            // via rememberMultiplePermissionsState.launchPermissionRequest() and resolved via ActivityResult.
+            is Action.PinStation -> handlePinStation(action.station)
+            is Action.UnpinStation -> handleUnpinStation(action.stationUuid)
+        }
+    }
+
+    private fun handlePinStation(station: UiState.Station) {
+        viewModelScope.launch {
+            val domainStation = getRadioStationUseCase.execute(station.serverUuid) ?: return@launch
+            pinStationUseCase.execute(domainStation)
+        }
+    }
+
+    private fun handleUnpinStation(stationUuid: String) {
+        viewModelScope.launch {
+            unpinStationUseCase.execute(stationUuid)
         }
     }
 
@@ -194,6 +231,7 @@ fun init(
             _uiState.update { it.copy(isLoading = true) }
             try {
                 val nextPage = _uiState.value.currentPage + 1
+                val pinnedUuids = _uiState.value.pinnedStations.map { it.serverUuid }.toSet()
                 val fetchedStations = getRadioStationsUseCase.execute(
                     page = nextPage,
                     searchName = _uiState.value.filterStationName,
@@ -201,7 +239,7 @@ fun init(
                 ).map {
                     val isCurrentlyPlaying = (radioPlayerController?.currentMediaId == it.stationUuid)
                             && (radioPlayerController?.isPlaying == true)
-                    it.toUiStateStation().copy(isPlaying = isCurrentlyPlaying)
+                    it.toUiStateStation(pinnedUuids).copy(isPlaying = isCurrentlyPlaying)
                 }.toPersistentList()
                 _uiState.update {
                     it.copy(
@@ -230,15 +268,21 @@ fun init(
                     stations = it.stations.togglePlayingStateForStations(
                         targetUuid = radioPlayerController?.currentMediaId.orEmpty(),
                         isPlaying = playbackEvent.isPlaying
-                    ))
+                    ),
+                    pinnedStations = it.pinnedStations.togglePlayingStateForStations(
+                        targetUuid = radioPlayerController?.currentMediaId.orEmpty(),
+                        isPlaying = playbackEvent.isPlaying
+                    ).toImmutableList()
+                )
             }
             is PlaybackEvent.StateChanged -> _uiState.update {
                 it.copy(selectedStation = station?.copy(isBuffering = playbackEvent.state == PlaybackState.BUFFERING))
             }
             is PlaybackEvent.MediaItemTransition -> playbackEvent.mediaId?.let { mediaId ->
                 viewModelScope.launch {
+                    val pinnedUuids = _uiState.value.pinnedStations.map { it.serverUuid }.toSet()
                     val s = getRadioStationUseCase.execute(mediaId)
-                    val uiStation = s.toUiStateStation().copy(
+                    val uiStation = s.toUiStateStation(pinnedUuids).copy(
                         isPlaying = radioPlayerController?.isPlaying == true,
                         isBuffering = station?.isBuffering ?: false
                     )
@@ -260,6 +304,7 @@ fun init(
         val filterStationName: String? = null,
         val currentPage: Int = 0,
         val stations: ImmutableList<Station> = persistentListOf(),
+        val pinnedStations: ImmutableList<Station> = persistentListOf(),
         val selectedStation: Station? = null,
         val hasMorePages: Boolean = true,
         val isLoading: Boolean = true,
@@ -268,7 +313,9 @@ fun init(
             Color(0xFF3a1040),
             Color(0xFF0e0c14)
         ),
-        val featureFlag: FeatureFlag = FeatureFlag(),
+        val featureFlag: FeatureFlag = FeatureFlag(
+            isFavoriteEnabled = true,
+        ),
         val locationName: String? = null,
         val currentPosition: GeoLatLong? = null,
         val locationPermissionResolved: Boolean = false,
@@ -281,7 +328,8 @@ fun init(
             val imageUrl: String,
             val streamUrl: String,
             val isBuffering: Boolean,
-            val isPlaying: Boolean
+            val isPlaying: Boolean,
+            val isPinned: Boolean = false,
         )
         data class FeatureFlag(
             val isMoreMenuEnabled: Boolean = false,
@@ -300,7 +348,8 @@ fun init(
         data class ExpandPlayer(val source: String) : Action
         data class CollapsePlayer(val source: String) : Action
         data class OnLocationPermissionGranted(val isGranted: Boolean) : Action
-        // RequestLocationPermission removed — kept permission flow in the UI layer
+        data class PinStation(val station: UiState.Station) : Action
+        data class UnpinStation(val stationUuid: String) : Action
     }
 
     companion object {
@@ -309,14 +358,15 @@ fun init(
     }
 }
 
-private fun RadioStation.toUiStateStation() = StationListViewModel.UiState.Station(
+private fun RadioStation.toUiStateStation(pinnedUuids: Set<String>) = StationListViewModel.UiState.Station(
     serverUuid = stationUuid,
     name = name,
     genre = tags.getOrNull(0).orEmpty(),
     imageUrl = imageUrl,
     streamUrl = url,
     isBuffering = false,
-    isPlaying = false
+    isPlaying = false,
+    isPinned = stationUuid in pinnedUuids
 )
 
 private fun StationListViewModel.UiState.Station.toRadioMediaItem() = RadioMediaItem(
