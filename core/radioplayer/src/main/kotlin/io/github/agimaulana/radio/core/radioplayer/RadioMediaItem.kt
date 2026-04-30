@@ -17,16 +17,29 @@ data class RadioMediaItem(
     )
 }
 
-internal fun RadioMediaItem.toMediaItem(): MediaItem {
+internal fun RadioMediaItem.toMediaItem(
+    contextType: String? = null,
+    contextQuery: String? = null,
+    page: Int? = null
+): MediaItem {
+    val metadataBuilder = MediaMetadata.Builder()
+        .setTitle(radioMetadata.stationName)
+        .setSubtitle(radioMetadata.genre)
+        .setArtworkUri(radioMetadata.imageUrl.toUri())
+
+    // Attach minimal playback context so the service can restore context after process death
+    val extras = android.os.Bundle()
+    contextType?.let { extras.putString("playback_context_type", it) }
+    contextQuery?.let { extras.putString("playback_context_query", it) }
+    page?.let { extras.putInt("playback_context_page", it) }
+
+    if (!extras.isEmpty) {
+        metadataBuilder.setExtras(extras)
+    }
+
     return MediaItem.Builder()
         .setMediaId(mediaId)
         .setUri(streamUrl)
-        .setMediaMetadata(
-            MediaMetadata.Builder()
-                .setTitle(radioMetadata.stationName)
-                .setSubtitle(radioMetadata.genre)
-                .setArtworkUri(radioMetadata.imageUrl.toUri())
-                .build()
-        )
+        .setMediaMetadata(metadataBuilder.build())
         .build()
 }
