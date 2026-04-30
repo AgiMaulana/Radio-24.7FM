@@ -18,10 +18,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.agimaulana.radio.core.design.RadioTheme
+import io.github.agimaulana.radio.feature.stationlist.R
 import io.github.agimaulana.radio.feature.stationlist.player.BufferingIcon
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.UiState.Station
 import kotlinx.collections.immutable.ImmutableList
@@ -64,7 +66,7 @@ internal fun LazyRadioStationList(
             item {
                 if (isPinnedStationsLoading && pinnedStations.isEmpty()) {
                     SectionLoading(
-                        label = "PINNED",
+                        label = stringResource(R.string.pinned_station_row),
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
                 } else {
@@ -79,7 +81,7 @@ internal fun LazyRadioStationList(
         }
         item {
             Text(
-                text = "ALL STATIONS",
+                text = stringResource(R.string.all_stations_list),
                 style = MaterialTheme.typography.labelLarge.copy(
                     fontWeight = FontWeight.Bold,
                     color = sectionLabelColor,

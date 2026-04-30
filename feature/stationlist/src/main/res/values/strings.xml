@@ -18,4 +18,6 @@
     <string name="undo">Undo</string>
     <string name="label_pinned">PINNED</string>
     <string name="label_all_stations">ALL STATIONS</string>
+    <string name="pinned_station_row">PINNED</string>
+    <string name="all_stations_list">ALL STATIONS</string>
 </resources>
