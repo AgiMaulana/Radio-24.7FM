@@ -321,8 +321,6 @@ private fun StationListContent(
                 contentPadding = PaddingValues(
                     top = lerp(dims.expandedHeight, dims.collapsedHeight, dims.progress) + 16.dp,
                     bottom = innerPadding.calculateBottomPadding() + 80.dp,
-                    start = 16.dp,
-                    end = 16.dp
                 ),
                 modifier = Modifier
                     .fillMaxSize()

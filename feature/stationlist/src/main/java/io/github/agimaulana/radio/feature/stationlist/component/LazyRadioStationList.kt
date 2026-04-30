@@ -71,14 +71,22 @@ internal fun LazyRadioStationList(
                     color = sectionLabelColor,
                     letterSpacing = 1.5.sp
                 ),
-                modifier = Modifier.padding(bottom = 8.dp)
+                modifier = Modifier.padding(
+                    bottom = 8.dp,
+                    start = 16.dp,
+                    end = 16.dp
+                )
             )
         }
         items(stations, key = { it.serverUuid }) {
             StationTile(
                 station = it,
                 onClick = { onClick(it) },
-                onLongClick = { onLongClick(it) }
+                onLongClick = { onLongClick(it) },
+                modifier = Modifier.padding(
+                    start = 16.dp,
+                    end = 16.dp
+                )
             )
         }
     }
