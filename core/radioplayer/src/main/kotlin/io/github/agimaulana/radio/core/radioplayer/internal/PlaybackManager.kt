@@ -28,15 +28,20 @@ internal class PlaybackManager(
     private val scope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
 
     private val loadedItems = mutableListOf<RadioMediaItem>()
-    private val loadedIds = mutableSetOf<String>()
 
-    private var nextPage: Int = 1
     private var isFetchingNextPage: Boolean = false
 
-    private var playbackContext: PlaybackContext = PlaybackContext(
+    private var _playbackContext: PlaybackContext = PlaybackContext(
         type = PlaybackContext.Type.DEFAULT,
         query = null
     )
+    internal val playbackContext: PlaybackContext get() = _playbackContext
+
+    private var _loadedIds: MutableSet<String> = mutableSetOf()
+    internal val loadedIds: Set<String> get() = _loadedIds
+
+    internal var nextPage: Int = 1
+        private set
 
     private val playerListener = object : androidx.media3.common.Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -63,14 +68,14 @@ internal class PlaybackManager(
         scope.launch {
             // Reset state
             loadedItems.clear()
-            loadedIds.clear()
+            _loadedIds.clear()
 
             loadedItems.addAll(items)
-            loadedIds.addAll(items.map { it.mediaId })
+            _loadedIds.addAll(items.map { it.mediaId })
 
             // Calculate starting page based on items size to avoid re-fetching initial pages
             nextPage = (items.size / PAGE_SIZE) + 1
-            playbackContext = context
+            _playbackContext = context
 
             val mediaItems = items.map {
                 it.toMediaItem(
@@ -87,16 +92,16 @@ internal class PlaybackManager(
 
     fun addMediaItems(items: List<RadioMediaItem>) {
         scope.launch {
-            val filtered = items.filterNot { loadedIds.contains(it.mediaId) }
+            val filtered = items.filterNot { _loadedIds.contains(it.mediaId) }
             if (filtered.isEmpty()) return@launch
 
             loadedItems.addAll(filtered)
-            loadedIds.addAll(filtered.map { it.mediaId })
+            _loadedIds.addAll(filtered.map { it.mediaId })
 
             val mediaItems = filtered.map {
                 it.toMediaItem(
-                    contextType = playbackContext.type.name,
-                    contextQuery = playbackContext.query,
+                    contextType = _playbackContext.type.name,
+                    contextQuery = _playbackContext.query,
                     page = null
                 )
             }
@@ -106,16 +111,16 @@ internal class PlaybackManager(
 
     fun addMediaItems(index: Int, items: List<RadioMediaItem>) {
         scope.launch {
-            val filtered = items.filterNot { loadedIds.contains(it.mediaId) }
+            val filtered = items.filterNot { _loadedIds.contains(it.mediaId) }
             if (filtered.isEmpty()) return@launch
 
             loadedItems.addAll(index, filtered)
-            loadedIds.addAll(filtered.map { it.mediaId })
+            _loadedIds.addAll(filtered.map { it.mediaId })
 
             val mediaItems = filtered.map {
                 it.toMediaItem(
-                    contextType = playbackContext.type.name,
-                    contextQuery = playbackContext.query,
+                    contextType = _playbackContext.type.name,
+                    contextQuery = _playbackContext.query,
                     page = null
                 )
             }
@@ -128,7 +133,7 @@ internal class PlaybackManager(
         val isAtEnd = player.currentMediaItemIndex == player.mediaItemCount - 1
         if (!isAtEnd) return
         if (isFetchingNextPage) return
-        if (playbackContext.type == PlaybackContext.Type.PINNED) return
+        if (_playbackContext.type == PlaybackContext.Type.PINNED) return
 
         scope.launch {
             fetchNextPage()
@@ -139,17 +144,17 @@ internal class PlaybackManager(
         if (isFetchingNextPage) return
         isFetchingNextPage = true
         try {
-            val newItems = fetcher(nextPage, playbackContext.query)
+            val newItems = fetcher(nextPage, _playbackContext.query)
             if (newItems.isNotEmpty()) {
-                val filtered = newItems.filterNot { loadedIds.contains(it.mediaId) }
+                val filtered = newItems.filterNot { _loadedIds.contains(it.mediaId) }
                 if (filtered.isNotEmpty()) {
                     // append
                     loadedItems.addAll(filtered)
-                    loadedIds.addAll(filtered.map { it.mediaId })
+                    _loadedIds.addAll(filtered.map { it.mediaId })
                     val mediaItems = filtered.map {
                         it.toMediaItem(
-                            contextType = playbackContext.type.name,
-                            contextQuery = playbackContext.query,
+                            contextType = _playbackContext.type.name,
+                            contextQuery = _playbackContext.query,
                             page = nextPage
                         )
                     }
@@ -173,7 +178,7 @@ internal class PlaybackManager(
         val extras = current.mediaMetadata.extras
         val typeName = extras?.getString("playback_context_type") ?: PlaybackContext.Type.DEFAULT.name
         val query = extras?.getString("playback_context_query")
-        playbackContext = try {
+        _playbackContext = try {
             PlaybackContext(PlaybackContext.Type.valueOf(typeName), query)
         } catch (e: Exception) {
             Timber.i(e)
@@ -181,9 +186,9 @@ internal class PlaybackManager(
         }
 
         // Restore loadedIds from current player items to avoid duplicates during pagination
-        loadedIds.clear()
+        _loadedIds.clear()
         repeat(player.mediaItemCount) { index ->
-            player.getMediaItemAt(index).mediaId?.let { loadedIds.add(it) }
+            player.getMediaItemAt(index).mediaId?.let { _loadedIds.add(it) }
         }
 
         // Estimate next page from current playlist size

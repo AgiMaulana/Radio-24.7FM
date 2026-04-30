@@ -75,7 +75,7 @@ Goal
 - ~~Re-register ServiceResolver when _uiState.currentPosition (user location) updates so fetcher calls include latest location~~ (done: StationListViewModel.observeLocationChangesAndReregisterResolver)
 - ~~Run full CI for feat/playback-queue-wip and address any flaky/platform-specific failures.~~ (done: CI passed)
 - ~~Run device smoke tests for notification Prev/Next, pinned→main boundary playback, and search-context restore UI.~~ (done: smoke tests passed)
-- Add integration tests (optional): simulate process death and restore to verify restoreFromPlayer behavior across platforms. (todo: integration-process-death-tests)
+- ~~Add integration tests (optional): simulate process death and restore to verify restoreFromPlayer behavior across platforms.~~ (done: integration-process-death-tests)
 - Consider persisting loaded page ids (DataStore/Room) if playlist restore accuracy is important for the product. (todo: persist-loaded-page-ids)
 - Phase 2: implement backward pagination (prepend) and merged pinned strategy (todo: playback-backward-pagination)
 - Verify Hilt injection for RadioService/PlaybackManager and add providers if missing. (todo: ensure-hilt-injection)
