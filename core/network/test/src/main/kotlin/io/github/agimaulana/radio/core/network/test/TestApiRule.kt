@@ -1,5 +1,6 @@
 package io.github.agimaulana.radio.core.network.test
 
+import com.squareup.moshi.Moshi
 import io.github.agimaulana.radio.core.network.RetrofitBuilderFactory
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -23,7 +24,8 @@ class TestApiRule(
         retrofit = RetrofitBuilderFactory()
             .create(
                 baseUrl = baseUrl,
-                okHttpClient = OkHttpClient.Builder().build()
+                okHttpClient = OkHttpClient.Builder().build(),
+                moshi = Moshi.Builder().build()
             )
             .build()
     }
