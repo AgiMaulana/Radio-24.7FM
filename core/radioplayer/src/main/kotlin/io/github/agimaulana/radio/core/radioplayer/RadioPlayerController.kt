@@ -6,7 +6,19 @@ interface RadioPlayerController {
     val event: Flow<PlaybackEvent>
     val currentMediaId: String?
     val isPlaying: Boolean
+
+    // Single-item compatibility
     fun setMediaItem(radioMediaItem: RadioMediaItem)
+
+    // Playlist APIs - Use startPlayback for proper PlaybackManager sync
+    fun startPlayback(items: List<RadioMediaItem>, startIndex: Int = 0, contextType: String? = null, contextQuery: String? = null)
+    fun setMediaItems(items: List<RadioMediaItem>, startIndex: Int = 0, contextType: String? = null, contextQuery: String? = null)
+    fun addMediaItems(items: List<RadioMediaItem>, contextType: String? = null, contextQuery: String? = null)
+    fun addMediaItems(index: Int, items: List<RadioMediaItem>, contextType: String? = null, contextQuery: String? = null)
+
+    val mediaItemCount: Int
+    val currentMediaItemIndex: Int
+
     fun prepare()
     fun play()
     fun pause()
