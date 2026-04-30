@@ -2,13 +2,10 @@ package io.github.agimaulana.radio.feature.stationlist.component
 
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,7 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Text
+import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
@@ -28,23 +25,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImagePainter
-import coil.compose.rememberAsyncImagePainter
 import io.github.agimaulana.radio.core.design.RadioTheme
 import io.github.agimaulana.radio.core.design.theme.PreviewTheme
 import io.github.agimaulana.radio.feature.stationlist.R
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.UiState.Station
-import timber.log.Timber
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -127,9 +118,11 @@ private fun RowScope.details(
     station: Station,
     contentColor: Color
 ) {
-    RadioImage(
+    StationImage(
         stationName = station.name,
         imageUrl = station.imageUrl,
+        size = 96.dp,
+        placeholderSize = 48.dp,
     )
 
     Column(
@@ -150,65 +143,6 @@ private fun RowScope.details(
         )
     }
 }
-
-@Composable
-private fun RadioImage(
-    stationName: String,
-    imageUrl: String,
-    modifier: Modifier = Modifier,
-    size: Dp = 96.dp,
-    placeholderSize: Dp = 48.dp
-) {
-    val painter = rememberAsyncImagePainter(
-        model = imageUrl,
-        placeholder = painterResource(id = R.drawable.station_default),
-        error = painterResource(id = R.drawable.station_default),
-        onLoading = {
-            Timber.tag("StationTile").d("Loading image for %s: %s", stationName, imageUrl)
-        },
-        onSuccess = {
-            Timber.tag("StationTile").d("Image loaded for %s: %s", stationName, imageUrl)
-        },
-        onError = {
-            Timber.tag("StationTile").d("Error loading image for %s: %s", stationName, imageUrl)
-        }
-    )
-    Box {
-        when (painter.state) {
-            is AsyncImagePainter.State.Success -> {
-                Image(
-                    modifier = modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(RadioTheme.colors.muted)
-                        .size(size),
-                    painter = painter,
-                    contentDescription = stationName,
-                    contentScale = ContentScale.Fit,
-                )
-            }
-
-            else -> {
-                Box(
-                    modifier = modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(RadioTheme.colors.muted)
-                        .size(size)
-                ) {
-                    Image(
-                        modifier = Modifier
-                            .size(placeholderSize)
-                            .align(Alignment.Center),
-                        painter = painter,
-                        contentDescription = stationName,
-                        colorFilter = ColorFilter.tint(RadioTheme.colors.mutedForeground),
-                        contentScale = ContentScale.Fit,
-                    )
-                }
-            }
-        }
-    }
-}
-
 
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_NO, showBackground = true)
 @Composable
