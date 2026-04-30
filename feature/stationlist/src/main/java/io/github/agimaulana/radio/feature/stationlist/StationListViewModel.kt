@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.android.gms.common.api.ResolvableApiException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.agimaulana.radio.core.radioplayer.PlaybackEvent
@@ -11,8 +12,8 @@ import io.github.agimaulana.radio.core.radioplayer.PlaybackState
 import io.github.agimaulana.radio.core.radioplayer.RadioMediaItem
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerControllerFactory
-import io.github.agimaulana.radio.core.radioplayer.internal.ServiceResolver.registerGetRadioStationsResolver
 import io.github.agimaulana.radio.core.radioplayer.internal.ServiceResolver.clearGetRadioStationsResolver
+import io.github.agimaulana.radio.core.radioplayer.internal.ServiceResolver.registerGetRadioStationsResolver
 import io.github.agimaulana.radio.domain.api.entity.GeoLatLong
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
 import io.github.agimaulana.radio.domain.api.repository.PinnedStationLimitReachedException
@@ -24,7 +25,6 @@ import io.github.agimaulana.radio.domain.api.usecase.UnpinStationUseCase
 import io.github.agimaulana.radio.feature.stationlist.location.LocationProvider
 import io.github.agimaulana.radio.feature.stationlist.player.PlayerColors
 import io.github.agimaulana.radio.feature.stationlist.player.extractPlayerColors
-import com.google.android.gms.common.api.ResolvableApiException
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -79,7 +79,8 @@ class StationListViewModel @Inject constructor(
             radioPlayerController = radioPlayerControllerFactory.get().apply {
                 viewModelScope.launch { event.collect(::onPlaybackEventReceived) }
             }
-            // Register domain use-case with Playback service resolver so PlaybackManager can call it when needed.
+            // Register domain use-case with Playback service resolver so PlaybackManager
+            // can call it when needed.
             try {
                 registerGetRadioStationsResolver { page, query ->
                     // Use current UI location if available; location param in use case is optional
@@ -161,12 +162,18 @@ class StationListViewModel @Inject constructor(
                 stationListTracker.trackLoadMore(page = _uiState.value.currentPage + 1)
                 fetchRadioStations()
             }
+
             is Action.Search -> handleSearch(action.stationName)
+
             is Action.Click -> handleClick(action.station)
+
             is Action.Pause -> {
-                stationListTracker.trackPlaybackPaused(_uiState.value.selectedStation?.serverUuid)
+                stationListTracker.trackPlaybackPaused(
+                    stationId = _uiState.value.selectedStation?.serverUuid
+                )
                 radioPlayerController?.pause()
             }
+
             is Action.Play -> {
                 val stationToPlay = action.station
                 stationListTracker.trackPlaybackResumed(stationToPlay.serverUuid)
@@ -175,7 +182,8 @@ class StationListViewModel @Inject constructor(
                     // already loaded; just resume
                     radioPlayerController?.play()
                 } else {
-                    // Build playlist: if playing a pinned station, put pinned stations first then remaining stations without duplicates
+                    // Build playlist: if playing a pinned station, put pinned stations first then
+                    // remaining stations without duplicates
                     val pinned = _uiState.value.pinnedStations
                     val main = _uiState.value.stations
                     val combined = if (stationToPlay.isPinned) {
@@ -184,46 +192,54 @@ class StationListViewModel @Inject constructor(
                     } else {
                         main
                     }
-                    val startIndex = combined.indexOfFirst { it.serverUuid == stationToPlay.serverUuid }
+                    val startIndex = combined.indexOfFirst {
+                        it.serverUuid == stationToPlay.serverUuid
+                    }
 
+                    val context = _uiState.value.toPlaybackContext()
                     if (startIndex >= 0) {
                         val playlist = combined.map { it.toRadioMediaItem() }
                         radioPlayerController?.apply {
                             startPlayback(
                                 items = playlist,
                                 startIndex = startIndex,
-                                // Use SEARCH context if filtering, otherwise DEFAULT
-                                contextType = if (!_uiState.value.filterStationName.isNullOrEmpty()) {
-                                    "SEARCH"
-                                } else {
-                                    null
-                                },
-                                contextQuery = _uiState.value.filterStationName
+                                context = context
                             )
                         }
                     } else {
-                        // Fallback to single item (pinned or not in list)
-                        radioPlayerController?.apply {
-                            setMediaItem(stationToPlay.toRadioMediaItem())
-                            prepare()
-                            play()
-                        }
+                        // Fallback to single item (pinned or not in list) —
+                        // use startPlayback for metadata
+                        radioPlayerController?.startPlayback(
+                            items = listOf(stationToPlay.toRadioMediaItem()),
+                            startIndex = 0,
+                            context = context
+                        )
                     }
                 }
             }
+
             is Action.Stop -> {
                 stationListTracker.trackPlaybackStopped(action.station.serverUuid)
                 radioPlayerController?.stop()
                 _uiState.update { it.copy(selectedStation = null) }
             }
+
             is Action.ExpandPlayer -> trackPlayerEvent(action.source, true)
+
             is Action.CollapsePlayer -> trackPlayerEvent(action.source, false)
-            is Action.OnLocationPermissionGranted -> handleLocationPermissionGranted(action.isGranted)
+
+            is Action.OnLocationPermissionGranted -> {
+                handleLocationPermissionGranted(action.isGranted)
+            }
+
             Action.OnLocationSettingsResolutionConsumed -> consumeLocationSettingsResolution()
-            is Action.OnLocationSettingsResolved -> handleLocationSettingsResolved(action.isResolved)
-            // RequestLocationPermission action removed: permission requests are initiated from the UI
-            // via rememberMultiplePermissionsState.launchPermissionRequest() and resolved via ActivityResult.
+
+            is Action.OnLocationSettingsResolved -> {
+                handleLocationSettingsResolved(action.isResolved)
+            }
+
             is Action.PinStation -> handlePinStation(action.station)
+
             is Action.UnpinStation -> handleUnpinStation(action.stationUuid)
         }
     }
@@ -257,7 +273,9 @@ class StationListViewModel @Inject constructor(
         }
         searchJob = viewModelScope.launch {
             delay(SEARCH_DEBOUNCE_MS)
-            if (stationName.isNotBlank()) stationListTracker.trackSearchSubmitted(stationName)
+            if (stationName.isNotBlank()) {
+                stationListTracker.trackSearchSubmitted(stationName)
+            }
             fetchRadioStations(force = true)
         }
     }
@@ -288,28 +306,24 @@ class StationListViewModel @Inject constructor(
             }
             val startIndex = combined.indexOfFirst { it.serverUuid == station.serverUuid }
 
+            val context = uiState.value.toPlaybackContext()
             if (startIndex >= 0) {
                 val playlist = combined.map { it.toRadioMediaItem() }
                 radioPlayerController?.apply {
                     startPlayback(
                         items = playlist,
                         startIndex = startIndex,
-                        // Use SEARCH context if filtering, otherwise DEFAULT
-                        contextType = if (!_uiState.value.filterStationName.isNullOrEmpty()) {
-                            "SEARCH"
-                        } else {
-                            null
-                        },
-                        contextQuery = _uiState.value.filterStationName
+                        context = context
                     )
                 }
             } else {
-                // Fallback: station not found in in-memory list (e.g., pinned or stale). Play single item.
-                radioPlayerController?.apply {
-                    setMediaItem(station.toRadioMediaItem())
-                    prepare()
-                    play()
-                }
+                // Fallback: station not found in in-memory list (e.g., pinned or stale).
+                // Play single item via startPlayback for metadata.
+                radioPlayerController?.startPlayback(
+                    items = listOf(station.toRadioMediaItem()),
+                    startIndex = 0,
+                    context = context
+                )
             }
 
             updatePlayerColors(station.imageUrl)
@@ -471,6 +485,18 @@ class StationListViewModel @Inject constructor(
             val colors = extractPlayerColors(imageUrl, context)
             _uiState.update { it.copy(playerColors = colors) }
         }
+    }
+
+    private fun UiState.toPlaybackContext(): RadioPlayerController.PlaybackContext {
+        val contextType = if (!filterStationName.isNullOrEmpty()) {
+            RadioPlayerController.PlaybackContext.Type.SEARCH
+        } else {
+            RadioPlayerController.PlaybackContext.Type.DEFAULT
+        }
+        return RadioPlayerController.PlaybackContext(
+            type = contextType,
+            query = filterStationName
+        )
     }
 
     data class UiState(

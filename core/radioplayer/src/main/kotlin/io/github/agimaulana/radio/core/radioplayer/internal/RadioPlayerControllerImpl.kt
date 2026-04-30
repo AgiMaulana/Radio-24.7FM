@@ -2,11 +2,10 @@ package io.github.agimaulana.radio.core.radioplayer.internal
 
 import androidx.media3.session.MediaController
 import io.github.agimaulana.radio.core.radioplayer.PlaybackEvent
-import io.github.agimaulana.radio.core.radioplayer.PlaybackState
 import io.github.agimaulana.radio.core.radioplayer.RadioMediaItem
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
-import io.github.agimaulana.radio.core.radioplayer.toMediaItem
 import io.github.agimaulana.radio.core.radioplayer.internal.ServiceResolver.resolvePlaybackStartCallback
+import io.github.agimaulana.radio.core.radioplayer.toMediaItem
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.runBlocking
 
@@ -31,32 +30,53 @@ internal class RadioPlayerControllerImpl(
     }
 
     // Playlist APIs - Route startPlayback through PlaybackManager for proper state sync
-    override fun startPlayback(items: List<RadioMediaItem>, startIndex: Int, contextType: String?, contextQuery: String?) {
+    override fun startPlayback(
+        items: List<RadioMediaItem>,
+        startIndex: Int,
+        context: RadioPlayerController.PlaybackContext
+    ) {
         val callback = resolvePlaybackStartCallback()
         if (callback != null) {
             runBlocking {
-                callback(items, startIndex, contextType, contextQuery)
+                callback(items, startIndex, context.type.name, context.query)
             }
         } else {
             // Fallback: direct setMediaItems if PlaybackManager not available
-            setMediaItems(items, startIndex, contextType, contextQuery)
+            setMediaItems(items, startIndex, context)
             prepare()
             play()
         }
     }
 
-    override fun setMediaItems(items: List<RadioMediaItem>, startIndex: Int, contextType: String?, contextQuery: String?) {
-        val mediaItems = items.map { it.toMediaItem(contextType, contextQuery, null) }
+    override fun setMediaItems(
+        items: List<RadioMediaItem>,
+        startIndex: Int,
+        context: RadioPlayerController.PlaybackContext
+    ) {
+        val mediaItems = items.map { it.toMediaItem(context.type.name, context.query, null) }
         mediaController.setMediaItems(mediaItems, startIndex, 0L)
     }
 
-    override fun addMediaItems(items: List<RadioMediaItem>, contextType: String?, contextQuery: String?) {
-        val mediaItems = items.map { it.toMediaItem(contextType, contextQuery, null) }
+    override fun addMediaItems(
+        items: List<RadioMediaItem>,
+        context: RadioPlayerController.PlaybackContext
+    ) {
+        val mediaItems = items.map { it.toMediaItem(context.type.name, context.query, null) }
         mediaController.addMediaItems(mediaItems)
     }
 
-    override fun addMediaItems(index: Int, items: List<RadioMediaItem>, contextType: String?, contextQuery: String?) {
-        val mediaItems = items.map { it.toMediaItem(contextType, contextQuery, null) }
+    override fun addMediaItems(
+        index: Int,
+        items: List<RadioMediaItem>,
+        context: RadioPlayerController.PlaybackContext
+    ) {
+        val mediaItems = items.map {
+            it.toMediaItem(
+                contextType = context.type.name,
+                contextQuery = context.query,
+                page = null
+            )
+        }
         mediaController.addMediaItems(index, mediaItems)
     }
 

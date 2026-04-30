@@ -1,9 +1,10 @@
 package io.github.agimaulana.radio.feature.stationlist
 
-import app.cash.turbine.turbineScope
 import app.cash.turbine.test
-import io.github.agimaulana.radio.domain.api.repository.PinnedStationLimitReachedException
+import app.cash.turbine.turbineScope
+import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController.PlaybackContext
 import io.github.agimaulana.radio.domain.api.entity.GeoLatLong
+import io.github.agimaulana.radio.domain.api.repository.PinnedStationLimitReachedException
 import io.github.agimaulana.radio.feature.stationlist.datafactories.newRadioStation
 import io.github.agimaulana.radio.feature.stationlist.datafactories.newUiStateStation
 import io.github.agimaulana.radio.feature.stationlist.location.LocationProvider
@@ -11,8 +12,8 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.verify
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -190,9 +191,11 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
         viewModel.onAction(StationListViewModel.Action.Click(station))
 
         verify {
-            radioPlayerController.setMediaItem(any())
-            radioPlayerController.prepare()
-            radioPlayerController.play()
+            radioPlayerController.startPlayback(
+                items = any(),
+                startIndex = eq(0),
+                context = any<PlaybackContext>()
+            )
         }
     }
 
