@@ -1,5 +1,6 @@
 package io.github.agimaulana.radio.core.radioplayer
 
+import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController.PlaybackContext.Type.DEFAULT
 import kotlinx.coroutines.flow.Flow
 
 interface RadioPlayerController {
@@ -11,10 +12,28 @@ interface RadioPlayerController {
     fun setMediaItem(radioMediaItem: RadioMediaItem)
 
     // Playlist APIs - Use startPlayback for proper PlaybackManager sync
-    fun startPlayback(items: List<RadioMediaItem>, startIndex: Int = 0, contextType: String? = null, contextQuery: String? = null)
-    fun setMediaItems(items: List<RadioMediaItem>, startIndex: Int = 0, contextType: String? = null, contextQuery: String? = null)
-    fun addMediaItems(items: List<RadioMediaItem>, contextType: String? = null, contextQuery: String? = null)
-    fun addMediaItems(index: Int, items: List<RadioMediaItem>, contextType: String? = null, contextQuery: String? = null)
+    fun startPlayback(
+        items: List<RadioMediaItem>,
+        startIndex: Int = 0,
+        context: PlaybackContext = PlaybackContext(DEFAULT, null)
+    )
+
+    fun setMediaItems(
+        items: List<RadioMediaItem>,
+        startIndex: Int = 0,
+        context: PlaybackContext = PlaybackContext(DEFAULT, null)
+    )
+
+    fun addMediaItems(
+        items: List<RadioMediaItem>,
+        context: PlaybackContext = PlaybackContext(DEFAULT, null)
+    )
+
+    fun addMediaItems(
+        index: Int,
+        items: List<RadioMediaItem>,
+        context: PlaybackContext = PlaybackContext(DEFAULT, null)
+    )
 
     val mediaItemCount: Int
     val currentMediaItemIndex: Int
@@ -24,4 +43,11 @@ interface RadioPlayerController {
     fun pause()
     fun stop()
     fun release()
+
+    data class PlaybackContext(
+        val type: Type,
+        val query: String? = null
+    ) {
+        enum class Type { DEFAULT, SEARCH, PINNED }
+    }
 }

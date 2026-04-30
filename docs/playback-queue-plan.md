@@ -76,7 +76,8 @@ Goal
 - ~~Run full CI for feat/playback-queue-wip and address any flaky/platform-specific failures.~~ (done: CI passed)
 - ~~Run device smoke tests for notification Prev/Next, pinned→main boundary playback, and search-context restore UI.~~ (done: smoke tests passed)
 - ~~Add integration tests (optional): simulate process death and restore to verify restoreFromPlayer behavior across platforms.~~ (done: integration-process-death-tests)
-- Consider persisting loaded page ids (DataStore/Room) if playlist restore accuracy is important for the product. (todo: persist-loaded-page-ids)
+- ~~Consider persisting loaded page ids (DataStore/Room) if playlist restore accuracy is important for the product.~~ (done: Decision - no new persistence. Minimal context (context_type, context_query) is already persisted in MediaItem.extras. Page number estimated via itemCount/PAGE_SIZE. Lazy reconstruction + dedupe instead of exact restoration.)
+- ~~Verify all MediaItem creation paths include metadata~~ (done: verification pass - replaced fallback setMediaItem() calls with startPlayback() in StationListViewModel to ensure metadata is always populated)
 - Phase 2: implement backward pagination (prepend) and merged pinned strategy (todo: playback-backward-pagination)
 - Verify Hilt injection for RadioService/PlaybackManager and add providers if missing. (todo: ensure-hilt-injection)
 
@@ -86,7 +87,8 @@ Goal
 
 ## Persistence & Restore
 - Store minimal context inside MediaItem.mediaMetadata.extras so MediaSessionService/ExoPlayer playlist is the primary source of truth.
-- Estimate nextPage by player.mediaItemCount / PAGE_SIZE as fallback. Optionally persist loaded page numbers for accuracy.
+- Persisted fields: `playback_context_type`, `playback_context_query`
+- nextPage estimated via `player.mediaItemCount / PAGE_SIZE` as fallback (lazy reconstruction with dedupe instead of exact page persistence)
 
 ## Risks & Mitigations
 - Index desync during prepend: defer to Phase 2

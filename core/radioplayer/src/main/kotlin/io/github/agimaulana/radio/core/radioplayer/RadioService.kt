@@ -3,10 +3,8 @@ package io.github.agimaulana.radio.core.radioplayer
 import android.app.PendingIntent
 import android.content.Intent
 import androidx.annotation.OptIn
-import androidx.core.net.toUri
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
-import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLivePlaybackSpeedControl
 import androidx.media3.exoplayer.DefaultLoadControl
@@ -45,13 +43,14 @@ class RadioService : MediaSessionService() {
         // Register PlaybackManager.startPlayback with ServiceResolver so controller can call it
         playbackManager?.let { manager ->
             ServiceResolver.registerPlaybackStartCallback { items, startIndex, contextType, contextQuery ->
+                val type = contextType?.let { ct ->
+                    runCatching { PlaybackManager.PlaybackContext.Type.valueOf(ct) }
+                        .getOrElse { PlaybackManager.PlaybackContext.Type.DEFAULT }
+                } ?: PlaybackManager.PlaybackContext.Type.DEFAULT
                 manager.startPlayback(
                     items,
                     startIndex,
-                    PlaybackManager.PlaybackContext(
-                        type = if (contextType == "SEARCH") PlaybackManager.PlaybackContext.Type.SEARCH else PlaybackManager.PlaybackContext.Type.DEFAULT,
-                        query = contextQuery
-                    )
+                    PlaybackManager.PlaybackContext(type = type, query = contextQuery)
                 )
             }
         }
