@@ -12,6 +12,7 @@ import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
+import io.github.agimaulana.radio.domain.api.repository.PinnedStationLimitReachedException
 import io.github.agimaulana.radio.domain.api.repository.PinnedStationRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -56,10 +57,13 @@ class PinnedStationRepositoryImpl @Inject constructor(
     override suspend fun pinStation(station: RadioStation) {
         dataStore.edit { preferences ->
             val current = decodePinnedStations(preferences[KEY_PINNED_STATIONS]).toMutableList()
-            if (current.none { it.stationUuid == station.stationUuid } && current.size < MAX_PINS) {
-                current.add(station)
-                preferences[KEY_PINNED_STATIONS] = adapter.toJson(current)
+            val isAlreadyPinned = current.any { it.stationUuid == station.stationUuid }
+            if (isAlreadyPinned) return@edit
+            if (current.size >= MAX_PINS) {
+                throw PinnedStationLimitReachedException(MAX_PINS)
             }
+            current.add(station)
+            preferences[KEY_PINNED_STATIONS] = adapter.toJson(current)
         }
     }
 

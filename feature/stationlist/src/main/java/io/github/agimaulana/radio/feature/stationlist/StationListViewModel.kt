@@ -13,6 +13,7 @@ import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerControllerFactory
 import io.github.agimaulana.radio.domain.api.entity.GeoLatLong
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
+import io.github.agimaulana.radio.domain.api.repository.PinnedStationLimitReachedException
 import io.github.agimaulana.radio.domain.api.usecase.GetPinnedStationsUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
@@ -27,7 +28,9 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -48,6 +51,8 @@ class StationListViewModel @Inject constructor(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(UiState())
     val uiState = _uiState.asStateFlow()
+    private val _uiEvent = MutableSharedFlow<UiEvent>()
+    val uiEvent = _uiEvent.asSharedFlow()
 
     private var radioPlayerController: RadioPlayerController? = null
     private var searchJob: Job? = null
@@ -136,7 +141,11 @@ class StationListViewModel @Inject constructor(
     private fun handlePinStation(station: UiState.Station) {
         viewModelScope.launch {
             val domainStation = getRadioStationUseCase.execute(station.serverUuid) ?: return@launch
-            pinStationUseCase.execute(domainStation)
+            try {
+                pinStationUseCase.execute(domainStation)
+            } catch (exception: PinnedStationLimitReachedException) {
+                _uiEvent.emit(UiEvent.ShowPinnedLimitReached(exception.maxPins))
+            }
         }
     }
 
@@ -352,6 +361,10 @@ class StationListViewModel @Inject constructor(
         data class OnLocationPermissionGranted(val isGranted: Boolean) : Action
         data class PinStation(val station: UiState.Station) : Action
         data class UnpinStation(val stationUuid: String) : Action
+    }
+
+    sealed interface UiEvent {
+        data class ShowPinnedLimitReached(val maxPins: Int) : UiEvent
     }
 
     companion object {

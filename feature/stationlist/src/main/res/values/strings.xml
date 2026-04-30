@@ -15,6 +15,7 @@
     <string name="menu_remove_pin">Remove from pinned</string>
     <string name="menu_share">Share</string>
     <string name="pinned_removed_message">Removed %s</string>
+    <string name="pinned_limit_reached_message">You can pin up to %1$d stations</string>
     <string name="undo">Undo</string>
     <string name="label_pinned">PINNED</string>
     <string name="label_all_stations">ALL STATIONS</string>

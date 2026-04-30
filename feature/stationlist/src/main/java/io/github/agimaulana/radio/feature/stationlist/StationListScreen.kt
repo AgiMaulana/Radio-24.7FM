@@ -30,6 +30,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.tooling.preview.Preview
@@ -45,6 +46,7 @@ import io.github.agimaulana.radio.core.design.rememberGlassPlayerState
 import io.github.agimaulana.radio.core.design.rememberMultiplePermissionsState
 import io.github.agimaulana.radio.core.design.theme.PreviewTheme
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.Action
+import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.UiEvent
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.UiState
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.UiState.Station
 import io.github.agimaulana.radio.feature.stationlist.component.LazyRadioStationList
@@ -52,6 +54,8 @@ import io.github.agimaulana.radio.feature.stationlist.component.LocationPermissi
 import io.github.agimaulana.radio.feature.stationlist.component.StationContextMenu
 import io.github.agimaulana.radio.feature.stationlist.player.FullPlayer
 import io.github.agimaulana.radio.feature.stationlist.player.MiniPlayer
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.launch
 
@@ -72,8 +76,7 @@ fun StationListRoute(
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val toolbarDimensions = rememberToolbarDimensions(
         density = density,
-        statusBarPadding = statusBarPadding,
-        hasPinnedStations = uiState.pinnedStations.isNotEmpty()
+        statusBarPadding = statusBarPadding
     )
     val contextMenuState = rememberStationContextMenuState()
 
@@ -112,6 +115,7 @@ fun StationListRoute(
         toolbarDimensions = toolbarDimensions,
         contextMenuState = contextMenuState,
         onAction = viewModel::onAction,
+        eventFlow = viewModel.uiEvent,
         showLocationPermissionSheet = uiState.showLocationPermissionSheet,
         onLaunchLocationPermissionRequest = {
             locationPermissionState.launchPermissionRequest()
@@ -132,12 +136,15 @@ private fun StationListScreen(
     showLocationPermissionSheet: Boolean,
     onLaunchLocationPermissionRequest: () -> Unit,
     onDismissLocationPermission: () -> Unit,
+    eventFlow: Flow<UiEvent>,
     modifier: Modifier = Modifier,
     onAction: (Action) -> Unit = {},
 ) {
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val undoLabel = remember(context) { context.getString(R.string.undo) }
 
     if (showLocationPermissionSheet) {
         LocationPermissionBottomSheet(
@@ -147,6 +154,18 @@ private fun StationListScreen(
     }
 
     UpdateSystemBars()
+
+    LaunchedEffect(eventFlow, context) {
+        eventFlow.collect { event ->
+            when (event) {
+                is UiEvent.ShowPinnedLimitReached -> {
+                    snackbarHostState.showSnackbar(
+                        message = context.getString(R.string.pinned_limit_reached_message, event.maxPins)
+                    )
+                }
+            }
+        }
+    }
 
     val nestedScrollConnection = remember(toolbarDimensions, listState) {
         StationListNestedScrollConnection(
@@ -193,8 +212,8 @@ private fun StationListScreen(
                     if (stationToUnpin != null) {
                         scope.launch {
                             val result = snackbarHostState.showSnackbar(
-                                message = "Removed ${stationToUnpin.name}",
-                                actionLabel = "Undo",
+                                message = context.getString(R.string.pinned_removed_message, stationToUnpin.name),
+                                actionLabel = undoLabel,
                                 duration = androidx.compose.material3.SnackbarDuration.Short
                             )
                             if (result == SnackbarResult.ActionPerformed) {
@@ -355,13 +374,13 @@ private fun StationListScreenPreview() {
             playerState = rememberGlassPlayerState(peekHeight = 80.dp),
             toolbarDimensions = rememberToolbarDimensions(
                 density = LocalDensity.current,
-                statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
-                hasPinnedStations = false
+                statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
             ),
             contextMenuState = rememberStationContextMenuState(),
             showLocationPermissionSheet = false,
             onLaunchLocationPermissionRequest = {},
             onDismissLocationPermission = {},
+            eventFlow = emptyFlow(),
         )
     }
 }
