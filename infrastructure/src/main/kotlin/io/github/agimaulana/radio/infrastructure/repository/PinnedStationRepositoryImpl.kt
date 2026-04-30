@@ -1,69 +1,83 @@
 package io.github.agimaulana.radio.infrastructure.repository
 
 import android.content.Context
-import android.content.SharedPreferences
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.SharedPreferencesMigration
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
 import io.github.agimaulana.radio.domain.api.repository.PinnedStationRepository
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
+
+private val Context.pinnedStationsDataStore: DataStore<Preferences> by preferencesDataStore(
+    name = PinnedStationRepositoryImpl.DATA_STORE_NAME,
+    produceMigrations = { context ->
+        listOf(SharedPreferencesMigration(context, PinnedStationRepositoryImpl.PREFS_NAME))
+    }
+)
 
 @Singleton
 class PinnedStationRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val moshi: Moshi
+    moshi: Moshi
 ) : PinnedStationRepository {
-
-    private val sharedPreferences: SharedPreferences =
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val dataStore = context.pinnedStationsDataStore
 
     private val adapter = moshi.adapter<List<RadioStation>>(
         Types.newParameterizedType(List::class.java, RadioStation::class.java)
     )
 
-    override fun getPinnedStations(): Flow<List<RadioStation>> = callbackFlow {
-        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key == KEY_PINNED_STATIONS) {
-                trySend(getPinnedStationsFromPrefs())
+    override fun getPinnedStations(): Flow<List<RadioStation>> {
+        return dataStore.data
+            .catch { exception ->
+                if (exception is IOException) {
+                    emit(emptyPreferences())
+                } else {
+                    throw exception
+                }
             }
-        }
-        sharedPreferences.registerOnSharedPreferenceChangeListener(listener)
-        trySend(getPinnedStationsFromPrefs())
-        awaitClose {
-            sharedPreferences.unregisterOnSharedPreferenceChangeListener(listener)
-        }
+            .map { preferences ->
+                decodePinnedStations(preferences[KEY_PINNED_STATIONS])
+            }
     }
 
     override suspend fun pinStation(station: RadioStation) {
-        val current = getPinnedStationsFromPrefs().toMutableList()
-        if (current.none { it.stationUuid == station.stationUuid }) {
-            if (current.size >= MAX_PINS) {
-                return // Cap at 8
+        dataStore.edit { preferences ->
+            val current = decodePinnedStations(preferences[KEY_PINNED_STATIONS]).toMutableList()
+            if (current.none { it.stationUuid == station.stationUuid } && current.size < MAX_PINS) {
+                current.add(station)
+                preferences[KEY_PINNED_STATIONS] = adapter.toJson(current)
             }
-            current.add(station)
-            savePinnedStationsToPrefs(current)
         }
     }
 
     override suspend fun unpinStation(stationUuid: String) {
-        val current = getPinnedStationsFromPrefs().toMutableList()
-        if (current.removeIf { it.stationUuid == stationUuid }) {
-            savePinnedStationsToPrefs(current)
+        dataStore.edit { preferences ->
+            val current = decodePinnedStations(preferences[KEY_PINNED_STATIONS]).toMutableList()
+            if (current.removeIf { it.stationUuid == stationUuid }) {
+                preferences[KEY_PINNED_STATIONS] = adapter.toJson(current)
+            }
         }
     }
 
     override suspend fun isPinned(stationUuid: String): Boolean {
-        return getPinnedStationsFromPrefs().any { it.stationUuid == stationUuid }
+        return getPinnedStations().first().any { it.stationUuid == stationUuid }
     }
 
-    private fun getPinnedStationsFromPrefs(): List<RadioStation> {
-        val json = sharedPreferences.getString(KEY_PINNED_STATIONS, null) ?: return emptyList()
+    private fun decodePinnedStations(json: String?): List<RadioStation> {
+        if (json.isNullOrEmpty()) return emptyList()
         return try {
             adapter.fromJson(json) ?: emptyList()
         } catch (e: Exception) {
@@ -71,14 +85,10 @@ class PinnedStationRepositoryImpl @Inject constructor(
         }
     }
 
-    private fun savePinnedStationsToPrefs(stations: List<RadioStation>) {
-        val json = adapter.toJson(stations)
-        sharedPreferences.edit().putString(KEY_PINNED_STATIONS, json).apply()
-    }
-
     companion object {
-        private const val PREFS_NAME = "pinned_stations_prefs"
-        private const val KEY_PINNED_STATIONS = "pinned_stations"
+        const val PREFS_NAME = "pinned_stations_prefs"
+        const val DATA_STORE_NAME = "pinned_stations"
+        val KEY_PINNED_STATIONS = stringPreferencesKey("pinned_stations")
         private const val MAX_PINS = 8
     }
 }
