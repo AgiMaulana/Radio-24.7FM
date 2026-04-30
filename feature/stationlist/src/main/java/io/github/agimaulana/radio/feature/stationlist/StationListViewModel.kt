@@ -80,6 +80,7 @@ class StationListViewModel @Inject constructor(
                 val pinnedUuids = pinned.map { it.stationUuid }.toSet()
                 _uiState.update { state ->
                     state.copy(
+                        isPinnedStationsLoading = false,
                         pinnedStations = pinned.map { it.toUiStateStation(pinnedUuids) }.toImmutableList(),
                         stations = state.stations.map { it.copy(isPinned = it.serverUuid in pinnedUuids) }.toPersistentList()
                     )
@@ -228,7 +229,7 @@ class StationListViewModel @Inject constructor(
 
         fetchJob?.cancel()
         fetchJob = viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isStationsLoading = true) }
             try {
                 val nextPage = _uiState.value.currentPage + 1
                 val pinnedUuids = _uiState.value.pinnedStations.map { it.serverUuid }.toSet()
@@ -246,12 +247,12 @@ class StationListViewModel @Inject constructor(
                         currentPage = nextPage,
                         stations = (it.stations + fetchedStations).toPersistentList(),
                         hasMorePages = fetchedStations.isNotEmpty() && fetchedStations.size >= PAGE_SIZE,
-                        isLoading = false
+                        isStationsLoading = false
                     )
                 }
             } catch (e: Exception) {
                 Timber.tag("StationListViewModel").e(e, "Error fetching radio stations")
-                _uiState.update { it.copy(isLoading = false) }
+                _uiState.update { it.copy(isStationsLoading = false) }
             }
         }
     }
@@ -307,7 +308,8 @@ class StationListViewModel @Inject constructor(
         val pinnedStations: ImmutableList<Station> = persistentListOf(),
         val selectedStation: Station? = null,
         val hasMorePages: Boolean = true,
-        val isLoading: Boolean = true,
+        val isPinnedStationsLoading: Boolean = true,
+        val isStationsLoading: Boolean = true,
         val playerColors: PlayerColors = PlayerColors(
             Color(0xFF1C1A24),
             Color(0xFF3a1040),
