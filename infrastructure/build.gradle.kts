@@ -8,6 +8,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.datastore.preferences)
     implementation(libs.moshi)
     ksp(libs.moshi.codegen)
     implementation(project(":core:common"))
