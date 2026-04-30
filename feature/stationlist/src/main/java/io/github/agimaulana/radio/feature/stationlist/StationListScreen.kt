@@ -1,7 +1,11 @@
 package io.github.agimaulana.radio.feature.stationlist
 
 import android.app.Activity
+import android.content.IntentSender
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -9,7 +13,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -54,10 +57,11 @@ import io.github.agimaulana.radio.feature.stationlist.component.LocationPermissi
 import io.github.agimaulana.radio.feature.stationlist.component.StationContextMenu
 import io.github.agimaulana.radio.feature.stationlist.player.FullPlayer
 import io.github.agimaulana.radio.feature.stationlist.player.MiniPlayer
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 internal data class ToolbarDimensions(
     val expandedHeight: Dp,
@@ -89,6 +93,25 @@ fun StationListRoute(
         android.Manifest.permission.ACCESS_FINE_LOCATION,
         onPermissionResolved = ::resolveLocationPermission
     )
+
+    val locationSettingsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        viewModel.onAction(Action.OnLocationSettingsResolved(result.resultCode == Activity.RESULT_OK))
+    }
+
+    LaunchedEffect(uiState.locationSettingsResolution) {
+        uiState.locationSettingsResolution?.let { exception ->
+            try {
+                val intentSenderRequest = IntentSenderRequest.Builder(exception.resolution.intentSender).build()
+                locationSettingsLauncher.launch(intentSenderRequest)
+                viewModel.onAction(Action.OnLocationSettingsResolutionConsumed)
+            } catch (e: IntentSender.SendIntentException) {
+                Timber.e(e, "Failed to launch location settings resolution")
+                viewModel.onAction(Action.OnLocationSettingsResolved(false))
+            }
+        }
+    }
 
     BackHandler(enabled = playerState.canCollapse) {
         viewModel.onAction(Action.CollapsePlayer(source = "back_press"))

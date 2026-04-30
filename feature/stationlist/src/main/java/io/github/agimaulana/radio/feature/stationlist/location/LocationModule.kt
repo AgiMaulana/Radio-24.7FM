@@ -3,6 +3,7 @@ package io.github.agimaulana.radio.feature.stationlist.location
 import android.content.Context
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.SettingsClient
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -19,6 +20,12 @@ object LocationModule {
     @Singleton
     fun provideFusedLocationProviderClient(@ApplicationContext context: Context): FusedLocationProviderClient {
         return LocationServices.getFusedLocationProviderClient(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideSettingsClient(@ApplicationContext context: Context): SettingsClient {
+        return LocationServices.getSettingsClient(context)
     }
 
     @Provides
