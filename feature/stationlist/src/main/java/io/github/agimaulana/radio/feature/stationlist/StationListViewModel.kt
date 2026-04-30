@@ -134,6 +134,7 @@ class StationListViewModel @Inject constructor(
             is Action.ExpandPlayer -> trackPlayerEvent(action.source, true)
             is Action.CollapsePlayer -> trackPlayerEvent(action.source, false)
             is Action.OnLocationPermissionGranted -> handleLocationPermissionGranted(action.isGranted)
+            Action.OnLocationSettingsResolutionConsumed -> consumeLocationSettingsResolution()
             is Action.OnLocationSettingsResolved -> handleLocationSettingsResolved(action.isResolved)
             // RequestLocationPermission action removed: permission requests are initiated from the UI
             // via rememberMultiplePermissionsState.launchPermissionRequest() and resolved via ActivityResult.
@@ -240,12 +241,16 @@ class StationListViewModel @Inject constructor(
     }
 
     private fun handleLocationSettingsResolved(isResolved: Boolean) {
-        _uiState.update { it.copy(locationSettingsResolution = null) }
+        consumeLocationSettingsResolution()
         if (isResolved) {
             handleLocationPermissionGranted(true)
         } else {
             fetchRadioStations()
         }
+    }
+
+    private fun consumeLocationSettingsResolution() {
+        _uiState.update { it.copy(locationSettingsResolution = null) }
     }
 
     private fun trackPlayerEvent(source: String, expanded: Boolean) {
@@ -382,6 +387,7 @@ class StationListViewModel @Inject constructor(
         data class ExpandPlayer(val source: String) : Action
         data class CollapsePlayer(val source: String) : Action
         data class OnLocationPermissionGranted(val isGranted: Boolean) : Action
+        data object OnLocationSettingsResolutionConsumed : Action
         data class OnLocationSettingsResolved(val isResolved: Boolean) : Action
         data class PinStation(val station: UiState.Station) : Action
         data class UnpinStation(val stationUuid: String) : Action

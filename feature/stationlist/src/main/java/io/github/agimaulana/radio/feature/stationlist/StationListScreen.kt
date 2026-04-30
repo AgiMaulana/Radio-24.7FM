@@ -105,6 +105,7 @@ fun StationListRoute(
             try {
                 val intentSenderRequest = IntentSenderRequest.Builder(exception.resolution.intentSender).build()
                 locationSettingsLauncher.launch(intentSenderRequest)
+                viewModel.onAction(Action.OnLocationSettingsResolutionConsumed)
             } catch (e: IntentSender.SendIntentException) {
                 Timber.e(e, "Failed to launch location settings resolution")
                 viewModel.onAction(Action.OnLocationSettingsResolved(false))
