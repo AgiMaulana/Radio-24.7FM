@@ -1,6 +1,8 @@
 package io.github.agimaulana.radio.feature.stationlist
 
 import app.cash.turbine.turbineScope
+import app.cash.turbine.test
+import io.github.agimaulana.radio.domain.api.repository.PinnedStationLimitReachedException
 import io.github.agimaulana.radio.domain.api.entity.GeoLatLong
 import io.github.agimaulana.radio.feature.stationlist.datafactories.newRadioStation
 import io.github.agimaulana.radio.feature.stationlist.datafactories.newUiStateStation
@@ -220,6 +222,25 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
         runCurrent()
 
         coVerify { pinStationUseCase.execute(domainStation) }
+    }
+
+    @Test
+    fun `when pin station reaches limit then emit snackbar event`() = runTest {
+        val station = newUiStateStation(withServerUuid = "uuid-1")
+        val domainStation = newRadioStation(withStationUuid = "uuid-1")
+        coEvery { getRadioStationUseCase.execute("uuid-1") } returns domainStation
+        coEvery { pinStationUseCase.execute(domainStation) } throws PinnedStationLimitReachedException(maxPins = 8)
+
+        viewModel.uiEvent.test {
+            viewModel.onAction(StationListViewModel.Action.PinStation(station))
+            runCurrent()
+
+            assertEquals(
+                StationListViewModel.UiEvent.ShowPinnedLimitReached(maxPins = 8),
+                awaitItem()
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test

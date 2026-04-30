@@ -9,3 +9,7 @@ interface PinnedStationRepository {
     suspend fun unpinStation(stationUuid: String)
     suspend fun isPinned(stationUuid: String): Boolean
 }
+
+class PinnedStationLimitReachedException(
+    val maxPins: Int
+) : IllegalStateException("Pinned stations are limited to $maxPins items")

@@ -14,10 +14,9 @@ import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.UiSta
 @Composable
 internal fun rememberToolbarDimensions(
     density: Density,
-    statusBarPadding: Dp,
-    hasPinnedStations: Boolean
+    statusBarPadding: Dp
 ): ToolbarDimensionsHelper {
-    val expandedHeight = (if (hasPinnedStations) 320.dp else 320.dp) + statusBarPadding
+    val expandedHeight = 320.dp + statusBarPadding
     val collapsedHeight = 64.dp + statusBarPadding
     val expandedHeightPx = with(density) { expandedHeight.toPx() }
     val collapsedHeightPx = with(density) { collapsedHeight.toPx() }
@@ -67,9 +66,9 @@ internal class StationContextMenuState(
     var useBottomSheet by mutableStateOf(useBottomSheet)
         private set
 
-    fun show(station: Station) {
+    fun show(station: Station, useBottomSheet: Boolean = true) {
         this.station = station
-        useBottomSheet = true
+        this.useBottomSheet = useBottomSheet
         showMenu = true
     }
 
