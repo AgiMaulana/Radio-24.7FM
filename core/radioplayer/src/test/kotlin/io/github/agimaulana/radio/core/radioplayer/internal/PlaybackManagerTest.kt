@@ -48,7 +48,7 @@ class PlaybackManagerTest {
         val manager = PlaybackManager(player) { nextPage, query -> fetched }
 
         // simulate that id1 was already loaded to test dedupe
-        val loadedIdsField = PlaybackManager::class.java.getDeclaredField("loadedIds")
+        val loadedIdsField = PlaybackManager::class.java.getDeclaredField("_loadedIds")
         loadedIdsField.isAccessible = true
         val loadedIds = loadedIdsField.get(manager) as MutableSet<String>
         loadedIds.add("id1")
@@ -93,7 +93,7 @@ class PlaybackManagerTest {
         assertEquals(3, nextPageValue)
 
         // playbackContext should be SEARCH with query "gen"
-        val playbackContextField = PlaybackManager::class.java.getDeclaredField("playbackContext")
+        val playbackContextField = PlaybackManager::class.java.getDeclaredField("_playbackContext")
         playbackContextField.isAccessible = true
         val pc = playbackContextField.get(manager)
         val typeField = pc!!::class.java.getDeclaredField("type")
