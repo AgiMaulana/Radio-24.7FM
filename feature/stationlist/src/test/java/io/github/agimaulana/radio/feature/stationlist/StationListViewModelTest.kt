@@ -19,8 +19,9 @@ import org.junit.Test
 class StationListViewModelTest : StationListViewModelTest__Fixtures() {
 
     @Test
-    fun `initial state should have isLoading true`() = runTest {
-        assertTrue(viewModel.uiState.value.isLoading)
+    fun `initial state should have pinned and stations loading true`() = runTest {
+        assertTrue(viewModel.uiState.value.isPinnedStationsLoading)
+        assertTrue(viewModel.uiState.value.isStationsLoading)
     }
 
     @Test
@@ -31,6 +32,8 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
 
             viewModel.init()
             runCurrent()
+
+            uiState.expectMostRecentItem()
 
             coVerify(exactly = 1) {
                 radioPlayerControllerFactory.get()
@@ -48,7 +51,7 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
             runCurrent()
 
             // Sheet should remain false (already granted)
-            assertFalse(uiState.awaitItem().showLocationPermissionSheet)
+            assertFalse(uiState.expectMostRecentItem().showLocationPermissionSheet)
         }
     }
 
@@ -63,7 +66,7 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
             runCurrent()
 
             // Sheet stays false (permanently denied)
-            assertFalse(uiState.awaitItem().showLocationPermissionSheet)
+            assertFalse(uiState.expectMostRecentItem().showLocationPermissionSheet)
         }
     }
 
@@ -134,7 +137,7 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
             // Third emission: fetch complete
             with(uiState.awaitItem()) {
                 assertEquals(1, currentPage)
-                assertFalse(isLoading)
+                assertFalse(isStationsLoading)
             }
 
             coVerify {
@@ -167,7 +170,7 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
             // Second emission: fetch complete
             with(uiState.awaitItem()) {
                 assertEquals(1, currentPage)
-                assertFalse(isLoading)
+                assertFalse(isStationsLoading)
             }
 
             coVerify {

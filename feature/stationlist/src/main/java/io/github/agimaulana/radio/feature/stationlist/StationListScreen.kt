@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -26,7 +25,6 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -43,7 +41,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.agimaulana.radio.core.design.GlassPlayerState
 import io.github.agimaulana.radio.core.design.GlassSlidingPlayerLayout
-import io.github.agimaulana.radio.core.design.RadioTheme
 import io.github.agimaulana.radio.core.design.rememberGlassPlayerState
 import io.github.agimaulana.radio.core.design.rememberMultiplePermissionsState
 import io.github.agimaulana.radio.core.design.theme.PreviewTheme
@@ -53,7 +50,6 @@ import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.UiSta
 import io.github.agimaulana.radio.feature.stationlist.component.LazyRadioStationList
 import io.github.agimaulana.radio.feature.stationlist.component.LocationPermissionBottomSheet
 import io.github.agimaulana.radio.feature.stationlist.component.StationContextMenu
-import io.github.agimaulana.radio.feature.stationlist.player.BufferingIcon
 import io.github.agimaulana.radio.feature.stationlist.player.FullPlayer
 import io.github.agimaulana.radio.feature.stationlist.player.MiniPlayer
 import kotlinx.collections.immutable.persistentListOf
@@ -297,36 +293,23 @@ private fun StationListContent(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
-        if (uiState.isLoading && uiState.stations.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                BufferingIcon(
-                    modifier = Modifier.size(96.dp),
-                    tint = RadioTheme.colors.primary,
-                    tweenDurationMillis = 1500,
-                )
-            }
-        } else {
-            LazyRadioStationList(
-                stations = uiState.stations,
-                pinnedStations = uiState.pinnedStations,
-                listState = listState,
-                onClick = { onAction(Action.Click(it)) },
-                onLongClick = onLongClick,
-                onReachEnd = { onAction(Action.LoadMore) },
-                contentPadding = PaddingValues(
-                    top = lerp(dims.expandedHeight, dims.collapsedHeight, dims.progress) + 16.dp,
-                    bottom = innerPadding.calculateBottomPadding() + 80.dp,
-                ),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .nestedScroll(nestedScrollConnection)
-            )
-        }
+        LazyRadioStationList(
+            stations = uiState.stations,
+            pinnedStations = uiState.pinnedStations,
+            isPinnedStationsLoading = uiState.isPinnedStationsLoading,
+            isStationsLoading = uiState.isStationsLoading,
+            listState = listState,
+            onClick = { onAction(Action.Click(it)) },
+            onLongClick = onLongClick,
+            onReachEnd = { onAction(Action.LoadMore) },
+            contentPadding = PaddingValues(
+                top = lerp(dims.expandedHeight, dims.collapsedHeight, dims.progress) + 16.dp,
+                bottom = innerPadding.calculateBottomPadding() + 80.dp,
+            ),
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(nestedScrollConnection)
+        )
     }
 }
 
