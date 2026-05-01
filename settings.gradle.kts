@@ -24,7 +24,8 @@ rootProject.name = "Radio247Fm"
 include(":app")
 
 include(
-    ":feature:stationlist"
+    ":feature:stationlist",
+    ":feature:auto",
 )
 
 include(
