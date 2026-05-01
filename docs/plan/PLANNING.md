@@ -85,18 +85,24 @@ feature/auto/
 - [x] 3.2 `AutoSession.kt` — `onCreateScreen()` returns `BrowseScreen`, `onNewIntent()` pushes `SearchScreen` for voice commands; manages `RadioPlayerController` lifecycle via `StateFlow`
 
 ### Phase 4 — Browse screen
-- [x] 4.1 `BrowseScreen.kt`
-  - `ListTemplate` with PINNED + ALL STATIONS sections (max 6 each)
-  - Live `isPlaying` + `currentMediaId` from `PlaybackEvent` flow
-  - "▶ Now playing" row decoration for current station
-  - ActionStrip: play/pause toggle when active + Search navigation
-  - Tap row → `startPlayback()` + push `NowPlayingScreen`
+- [x] 4.1 Create `BrowseScreen.kt` with `ListTemplate` scaffold
+- [x] 4.2 Load pinned stations via `GetPinnedStationsUseCase` (Flow, live updates)
+- [x] 4.3 Load first page of stations via `GetRadioStationsUseCase` (page=0)
+- [x] 4.4 Two `SectionedItemList` sections: PINNED + ALL STATIONS (max 6 each)
+- [x] 4.5 Each row: station name + genre text + tap-to-play `OnClickListener`
+- [x] 4.6 "▶ Now playing" row decoration for current station via `PlaybackEvent` flow
+- [x] 4.7 ActionStrip: play/pause toggle (when active) + Search navigation action
+- [x] 4.8 Tap row → `startPlayback()` with `PINNED`/`DEFAULT` context + push `NowPlayingScreen`
+- [ ] 4.9 Loading state (`setLoading(true)`) while initial fetch in progress ← already done in code, verify renders correctly on DHU
 
 ### Phase 5 — Now Playing screen
-- [x] 5.1 `NowPlayingScreen.kt`
-  - `PaneTemplate` (minCarApiLevel 2 compatible, vs `PlaybackTemplate` which needs level 6)
-  - Play/Pause + Stop in `Pane` actions; Pin/Unpin in `ActionStrip`
-  - Observes `PlaybackEvent.PlayingChanged` for live button state
+- [x] 5.1 Create `NowPlayingScreen.kt` with `PaneTemplate` (minCarApiLevel 2; `PlaybackTemplate` needs level 6)
+- [x] 5.2 Play/Pause action — title toggles "Play"/"Pause" based on `PlaybackEvent.PlayingChanged`
+- [x] 5.3 Stop action — calls `controller.stop()`
+- [x] 5.4 Pin/Unpin action in `ActionStrip` — calls `PinStationUseCase`/`UnpinStationUseCase`, toggles label
+- [x] 5.5 Station name + genre in `Pane` row
+- [x] 5.6 `BACK` header action to return to Browse
+- [ ] 5.7 Artwork display — `PaneTemplate` doesn't support image in row; consider `CarIcon` in row or accept text-only for now
 
 ### Phase 6 — Search screen (5 states)
 - [x] 6.1 **State 1 — driving/voice:** `MessageTemplate` with voice hint chips using `ParkedOnlyOnClickListener`
