@@ -11,7 +11,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
-import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
 class PlaybackManagerProcessDeathIntegrationTest {
@@ -75,7 +74,7 @@ class PlaybackManagerProcessDeathIntegrationTest {
 
         playbackManager.restoreFromPlayer()
 
-        assertTrue(playbackManager.nextPage >= 3)
+        assertTrue(playbackManager.maxPageLoaded >= 3)
     }
 
     @Test
