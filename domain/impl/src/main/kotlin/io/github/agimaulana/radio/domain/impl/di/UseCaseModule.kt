@@ -20,9 +20,6 @@ import io.github.agimaulana.radio.domain.impl.UnpinStationUseCaseImpl
 interface UseCaseModule {
 
     @Binds
-    fun bindGetRadioStationsUseCase(impl: GetRadioStationsUseCaseImpl): GetRadioStationsUseCase
-
-    @Binds
     fun bindGetRadioStationUseCase(impl: GetRadioStationUseCaseImpl): GetRadioStationUseCase
 
     @Binds
