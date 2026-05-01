@@ -21,3 +21,4 @@ app/prod/release
 
 # Skola skill context (local values)
 **/.skola/context.local.yaml
+.gitnexus
