@@ -78,8 +78,8 @@ Goal
 - ~~Add integration tests (optional): simulate process death and restore to verify restoreFromPlayer behavior across platforms.~~ (done: integration-process-death-tests)
 - ~~Consider persisting loaded page ids (DataStore/Room) if playlist restore accuracy is important for the product.~~ (done: Decision - no new persistence. Minimal context (context_type, context_query) is already persisted in MediaItem.extras. Page number estimated via itemCount/PAGE_SIZE. Lazy reconstruction + dedupe instead of exact restoration.)
 - ~~Verify all MediaItem creation paths include metadata~~ (done: verification pass - replaced fallback setMediaItem() calls with startPlayback() in StationListViewModel to ensure metadata is always populated)
-- Phase 2: implement backward pagination (prepend) and merged pinned strategy (todo: playback-backward-pagination)
-- Verify Hilt injection for RadioService/PlaybackManager and add providers if missing. (todo: ensure-hilt-injection)
+- ~~Phase 2: implement backward pagination (prepend)~~ (cancelled — removed from PlaybackManager to reduce complexity; prepend logic had index-offset and UI state risks. Forward-only pagination + dedupe preserved.)
+- Verify Hilt injection for RadioService/PlaybackManager and add providers if missing. (todo: ensure-hilt-
 
 
 ## UX notes
