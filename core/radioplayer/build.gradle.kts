@@ -1,5 +1,6 @@
 plugins {
     id(libs.plugins.boilerplate.android.library.asProvider().get().pluginId)
+    id(libs.plugins.boilerplate.android.hilt.get().pluginId)
 }
 
 android {
@@ -10,6 +11,10 @@ dependencies {
     implementation(libs.androidx.media3.session)
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.exoplayer.hls)
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.android.compiler)
+    implementation(project(":domain:api"))
+    implementation(project(":domain:impl"))
 
     testImplementation(libs.robolectric)
     testImplementation(libs.junit)

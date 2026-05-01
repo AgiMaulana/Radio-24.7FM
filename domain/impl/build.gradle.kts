@@ -1,6 +1,7 @@
 @Suppress("DSL_SCOPE_VIOLATION")
 plugins {
     id(libs.plugins.boilerplate.android.library.asProvider().get().pluginId)
+    id(libs.plugins.boilerplate.android.hilt.get().pluginId)
 }
 
 android {
@@ -9,6 +10,8 @@ android {
 
 dependencies {
     implementation(libs.moshi)
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.android.compiler)
     implementation(project(":core:common"))
     implementation(project(":domain:api"))
 
