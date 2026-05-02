@@ -3,72 +3,24 @@ package io.github.agimaulana.radio.feature.auto
 import android.content.Intent
 import androidx.car.app.Screen
 import androidx.car.app.Session
-import androidx.car.app.ScreenManager
-import androidx.lifecycle.DefaultLifecycleObserver
-import androidx.lifecycle.LifecycleOwner
-import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
-import io.github.agimaulana.radio.core.radioplayer.RadioPlayerControllerFactory
-import io.github.agimaulana.radio.domain.api.usecase.GetPinnedStationsUseCase
-import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
-import io.github.agimaulana.radio.domain.api.usecase.PinStationUseCase
-import io.github.agimaulana.radio.domain.api.usecase.UnpinStationUseCase
-import io.github.agimaulana.radio.feature.auto.screen.BrowseScreen
-import io.github.agimaulana.radio.feature.auto.screen.SearchScreen
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
+import io.github.agimaulana.radio.feature.auto.screen.main.MainScreen
 
-class AutoSession(
-    private val getRadioStationsUseCase: GetRadioStationsUseCase,
-    private val getPinnedStationsUseCase: GetPinnedStationsUseCase,
-    private val pinStationUseCase: PinStationUseCase,
-    private val unpinStationUseCase: UnpinStationUseCase,
-    private val radioPlayerControllerFactory: RadioPlayerControllerFactory,
-) : Session() {
-
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private val _playerController = MutableStateFlow<RadioPlayerController?>(null)
-    val playerController: StateFlow<RadioPlayerController?> = _playerController
-    private val screenManager: ScreenManager by lazy {
-        carContext.getCarService(ScreenManager::class.java)
-    }
-
-    init {
-        lifecycle.addObserver(object : DefaultLifecycleObserver {
-            override fun onDestroy(owner: LifecycleOwner) {
-                _playerController.value?.release()
-                scope.cancel()
-            }
-        })
-    }
+class AutoSession : Session() {
 
     override fun onCreateScreen(intent: Intent): Screen {
-        scope.launch {
-            _playerController.value = radioPlayerControllerFactory.get()
-        }
-        return BrowseScreen(
-            carContext = carContext,
-            getRadioStationsUseCase = getRadioStationsUseCase,
-            getPinnedStationsUseCase = getPinnedStationsUseCase,
-            pinStationUseCase = pinStationUseCase,
-            unpinStationUseCase = unpinStationUseCase,
-            playerController = playerController,
-        )
+        // Pass the factory down to whatever screen is starting
+        return MainScreen(carContext)
     }
 
-    override fun onNewIntent(intent: Intent) {
-        // Voice command entry point — push search screen over current stack
-        screenManager.pushForResult(
-            SearchScreen(
-                carContext = carContext,
-                getRadioStationsUseCase = getRadioStationsUseCase,
-                getPinnedStationsUseCase = getPinnedStationsUseCase,
-                playerController = playerController,
-            )
-        ) { /* no result handling needed */ }
-    }
+//    override fun onNewIntent(intent: Intent) {
+//        // Voice command entry point — push search screen over current stack
+//        screenManager.pushForResult(
+//            SearchScreen(
+//                carContext = carContext,
+//                getRadioStationsUseCase = getRadioStationsUseCase,
+//                getPinnedStationsUseCase = getPinnedStationsUseCase,
+//                playerController = playerController,
+//            )
+//        ) { /* no result handling needed */ }
+//    }
 }

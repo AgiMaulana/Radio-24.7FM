@@ -11,8 +11,17 @@ android {
 }
 
 dependencies {
-    implementation(libs.androidx.car.app)
     implementation(project(":domain:api"))
     implementation(project(":core:radioplayer"))
+    implementation(project(":core:car-app-state"))
+    implementation(project(":core:car-app-viewmodel-core"))
+    implementation(project(":core:car-app-viewmodel-hilt"))
+    implementation(libs.androidx.car.app)
+//    implementation(libs.androidx.media3)
+    implementation(libs.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.collections.immutable)
+    implementation(libs.coil)
+    implementation(libs.coil.network)
     testImplementation(libs.androidx.car.app.testing)
 }

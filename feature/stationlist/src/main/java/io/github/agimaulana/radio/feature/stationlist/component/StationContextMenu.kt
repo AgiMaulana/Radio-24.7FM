@@ -1,7 +1,6 @@
 package io.github.agimaulana.radio.feature.stationlist.component
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,7 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import coil.compose.rememberAsyncImagePainter
+import coil3.compose.rememberAsyncImagePainter
 import io.github.agimaulana.radio.core.design.RadioTheme
 import io.github.agimaulana.radio.core.design.theme.PreviewTheme
 import io.github.agimaulana.radio.feature.stationlist.R

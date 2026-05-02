@@ -13,9 +13,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.palette.graphics.Palette
-import coil.imageLoader
-import coil.request.ImageRequest
-import coil.request.SuccessResult
+import coil3.imageLoader
+import coil3.request.ImageRequest
+import coil3.request.SuccessResult
+import coil3.request.allowHardware
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -43,7 +44,7 @@ suspend fun extractPlayerColors(
             val request = ImageRequest.Builder(context).data(imageUrl).allowHardware(false).build()
             val result = loader.execute(request)
 
-            val bitmap: Bitmap = ((result as? SuccessResult)?.drawable as? BitmapDrawable)
+            val bitmap: Bitmap = ((result as? SuccessResult)?.image as? BitmapDrawable)
                 ?.bitmap ?: return@withContext fallbackColors
 
             val scaled = Bitmap.createScaledBitmap(bitmap, 100, 100, false)

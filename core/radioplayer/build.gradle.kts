@@ -8,6 +8,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.concurrent)
     implementation(libs.androidx.media3.session)
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.exoplayer.hls)
