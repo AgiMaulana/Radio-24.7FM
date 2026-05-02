@@ -37,6 +37,9 @@ include(
     ":core:radioplayer",
     ":core:shared-test",
     ":core:tracker",
+    ":core:car-app-state",
+    ":core:car-app-viewmodel-core",
+    ":core:car-app-viewmodel-hilt",
 )
 
 include(

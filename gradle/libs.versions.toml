@@ -33,7 +33,7 @@ okhttp = "5.2.1"
 retrofit = "3.0.0"
 moshi = "1.15.2"
 joda = "2.14.0"
-coilCompose = "2.7.0"
+coil = "3.4.0"
 activityCompose = "1.10.1"
 collectionsImmutable = "0.4.0"
 lottieCompose = "6.6.7"
@@ -52,6 +52,7 @@ robolectric = "4.16"
 detekt = "1.23.8"
 detekt-twitter = "0.0.26"
 lifecycleRuntimeKtx = "2.10.0"
+lifecycleViewmodelKtx = "2.7.0"
 composeBom = "2024.09.00"
 media3Session = "1.9.0"
 media3Exoplayer = "1.9.0"
@@ -105,8 +106,10 @@ compose-navigation-hilt = { module = "androidx.hilt:hilt-navigation-compose", ve
 androidx-compose-material3 = { module = "androidx.compose.material3:material3", version.ref = "composeMaterial3" }
 androidx-compose-materialWindow = { module = "androidx.compose.material3:material3-window-size-class", version.ref = "composeMaterial3" }
 compose-constraint = { module = "androidx.constraintlayout:constraintlayout-compose", version.ref = "composeConstraint" }
-coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coilCompose" }
-coil-compose-test = { module = "io.coil-kt:coil-test", version.ref = "coilCompose" }
+coil = { module = "io.coil-kt.coil3:coil", version.ref = "coil" }
+coil-network = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
+coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
+coil-compose-test = { module = "io.coil-kt.coil3:coil-test", version.ref = "coil" }
 activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 compose-navigation-testing = { module = "androidx.navigation:navigation-testing", version.ref = "composeNavigation" }
 compose-ui-testing = { module = "androidx.compose.ui:ui-test-junit4", version.ref = "compose" }
@@ -140,6 +143,7 @@ kotlin-gradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", ve
 detekt-formatting = { module = "io.gitlab.arturbosch.detekt:detekt-formatting", version.ref = "detekt"}
 detekt-twitter-rules = { module = "com.twitter.compose.rules:detekt", version.ref = "detekt-twitter"}
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+lifecycle-viewmodel-ktx = { group ="androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycleViewmodelKtx" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
