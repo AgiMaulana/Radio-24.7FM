@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_tiles_description">Quick access to your pinned stations in a 2x2 grid.</string>
+    <string name="widget_list_description">List of pinned stations with quick play buttons.</string>
+    <string name="widget_full_description">Now playing controls and pinned stations list.</string>
+</resources>

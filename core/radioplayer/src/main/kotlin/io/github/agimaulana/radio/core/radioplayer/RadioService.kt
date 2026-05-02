@@ -5,6 +5,8 @@ import android.content.Intent
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLivePlaybackSpeedControl
 import androidx.media3.exoplayer.DefaultLoadControl
@@ -13,6 +15,7 @@ import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import dagger.hilt.android.AndroidEntryPoint
+import io.github.agimaulana.radio.core.common.WidgetConstants
 import io.github.agimaulana.radio.core.radioplayer.internal.PlaybackManager
 import io.github.agimaulana.radio.core.radioplayer.internal.RadioMediaSessionCallback
 import io.github.agimaulana.radio.core.radioplayer.internal.ServiceResolver
@@ -27,9 +30,24 @@ class RadioService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
     private var playbackManager: PlaybackManager? = null
 
+    private val playerListener = object : Player.Listener {
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            sendWidgetRefreshBroadcast()
+        }
+
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            sendWidgetRefreshBroadcast()
+        }
+
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            sendWidgetRefreshBroadcast()
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         val player = createPlayer()
+        player.addListener(playerListener)
 
         val fetcher: suspend (Int, String?) -> List<RadioMediaItem> = { page, query ->
             getRadioStationsUseCase.execute(page = page, searchName = query, location = null)
@@ -81,6 +99,7 @@ class RadioService : MediaSessionService() {
 
     override fun onDestroy() {
         mediaSession?.run {
+            player.removeListener(playerListener)
             player.release()
             release()
             mediaSession = null
@@ -112,4 +131,10 @@ class RadioService : MediaSessionService() {
         )
     }
 
+    private fun sendWidgetRefreshBroadcast() {
+        val intent = Intent(WidgetConstants.ACTION_REFRESH_WIDGETS).apply {
+            setPackage(packageName)
+        }
+        sendBroadcast(intent)
+    }
 }

@@ -13,6 +13,7 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer.hls)
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
+    implementation(project(":core:common"))
     implementation(project(":domain:api"))
     implementation(project(":domain:impl"))
 

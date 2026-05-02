@@ -11,9 +11,11 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import dagger.hilt.android.qualifiers.ApplicationContext
+import io.github.agimaulana.radio.core.common.WidgetConstants
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
 import io.github.agimaulana.radio.domain.api.repository.PinnedStationLimitReachedException
 import io.github.agimaulana.radio.domain.api.repository.PinnedStationRepository
+import android.content.Intent
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
@@ -65,6 +67,7 @@ class PinnedStationRepositoryImpl @Inject constructor(
             current.add(station)
             preferences[KEY_PINNED_STATIONS] = adapter.toJson(current)
         }
+        sendWidgetRefreshBroadcast()
     }
 
     override suspend fun unpinStation(stationUuid: String) {
@@ -74,6 +77,14 @@ class PinnedStationRepositoryImpl @Inject constructor(
                 preferences[KEY_PINNED_STATIONS] = adapter.toJson(current)
             }
         }
+        sendWidgetRefreshBroadcast()
+    }
+
+    private fun sendWidgetRefreshBroadcast() {
+        val intent = Intent(WidgetConstants.ACTION_REFRESH_WIDGETS).apply {
+            setPackage(context.packageName)
+        }
+        context.sendBroadcast(intent)
     }
 
     override suspend fun isPinned(stationUuid: String): Boolean {
