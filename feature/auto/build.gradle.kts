@@ -14,4 +14,5 @@ dependencies {
     implementation(libs.androidx.car.app)
     implementation(project(":domain:api"))
     implementation(project(":core:radioplayer"))
+    testImplementation(libs.androidx.car.app.testing)
 }

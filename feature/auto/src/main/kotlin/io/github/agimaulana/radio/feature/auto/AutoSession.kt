@@ -3,6 +3,9 @@ package io.github.agimaulana.radio.feature.auto
 import android.content.Intent
 import androidx.car.app.Screen
 import androidx.car.app.Session
+import androidx.car.app.ScreenManager
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerControllerFactory
 import io.github.agimaulana.radio.domain.api.usecase.GetPinnedStationsUseCase
@@ -30,6 +33,18 @@ class AutoSession(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val _playerController = MutableStateFlow<RadioPlayerController?>(null)
     val playerController: StateFlow<RadioPlayerController?> = _playerController
+    private val screenManager: ScreenManager by lazy {
+        carContext.getCarService(ScreenManager::class.java)
+    }
+
+    init {
+        lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onDestroy(owner: LifecycleOwner) {
+                _playerController.value?.release()
+                scope.cancel()
+            }
+        })
+    }
 
     override fun onCreateScreen(intent: Intent): Screen {
         scope.launch {
@@ -55,11 +70,5 @@ class AutoSession(
                 playerController = playerController,
             )
         ) { /* no result handling needed */ }
-    }
-
-    override fun onDestroy() {
-        _playerController.value?.release()
-        scope.cancel()
-        super.onDestroy()
     }
 }

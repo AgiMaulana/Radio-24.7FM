@@ -2,7 +2,11 @@ package io.github.agimaulana.radio.feature.auto.screen
 
 import androidx.car.app.CarContext
 import androidx.car.app.Screen
-import androidx.car.app.constraints.ConstraintManager
+import androidx.car.app.hardware.CarHardwareManager
+import androidx.car.app.hardware.info.CarInfo
+import androidx.car.app.hardware.common.CarValue
+import androidx.car.app.hardware.common.OnCarDataAvailableListener
+import androidx.car.app.hardware.info.Speed
 import androidx.car.app.model.Action
 import androidx.car.app.model.ActionStrip
 import androidx.car.app.model.ItemList
@@ -11,6 +15,9 @@ import androidx.car.app.model.ParkedOnlyOnClickListener
 import androidx.car.app.model.Row
 import androidx.car.app.model.SearchTemplate
 import androidx.car.app.model.Template
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
 import io.github.agimaulana.radio.domain.api.usecase.GetPinnedStationsUseCase
@@ -36,9 +43,41 @@ class SearchScreen(
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private val constraintManager = carContext.getCarService(ConstraintManager::class.java)
     private var state: SearchState = SearchState.Voice
     private var pinnedIds: Set<String> = emptySet()
+    private var isParked = true
+
+    private val speedListener = OnCarDataAvailableListener<Speed> { speed ->
+        val rawSpeed = speed.rawSpeedMetersPerSecond
+        if (rawSpeed.status == CarValue.STATUS_SUCCESS) {
+            val rawSpeedValue = rawSpeed.value
+            // Threshold of 0.5 m/s (~1.8 km/h) to consider the car moving
+            val newIsParked = rawSpeedValue == null || rawSpeedValue < 0.5f
+            if (newIsParked != isParked) {
+                isParked = newIsParked
+                handleCarStateChange()
+            }
+        }
+    }
+
+    private fun handleCarStateChange() {
+        if (isParked) {
+            if (state is SearchState.Voice) {
+                state = SearchState.ParkedGate
+            }
+        }
+        invalidate()
+    }
+
+    private fun observeSpeed() {
+        runCatching {
+            val carHardwareManager = carContext.getCarService(CarHardwareManager::class.java)
+            carHardwareManager.carInfo.addSpeedListener(
+                ContextCompat.getMainExecutor(carContext),
+                speedListener
+            )
+        }
+    }
 
     init {
         scope.launch {
@@ -47,19 +86,40 @@ class SearchScreen(
                 invalidate()
             }
         }
+        lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onResume(owner: LifecycleOwner) {
+                val permissions = listOf(
+                    "android.car.permission.CAR_SPEED",
+                    "com.google.android.gms.permission.CAR_SPEED"
+                )
+                carContext.requestPermissions(permissions) { granted, _ ->
+                    if (granted.contains("android.car.permission.CAR_SPEED") ||
+                        granted.contains("com.google.android.gms.permission.CAR_SPEED")
+                    ) {
+                        observeSpeed()
+                    }
+                }
+            }
+
+            override fun onPause(owner: LifecycleOwner) {
+                runCatching {
+                    val carHardwareManager = carContext.getCarService(CarHardwareManager::class.java)
+                    carHardwareManager.carInfo.removeSpeedListener(speedListener)
+                }
+            }
+
+            override fun onDestroy(owner: LifecycleOwner) {
+                scope.cancel()
+            }
+        })
     }
 
     override fun onGetTemplate(): Template {
-        val isDriving = constraintManager.isConfigRestrictionEnabled(
-            ConstraintManager.CONFIG_REQUIRES_DRIVING_OPTIMIZED_ONLY
-        )
-
-        // State 5: safety lock — driving resumed while text search was open
-        if (isDriving && state is SearchState.TextSearch) {
-            return buildSafetyLockTemplate(state as SearchState.TextSearch)
+        val s = state
+        if (!isParked && s is SearchState.TextSearch) {
+            return buildSafetyLockTemplate(s)
         }
-
-        return when (val s = state) {
+        return when (s) {
             is SearchState.Voice -> buildVoiceTemplate()
             is SearchState.ParkedGate -> buildParkedGateTemplate()
             is SearchState.TextSearch -> buildTextSearchTemplate(s.query, s.results)
@@ -151,7 +211,7 @@ class SearchScreen(
                             .setOnClickListener {
                                 scope.launch {
                                     val genreResults = runCatching {
-                                        getRadioStationsUseCase.execute(page = 0, searchName = genre)
+                                        getRadioStationsUseCase.execute(page = 1, searchName = genre)
                                     }.getOrElse { emptyList() }
                                     state = SearchState.TextSearch(genre, genreResults)
                                     invalidate()
@@ -198,7 +258,7 @@ class SearchScreen(
                 override fun onSearchTextChanged(searchText: String) {
                     scope.launch {
                         val searchResults = runCatching {
-                            getRadioStationsUseCase.execute(page = 0, searchName = searchText.takeIf { it.isNotBlank() })
+                            getRadioStationsUseCase.execute(page = 1, searchName = searchText.takeIf { it.isNotBlank() })
                         }.getOrElse { emptyList() }
                         state = SearchState.TextSearch(searchText, searchResults)
                         invalidate()
@@ -208,7 +268,7 @@ class SearchScreen(
                 override fun onSearchSubmitted(searchText: String) {
                     scope.launch {
                         val searchResults = runCatching {
-                            getRadioStationsUseCase.execute(page = 0, searchName = searchText.takeIf { it.isNotBlank() })
+                            getRadioStationsUseCase.execute(page = 1, searchName = searchText.takeIf { it.isNotBlank() })
                         }.getOrElse { emptyList() }
                         state = SearchState.TextSearch(searchText, searchResults)
                         invalidate()
@@ -281,10 +341,5 @@ class SearchScreen(
                     .build()
             )
             .build()
-    }
-
-    override fun onDestroy() {
-        scope.cancel()
-        super.onDestroy()
     }
 }

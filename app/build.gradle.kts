@@ -90,6 +90,7 @@ dependencies {
     implementation(project(":infrastructure"))
     implementation(project(":feature:stationlist"))
     implementation(project(":feature:auto"))
+    implementation(libs.androidx.car.app.projected)
     implementation(libs.android.material)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.startup)

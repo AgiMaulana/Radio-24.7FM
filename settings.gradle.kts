@@ -22,6 +22,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "Radio247Fm"
 include(":app")
+include(":automotive")
 
 include(
     ":feature:stationlist",
