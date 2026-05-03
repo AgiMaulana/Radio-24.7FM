@@ -3,6 +3,7 @@ package io.github.agimaulana.radio.core.radioplayer.internal
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
 import io.github.agimaulana.radio.domain.api.repository.CatalogState
 import io.github.agimaulana.radio.domain.api.repository.CatalogStateRepository
+import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -18,11 +19,16 @@ import org.robolectric.RobolectricTestRunner
 class RadioLibraryCatalogTest {
 
     private val getRadioStationsUseCase = mockk<GetRadioStationsUseCase>()
+    private val getRadioStationUseCase = mockk<GetRadioStationUseCase>()
     private val catalogStateRepository = mockk<CatalogStateRepository>(relaxed = true)
 
     @Test
     fun rootItem_returnsBrowsableRoot() {
-        val catalog = RadioLibraryCatalog(getRadioStationsUseCase, catalogStateRepository)
+        val catalog = RadioLibraryCatalog(
+            getRadioStationsUseCase,
+            getRadioStationUseCase,
+            catalogStateRepository
+        )
 
         val root = catalog.rootItem()
 
@@ -47,7 +53,11 @@ class RadioLibraryCatalogTest {
             getRadioStationsUseCase.execute(page = 4, searchName = null, location = null)
         } returns emptyList()
 
-        val catalog = RadioLibraryCatalog(getRadioStationsUseCase, catalogStateRepository)
+        val catalog = RadioLibraryCatalog(
+            getRadioStationsUseCase,
+            getRadioStationUseCase,
+            catalogStateRepository
+        )
 
         val firstPage = catalog.loadChildren(page = 0, pageSize = 10)
         val secondPage = catalog.loadChildren(page = 1, pageSize = 10)
@@ -86,7 +96,11 @@ class RadioLibraryCatalogTest {
             getRadioStationsUseCase.execute(page = 2, searchName = null, location = null)
         } returns emptyList()
 
-        val catalog = RadioLibraryCatalog(getRadioStationsUseCase, catalogStateRepository)
+        val catalog = RadioLibraryCatalog(
+            getRadioStationsUseCase,
+            getRadioStationUseCase,
+            catalogStateRepository
+        )
 
         val children = catalog.loadChildren(page = 0, pageSize = 10)
 
@@ -110,7 +124,11 @@ class RadioLibraryCatalogTest {
             getRadioStationsUseCase.execute(page = 2, searchName = "jazz", location = null)
         } returns emptyList()
 
-        val catalog = RadioLibraryCatalog(getRadioStationsUseCase, catalogStateRepository)
+        val catalog = RadioLibraryCatalog(
+            getRadioStationsUseCase,
+            getRadioStationUseCase,
+            catalogStateRepository
+        )
 
         val children = catalog.loadChildren(page = 0, pageSize = 10)
 

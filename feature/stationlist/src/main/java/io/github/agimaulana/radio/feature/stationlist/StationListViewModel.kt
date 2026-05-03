@@ -453,8 +453,36 @@ class StationListViewModel @Inject constructor(
             }
 
             PlaybackEvent.PlaylistChanged -> {
-                // Handle playlist changes if needed, e.g., to sync with auto-pagination
-                // for now we can just rely on the existing list or refresh if necessary
+                syncWithPlayer()
+            }
+        }
+    }
+
+    private fun syncWithPlayer() {
+        val controller = radioPlayerController ?: return
+        val playerPlaylist = controller.getPlaylist()
+        val currentMediaId = controller.currentMediaId
+        val isPlaying = controller.isPlaying
+        val pinnedUuids = _uiState.value.pinnedStations.map { it.serverUuid }.toSet()
+
+        val syncedStations = playerPlaylist.map { item ->
+            item.toUiStateStation(
+                pinnedUuids = pinnedUuids,
+                currentMediaId = currentMediaId,
+                isPlaying = isPlaying
+            )
+        }.toPersistentList()
+
+        _uiState.update { state ->
+            // Only sync if the player actually has items, otherwise keep what we have
+            if (syncedStations.isNotEmpty()) {
+                state.copy(
+                    stations = syncedStations,
+                    // If player has more items than our PAGE_SIZE, we probably have more pages
+                    hasMorePages = syncedStations.size >= PAGE_SIZE
+                )
+            } else {
+                state
             }
         }
     }
@@ -563,6 +591,21 @@ private fun RadioStation.toUiStateStation(
     isBuffering = false,
     isPlaying = false,
     isPinned = stationUuid in pinnedUuids
+)
+
+private fun RadioMediaItem.toUiStateStation(
+    pinnedUuids: Set<String>,
+    currentMediaId: String?,
+    isPlaying: Boolean
+) = StationListViewModel.UiState.Station(
+    serverUuid = mediaId,
+    name = radioMetadata.stationName,
+    genre = radioMetadata.genre,
+    imageUrl = radioMetadata.imageUrl,
+    streamUrl = streamUrl,
+    isBuffering = false,
+    isPlaying = isPlaying && (mediaId == currentMediaId),
+    isPinned = mediaId in pinnedUuids
 )
 
 private fun StationListViewModel.UiState.Station.toRadioMediaItem() = RadioMediaItem(

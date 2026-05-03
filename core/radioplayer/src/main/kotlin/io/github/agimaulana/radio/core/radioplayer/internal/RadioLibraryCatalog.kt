@@ -7,12 +7,14 @@ import io.github.agimaulana.radio.domain.api.entity.GeoLatLong
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
 import io.github.agimaulana.radio.domain.api.repository.CatalogState
 import io.github.agimaulana.radio.domain.api.repository.CatalogStateRepository
+import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 internal class RadioLibraryCatalog(
     private val getRadioStationsUseCase: GetRadioStationsUseCase,
+    private val getRadioStationUseCase: GetRadioStationUseCase,
     private val catalogStateRepository: CatalogStateRepository,
 ) {
     @Volatile private var cachedChildren: List<MediaItem>? = null
@@ -60,13 +62,23 @@ internal class RadioLibraryCatalog(
         if (mediaId == ROOT_MEDIA_ID) return rootItem()
 
         val allChildren = getPlaylist()
-        return allChildren.firstOrNull { it.mediaId == mediaId }
+        val cached = allChildren.firstOrNull { it.mediaId == mediaId }
+
+        return cached ?: run {
+            try {
+                getRadioStationUseCase.execute(mediaId).toMediaItem()
+            } catch (_: NoSuchElementException) {
+                null
+            } catch (_: Exception) {
+                null
+            }
+        }
     }
 
     suspend fun getPlaylist(): List<MediaItem> {
         restore()
         return cachedChildren ?: cacheMutex.withLock {
-            cachedChildren ?: loadAllChildren().also { cachedChildren = it }
+            cachedChildren ?: loadInitialChildren().also { cachedChildren = it }
         }
     }
 
@@ -139,12 +151,12 @@ internal class RadioLibraryCatalog(
             previousState.source != updatedState.source
     }
 
-    private suspend fun loadAllChildren(): List<MediaItem> {
+    private suspend fun loadInitialChildren(): List<MediaItem> {
         val state = currentState()
         val stations = mutableListOf<RadioStation>()
         var nextPage = 1
 
-        while (true) {
+        while (nextPage <= MAX_INITIAL_PAGES) {
             val pageStations = loadStationsPage(nextPage, state)
             if (pageStations.isEmpty()) break
 
@@ -195,5 +207,6 @@ internal class RadioLibraryCatalog(
     companion object {
         internal const val ROOT_MEDIA_ID = "root"
         internal const val CATALOG_PAGE_SIZE = 10
+        private const val MAX_INITIAL_PAGES = 3
     }
 }

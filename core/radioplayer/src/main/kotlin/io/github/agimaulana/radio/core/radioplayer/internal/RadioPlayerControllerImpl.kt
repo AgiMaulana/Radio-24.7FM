@@ -5,6 +5,7 @@ import io.github.agimaulana.radio.core.radioplayer.PlaybackEvent
 import io.github.agimaulana.radio.core.radioplayer.RadioMediaItem
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
 import io.github.agimaulana.radio.core.radioplayer.toMediaItem
+import io.github.agimaulana.radio.core.radioplayer.toRadioMediaItem
 import kotlinx.coroutines.flow.Flow
 
 internal class RadioPlayerControllerImpl(
@@ -68,6 +69,12 @@ internal class RadioPlayerControllerImpl(
             )
         }
         mediaController.addMediaItems(index, mediaItems)
+    }
+
+    override fun getPlaylist(): List<RadioMediaItem> {
+        return (0 until mediaController.mediaItemCount).map {
+            mediaController.getMediaItemAt(it).toRadioMediaItem()
+        }
     }
 
     override val mediaItemCount: Int

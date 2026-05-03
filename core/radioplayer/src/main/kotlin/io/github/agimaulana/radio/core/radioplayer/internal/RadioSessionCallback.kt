@@ -74,8 +74,13 @@ internal class RadioSessionCallback(
                     listOf(resolvedItem) to 0
                 }
             } else {
-                val resolvedItems = mediaItems.map { requested ->
-                    radioLibraryCatalog.findChild(requested.mediaId) ?: requested
+                val hasNoUri = mediaItems.any { it.localConfiguration == null }
+                val resolvedItems = if (hasNoUri) {
+                    mediaItems.map { requested ->
+                        radioLibraryCatalog.findChild(requested.mediaId) ?: requested
+                    }
+                } else {
+                    mediaItems
                 }
                 resolvedItems to startIndex
             }

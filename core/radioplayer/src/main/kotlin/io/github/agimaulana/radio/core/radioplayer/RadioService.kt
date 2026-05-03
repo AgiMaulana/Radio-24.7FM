@@ -17,6 +17,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import io.github.agimaulana.radio.core.radioplayer.internal.RadioLibraryCatalog
 import io.github.agimaulana.radio.core.radioplayer.internal.RadioSessionCallback
 import io.github.agimaulana.radio.domain.api.repository.CatalogStateRepository
+import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,6 +30,7 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class RadioService : MediaLibraryService() {
     @Inject lateinit var getRadioStationsUseCase: GetRadioStationsUseCase
+    @Inject lateinit var getRadioStationUseCase: GetRadioStationUseCase
     @Inject lateinit var catalogStateRepository: CatalogStateRepository
 
     private var mediaSession: MediaLibraryService.MediaLibrarySession? = null
@@ -39,7 +41,11 @@ class RadioService : MediaLibraryService() {
 
     override fun onCreate() {
         super.onCreate()
-        radioLibraryCatalog = RadioLibraryCatalog(getRadioStationsUseCase, catalogStateRepository)
+        radioLibraryCatalog = RadioLibraryCatalog(
+            getRadioStationsUseCase,
+            getRadioStationUseCase,
+            catalogStateRepository
+        )
         val player = createPlayer()
         radioSessionCallback = RadioSessionCallback(radioLibraryCatalog)
 
@@ -95,8 +101,8 @@ class RadioService : MediaLibraryService() {
                 val currentIndex = player.currentMediaItemIndex
                 val playlistSize = player.mediaItemCount
                 if (!isLoadingNextPage && currentIndex >= playlistSize - 2 && playlistSize > 0) {
+                    isLoadingNextPage = true
                     serviceScope.launch {
-                        isLoadingNextPage = true
                         try {
                             val nextPage = (playlistSize / RadioLibraryCatalog.CATALOG_PAGE_SIZE)
                             val newItems = radioLibraryCatalog.loadChildren(
