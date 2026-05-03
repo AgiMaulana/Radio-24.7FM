@@ -31,6 +31,13 @@ internal class RadioLibraryCatalog(
         return allChildren.subList(startIndex, endIndex)
     }
 
+    suspend fun findChild(mediaId: String): MediaItem? {
+        if (mediaId == ROOT_MEDIA_ID) return rootItem()
+
+        val allChildren = cachedChildren ?: loadAllChildren().also { cachedChildren = it }
+        return allChildren.firstOrNull { it.mediaId == mediaId }
+    }
+
     private suspend fun loadAllChildren(): List<MediaItem> {
         val stations = mutableListOf<RadioStation>()
         var nextPage = 1

@@ -5,22 +5,18 @@ import android.content.Intent
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
-import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLivePlaybackSpeedControl
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.DefaultMediaNotificationProvider
-import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
-import com.google.common.collect.ImmutableList
-import com.google.common.util.concurrent.Futures
 import dagger.hilt.android.AndroidEntryPoint
 import io.github.agimaulana.radio.core.radioplayer.internal.RadioLibraryCatalog
+import io.github.agimaulana.radio.core.radioplayer.internal.RadioSessionCallback
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
-import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
 @OptIn(UnstableApi::class)
@@ -36,7 +32,7 @@ class RadioService : MediaLibraryService() {
         val player = createPlayer()
         radioLibraryCatalog = RadioLibraryCatalog(getRadioStationsUseCase)
 
-        mediaSession = MediaLibraryService.MediaLibrarySession.Builder(this, player, RadioLibraryCallback())
+        mediaSession = MediaLibraryService.MediaLibrarySession.Builder(this, player, RadioSessionCallback(radioLibraryCatalog))
             .setSessionActivity(createPendingMainActivityIntent())
             .build()
         setMediaNotificationProvider(DefaultMediaNotificationProvider.Builder(this).build())
@@ -86,54 +82,5 @@ class RadioService : MediaLibraryService() {
             packageManager.getLaunchIntentForPackage(packageName),
             PendingIntent.FLAG_IMMUTABLE
         )
-    }
-
-    private inner class RadioLibraryCallback : MediaLibraryService.MediaLibrarySession.Callback {
-        override fun onConnect(
-            session: MediaSession,
-            controller: MediaSession.ControllerInfo
-        ): MediaSession.ConnectionResult {
-            val connectionResult = super.onConnect(session, controller)
-
-            @OptIn(UnstableApi::class)
-            val customPlayerCommands = connectionResult.availablePlayerCommands.buildUpon()
-                .add(Player.COMMAND_SEEK_TO_NEXT)
-                .add(Player.COMMAND_SEEK_TO_PREVIOUS)
-                .add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
-                .add(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
-                .build()
-
-            return MediaSession.ConnectionResult.accept(
-                connectionResult.availableSessionCommands,
-                customPlayerCommands
-            )
-        }
-
-        override fun onGetLibraryRoot(
-            session: MediaLibraryService.MediaLibrarySession,
-            browser: MediaSession.ControllerInfo,
-            params: MediaLibraryService.LibraryParams?
-        ): com.google.common.util.concurrent.ListenableFuture<LibraryResult<MediaItem>> {
-            return Futures.immediateFuture(LibraryResult.ofItem(radioLibraryCatalog.rootItem(), params))
-        }
-
-        override fun onGetChildren(
-            session: MediaLibraryService.MediaLibrarySession,
-            browser: MediaSession.ControllerInfo,
-            parentId: String,
-            page: Int,
-            pageSize: Int,
-            params: MediaLibraryService.LibraryParams?
-        ): com.google.common.util.concurrent.ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
-            if (parentId != RadioLibraryCatalog.ROOT_MEDIA_ID) {
-                return Futures.immediateFuture(LibraryResult.ofItemList(emptyList(), params))
-            }
-
-            val stations = runBlocking {
-                radioLibraryCatalog.loadChildren(page, pageSize)
-            }
-
-            return Futures.immediateFuture(LibraryResult.ofItemList(stations, params))
-        }
     }
 }
