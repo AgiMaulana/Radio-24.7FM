@@ -2,7 +2,6 @@ package io.github.agimaulana.radio.feature.widget.component
 
 import androidx.compose.runtime.Composable
 import androidx.glance.GlanceComposable
-import androidx.glance.appwidget.preview.GlanceAppWidgetView
 import io.github.agimaulana.radio.core.design.glance.theme.RadioGlanceTheme
 
 /**

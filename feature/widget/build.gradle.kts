@@ -17,5 +17,6 @@ dependencies {
     implementation(libs.glance.material)
     implementation(libs.hilt.android)
     implementation(libs.timber)
+    debugImplementation(libs.glance.appwidget.preview)
     debugImplementation(libs.glance.preview)
 }
