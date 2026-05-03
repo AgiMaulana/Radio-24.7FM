@@ -1,8 +1,11 @@
 package io.github.agimaulana.radio.core.radioplayer.internal
 
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
+import io.github.agimaulana.radio.domain.api.repository.CatalogState
+import io.github.agimaulana.radio.domain.api.repository.CatalogStateRepository
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -15,10 +18,11 @@ import org.robolectric.RobolectricTestRunner
 class RadioLibraryCatalogTest {
 
     private val getRadioStationsUseCase = mockk<GetRadioStationsUseCase>()
+    private val catalogStateRepository = mockk<CatalogStateRepository>(relaxed = true)
 
     @Test
     fun rootItem_returnsBrowsableRoot() {
-        val catalog = RadioLibraryCatalog(getRadioStationsUseCase)
+        val catalog = RadioLibraryCatalog(getRadioStationsUseCase, catalogStateRepository)
 
         val root = catalog.rootItem()
 
@@ -29,6 +33,7 @@ class RadioLibraryCatalogTest {
 
     @Test
     fun loadChildren_returns_requested_page_slice() = runTest {
+        coEvery { catalogStateRepository.load() } returns null
         coEvery {
             getRadioStationsUseCase.execute(page = 1, searchName = null, location = null)
         } returns buildStations(1, 10)
@@ -42,7 +47,7 @@ class RadioLibraryCatalogTest {
             getRadioStationsUseCase.execute(page = 4, searchName = null, location = null)
         } returns emptyList()
 
-        val catalog = RadioLibraryCatalog(getRadioStationsUseCase)
+        val catalog = RadioLibraryCatalog(getRadioStationsUseCase, catalogStateRepository)
 
         val firstPage = catalog.loadChildren(page = 0, pageSize = 10)
         val secondPage = catalog.loadChildren(page = 1, pageSize = 10)
@@ -59,10 +64,12 @@ class RadioLibraryCatalogTest {
         assertEquals("station-21", thirdPage.first().mediaId)
         assertEquals("station-25", thirdPage.last().mediaId)
         assertTrue(outOfRange.isEmpty())
+        coVerify(exactly = 4) { catalogStateRepository.save(match { it.page in 0..3 }) }
     }
 
     @Test
     fun loadChildren_omitsArtworkWhenImageUrlBlank() = runTest {
+        coEvery { catalogStateRepository.load() } returns null
         coEvery {
             getRadioStationsUseCase.execute(page = 1, searchName = null, location = null)
         } returns listOf(
@@ -79,12 +86,36 @@ class RadioLibraryCatalogTest {
             getRadioStationsUseCase.execute(page = 2, searchName = null, location = null)
         } returns emptyList()
 
-        val catalog = RadioLibraryCatalog(getRadioStationsUseCase)
+        val catalog = RadioLibraryCatalog(getRadioStationsUseCase, catalogStateRepository)
 
         val children = catalog.loadChildren(page = 0, pageSize = 10)
 
         assertEquals(1, children.size)
         assertEquals(null, children[0].mediaMetadata.artworkUri)
+    }
+
+    @Test
+    fun loadChildren_usesRestoredSearchState() = runTest {
+        coEvery {
+            catalogStateRepository.load()
+        } returns CatalogState(
+            query = "jazz",
+            page = 2,
+            source = CatalogState.Source.SEARCH,
+        )
+        coEvery {
+            getRadioStationsUseCase.execute(page = 1, searchName = "jazz", location = null)
+        } returns buildStations(1, 10)
+        coEvery {
+            getRadioStationsUseCase.execute(page = 2, searchName = "jazz", location = null)
+        } returns emptyList()
+
+        val catalog = RadioLibraryCatalog(getRadioStationsUseCase, catalogStateRepository)
+
+        val children = catalog.loadChildren(page = 0, pageSize = 10)
+
+        assertEquals(10, children.size)
+        coVerify { catalogStateRepository.save(match { it.page == 0 }) }
     }
 
     private fun buildStations(startIndex: Int, count: Int): List<RadioStation> {

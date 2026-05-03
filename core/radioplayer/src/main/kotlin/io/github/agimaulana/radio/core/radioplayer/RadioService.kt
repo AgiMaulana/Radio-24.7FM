@@ -16,6 +16,7 @@ import androidx.media3.session.MediaSession
 import dagger.hilt.android.AndroidEntryPoint
 import io.github.agimaulana.radio.core.radioplayer.internal.RadioLibraryCatalog
 import io.github.agimaulana.radio.core.radioplayer.internal.RadioSessionCallback
+import io.github.agimaulana.radio.domain.api.repository.CatalogStateRepository
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
 import javax.inject.Inject
 
@@ -23,6 +24,7 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class RadioService : MediaLibraryService() {
     @Inject lateinit var getRadioStationsUseCase: GetRadioStationsUseCase
+    @Inject lateinit var catalogStateRepository: CatalogStateRepository
 
     private var mediaSession: MediaLibraryService.MediaLibrarySession? = null
     private lateinit var radioLibraryCatalog: RadioLibraryCatalog
@@ -31,7 +33,7 @@ class RadioService : MediaLibraryService() {
     override fun onCreate() {
         super.onCreate()
         val player = createPlayer()
-        radioLibraryCatalog = RadioLibraryCatalog(getRadioStationsUseCase)
+        radioLibraryCatalog = RadioLibraryCatalog(getRadioStationsUseCase, catalogStateRepository)
         radioSessionCallback = RadioSessionCallback(radioLibraryCatalog)
 
         mediaSession = MediaLibraryService.MediaLibrarySession.Builder(this, player, radioSessionCallback)
