@@ -4,10 +4,8 @@ import androidx.media3.session.MediaController
 import io.github.agimaulana.radio.core.radioplayer.PlaybackEvent
 import io.github.agimaulana.radio.core.radioplayer.RadioMediaItem
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
-import io.github.agimaulana.radio.core.radioplayer.internal.ServiceResolver.resolvePlaybackStartCallback
 import io.github.agimaulana.radio.core.radioplayer.toMediaItem
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.runBlocking
 
 internal class RadioPlayerControllerImpl(
     private val mediaController: MediaController,
@@ -29,23 +27,15 @@ internal class RadioPlayerControllerImpl(
         mediaController.setMediaItem(radioMediaItem.toMediaItem())
     }
 
-    // Playlist APIs - Route startPlayback through PlaybackManager for proper state sync
+    // Playlist APIs - direct Media3 playlist operations
     override fun startPlayback(
         items: List<RadioMediaItem>,
         startIndex: Int,
         context: RadioPlayerController.PlaybackContext
     ) {
-        val callback = resolvePlaybackStartCallback()
-        if (callback != null) {
-            runBlocking {
-                callback(items, startIndex, context.type.name, context.query)
-            }
-        } else {
-            // Fallback: direct setMediaItems if PlaybackManager not available
-            setMediaItems(items, startIndex, context)
-            prepare()
-            play()
-        }
+        setMediaItems(items, startIndex, context)
+        prepare()
+        play()
     }
 
     override fun setMediaItems(

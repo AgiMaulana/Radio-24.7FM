@@ -12,8 +12,6 @@ import io.github.agimaulana.radio.core.radioplayer.PlaybackState
 import io.github.agimaulana.radio.core.radioplayer.RadioMediaItem
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerControllerFactory
-import io.github.agimaulana.radio.core.radioplayer.internal.ServiceResolver.clearGetRadioStationsResolver
-import io.github.agimaulana.radio.core.radioplayer.internal.ServiceResolver.registerGetRadioStationsResolver
 import io.github.agimaulana.radio.domain.api.entity.GeoLatLong
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
 import io.github.agimaulana.radio.domain.api.repository.PinnedStationLimitReachedException
@@ -62,8 +60,6 @@ class StationListViewModel @Inject constructor(
     private var searchJob: Job? = null
     private var fetchJob: Job? = null
     private var pinnedStationsJob: Job? = null
-    private var locationChangeJob: Job? = null
-    private var lastRegisteredPosition: GeoLatLong? = null
 
     fun init(
         hasLocationPermission: Boolean = false,
@@ -79,50 +75,9 @@ class StationListViewModel @Inject constructor(
             radioPlayerController = radioPlayerControllerFactory.get().apply {
                 viewModelScope.launch { event.collect(::onPlaybackEventReceived) }
             }
-            // Register domain use-case with Playback service resolver so PlaybackManager
-            // can call it when needed.
-            try {
-                registerGetRadioStationsResolver { page, query ->
-                    // Use current UI location if available; location param in use case is optional
-                    val location = _uiState.value.currentPosition
-                    getRadioStationsUseCase.execute(
-                        page = page,
-                        searchName = query,
-                        location = location
-                    ).map { rs -> rs.toRadioMediaItem() }
-                }
-            } catch (e: Exception) {
-                // no-op if resolver not available at runtime
-                Timber.e(e, "Not available resolver")
-            }
             restoreSelectedStation()
         }
         observePinnedStations()
-        observeLocationChangesAndReregisterResolver()
-    }
-
-    private fun observeLocationChangesAndReregisterResolver() {
-        locationChangeJob?.cancel()
-        locationChangeJob = viewModelScope.launch {
-            _uiState.collect { state ->
-                val newPosition = state.currentPosition
-                if (newPosition != lastRegisteredPosition) {
-                    lastRegisteredPosition = newPosition
-                    try {
-                        registerGetRadioStationsResolver { page, query ->
-                            val location = _uiState.value.currentPosition
-                            getRadioStationsUseCase.execute(
-                                page = page,
-                                searchName = query,
-                                location = location
-                            ).map { rs -> rs.toRadioMediaItem() }
-                        }
-                    } catch (e: Exception) {
-                        Timber.e(e, "Failed to update resolver on location change")
-                    }
-                }
-            }
-        }
     }
 
     private fun observePinnedStations() {
@@ -544,8 +499,6 @@ class StationListViewModel @Inject constructor(
         searchJob?.cancel()
         fetchJob?.cancel()
         pinnedStationsJob?.cancel()
-        locationChangeJob?.cancel()
-        clearGetRadioStationsResolver()
         radioPlayerController?.release()
     }
 

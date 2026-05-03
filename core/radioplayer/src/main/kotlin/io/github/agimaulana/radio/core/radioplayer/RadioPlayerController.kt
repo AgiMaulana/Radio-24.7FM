@@ -11,7 +11,7 @@ interface RadioPlayerController {
     // Single-item compatibility
     fun setMediaItem(radioMediaItem: RadioMediaItem)
 
-    // Playlist APIs - Use startPlayback for proper PlaybackManager sync
+    // Playlist APIs - direct Media3 playlist operations
     fun startPlayback(
         items: List<RadioMediaItem>,
         startIndex: Int = 0,
