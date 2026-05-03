@@ -1,100 +1,126 @@
-# Playback Queue Plan — Media3 Pagination & Playback Context
+# Playback Queue Plan - Media3 Native Migration
 
 ## Overview
 
-Problem
+Current state
 
-The current player pipeline sets a single MediaItem when a station is played. Stations come from a dynamic, paginated, and searchable source and can include pinned stations. This prevents Media3 from exposing previous/next controls and breaks seamless navigation across pages.
+- Playback is split across `MediaSessionService`, `PlaybackManager`, and `ServiceResolver`.
+- The service owns too much orchestration.
+- The controller path still depends on a callback bridge to start playback.
+- Playlist metadata already carries `playback_context_type` and `playback_context_query`, so process-death restore is already partially supported.
 
 Goal
 
-- Provide previous/next controls in player & notification
-- Support forward pagination (append) while playing
-- Keep player layer dumb; orchestration in PlaybackManager (service-side)
-- Handle pinned stations and search contexts cleanly
-- Persist minimal context so playback survives process death
+- Move playback to a Media3-native design.
+- Expose a browsable catalog for Android Auto and other library-capable clients.
+- Remove global callback/state for playback start.
+- Keep current playback behavior stable during migration.
+- Keep the plan trackable in small, shippable steps.
 
-## High-level approach
+Non-goals
 
-1. Introduce PlaybackContext data model (DEFAULT, SEARCH, PINNED) and PlaybackQueue representation.
-2. Extend RadioPlayerController API to support playlist operations: setMediaItems(items, startIndex), addMediaItems(items), addMediaItems(index, items), mediaItemCount, currentIndex, and helpers for metadata.
-3. Implement PlaybackManager inside RadioService (MediaSessionService) to own queue state, pagination state, dedup set, and drive ExoPlayer. PlaybackManager listens to player transitions and triggers fetchNextPage when reaching the end.
-4. ViewModel remains thin: send "start playback" intent (with context and items/startIndex) to service via controller/MediaController commands. Service performs on-demand pagination when player reaches end using repository/use-cases.
-5. Persist minimal context in MediaItem.mediaMetadata.extras (context_type, query, page/index). Optionally extend persistence using DataStore/Room later.
-6. Implement pinned Strategy A (separate playback context) initially; merging pins into the main list is Phase 2.
+- No UI redesign.
+- No search UI rewrite.
+- No pagination redesign beyond what is needed to support browse/playback migration.
+- No persistence rewrite unless a later step proves it necessary.
 
-## Files / Components to modify
+## Current Constraints
 
-- core/radioplayer/
-  - RadioPlayerController (interface) — add playlist methods
-  - internal/RadioPlayerControllerImpl — proxy new playlist commands to MediaController (or use SessionCommand)
-  - internal/PlaybackEventFlow — already emits media transitions; ensure suffices
-  - RadioService — add PlaybackManager instance, attach player listener, and expose startPlayback API
-  - (new) PlaybackManager under core/radioplayer/internal
+- `RadioService` currently extends `MediaSessionService`.
+- `ServiceResolver.registerPlaybackStartCallback` is still used to route playback start.
+- `PlaybackManager` currently owns queue state, paging state, and context restore.
+- `StationListViewModel` still registers the fetch resolver from the UI side.
+- Playback context metadata is already present in `MediaItem.mediaMetadata.extras`.
 
-- feature/stationlist/
-  - StationListViewModel — call controller.startPlayback(...) with context + current UI list + startIndex; add search-context banner for restored sessions
-  - Update tests referencing setMediaItem
+## Migration Strategy
 
-- domain/ & infrastructure/
-  - Ensure PlaybackManager has access to a small repository interface (or minimal use-case) to request next pages from API
+### Phase 1 - Library service foundation
+- Replace `MediaSessionService` with `MediaLibraryService`.
+- Add a library root and children callbacks.
+- Return station catalog items as browsable media entries.
+- Keep playback start behavior compatible with the current UI.
 
-## Implementation order (iterative)
+Acceptance:
+- Browsing works from a Media3 library client.
+- App still plays stations normally.
+- No regression in the existing single-station play flow.
 
-1. Add playlist methods to RadioPlayerController and implement proxies in RadioPlayerControllerImpl. Keep single-item API working.
-2. Create PlaybackManager class; integrate into RadioService. PlaybackManager manages loadedStations, loadedIds, nextPage, isFetching flags, and context.
-3. Implement forward pagination and append via player.addMediaItems(newItems).
-4. Persist minimal PlaybackContext in MediaItem metadata and implement restoreFromPlayer.
-5. Update StationListViewModel to use startPlayback API and add a UI banner to explain restored search context and offer "View results".
-6. Add/adjust unit and integration tests.
-7. Phase 2: backward pagination (prepend) and merged pinned strategy if needed.
+### Phase 2 - Remove callback bridge
+- Remove `ServiceResolver.registerPlaybackStartCallback`.
+- Make `RadioPlayerController.startPlayback()` use direct Media3 commands.
+- Keep `setMediaItem()` as a compatibility fallback only if needed.
+- Verify the service no longer depends on UI-owned global state.
 
-## Todos (session tracked)
-- playback-add-controller-playlist-api (done)
-- playback-introduce-playbackmanager (done)
-- playback-service-pagination (done)
-- playback-persist-context (done)
-- stationlist-viewmodel-integration (done)
-- tests-update (done)
+Acceptance:
+- No playback-start path depends on global callback registration.
+- Station selection starts playback through the controller/session flow directly.
 
-## Progress
-- Implemented playlist APIs and ViewModel integration so player receives full in-memory playlist on Play.
-- Added PlaybackManager and wired forward pagination fetching via a runtime resolver; PlaybackManager appends new items using addMediaItems.
-- Implemented combined pinned-first playlist behavior: when playing from pinned UI, the playlist is pinnedStations first followed by the current main list (duplicates removed). startIndex is computed against the combined list so Prev/Next cross the pinned→main boundary correctly.
-- Unit tests added/updated:
-  - core/radioplayer/src/test/kotlin/io/github/agimaulana/radio/core/radioplayer/RadioMediaItemTest.kt — verifies playback_context_type/query/page extras are attached by RadioMediaItem.toMediaItem.
-  - core/radioplayer/src/test/kotlin/io/github/agimaulana/radio/core/radioplayer/internal/PlaybackManagerTest.kt — verifies fetchNextPage dedupe/appending behavior and restoreFromPlayer page estimation and playback context restoration.
-- StationListViewModel changes:
-  - Use pinnedStations as playlist source for pinned-only playback (previous behavior).
-  - Implemented pinned-first combined playlist to continue into the main list after pinned items (current implementation).
-  - Resolver registration remains in init(); plan updated to re-register resolver when currentPosition (user location) changes so fetches include latest location.
-- Local test run: core:radioplayer unit tests executed locally after adding test dependencies and minor testability adjustments; tests and commits are on feat/playback-queue-wip.
-- Confirmed notification shows prev/next and buttons behave as expected in most scenarios. When playback starts at the first item of the default list, the previous action is not available (expected behavior).
+### Phase 3 - Reduce service-side orchestration
+- Keep `PlaybackManager` only if it still adds clear value.
+- If retained, limit it to playback context and catalog coordination.
+- Remove queue ownership from custom code where Media3 already provides the behavior.
+- Re-evaluate `onTaskRemoved()` and session callback assumptions.
 
-## Next steps
-- ~~Re-register ServiceResolver when _uiState.currentPosition (user location) updates so fetcher calls include latest location~~ (done: StationListViewModel.observeLocationChangesAndReregisterResolver)
-- ~~Run full CI for feat/playback-queue-wip and address any flaky/platform-specific failures.~~ (done: CI passed)
-- ~~Run device smoke tests for notification Prev/Next, pinned→main boundary playback, and search-context restore UI.~~ (done: smoke tests passed)
-- ~~Add integration tests (optional): simulate process death and restore to verify restoreFromPlayer behavior across platforms.~~ (done: integration-process-death-tests)
-- ~~Consider persisting loaded page ids (DataStore/Room) if playlist restore accuracy is important for the product.~~ (done: Decision - no new persistence. Minimal context (context_type, context_query) is already persisted in MediaItem.extras. Page number estimated via itemCount/PAGE_SIZE. Lazy reconstruction + dedupe instead of exact restoration.)
-- ~~Verify all MediaItem creation paths include metadata~~ (done: verification pass - replaced fallback setMediaItem() calls with startPlayback() in StationListViewModel to ensure metadata is always populated)
-- ~~Phase 2: implement backward pagination (prepend)~~ (cancelled — removed from PlaybackManager to reduce complexity; prepend logic had index-offset and UI state risks. Forward-only pagination + dedupe preserved.)
-- Verify Hilt injection for RadioService/PlaybackManager and add providers if missing. (todo: ensure-hilt-
+Acceptance:
+- Queue behavior is owned by Media3 as much as possible.
+- Custom state is minimal and explicit.
 
+### Phase 4 - Cleanup and hardening
+- Delete dead resolver code.
+- Update tests to cover the new service and controller path.
+- Confirm process-death restore still works from metadata extras.
+- Verify Android Auto browse/playback behavior.
 
-## UX notes
-- Don’t auto-enter search UI after process death. Restore playback and show a banner "Playing from search: 'keyword'" with an option to view results.
+Acceptance:
+- No unused resolver or dead code remains.
+- Tests cover browse, play, and restore flows.
 
-## Persistence & Restore
-- Store minimal context inside MediaItem.mediaMetadata.extras so MediaSessionService/ExoPlayer playlist is the primary source of truth.
-- Persisted fields: `playback_context_type`, `playback_context_query`
-- nextPage estimated via `player.mediaItemCount / PAGE_SIZE` as fallback (lazy reconstruction with dedupe instead of exact page persistence)
+## Trackable Tasks
 
-## Risks & Mitigations
-- Index desync during prepend: defer to Phase 2
-- API break: keep old single-item path working while migrating
-- Service needs access to repository/use-cases: inject small repository interface into RadioService (Hilt)
+### Done
+- [x] Confirm current playback context metadata is already stored in `MediaItem.extras`.
+- [x] Inventory current playback architecture and identify `ServiceResolver` coupling.
+- [x] Identify existing queue-plan doc location in `docs/`.
+- [x] Convert `RadioService` to `MediaLibraryService`.
+- [x] Implement `onGetLibraryRoot()`.
+- [x] Implement `onGetChildren()`.
+- [x] Remove `ServiceResolver.registerPlaybackStartCallback`.
+- [x] Update `RadioPlayerControllerImpl` to use direct session/controller commands.
+- [x] Remove `RadioMediaSessionCallback` and `ServiceResolver`.
+- [x] Remove `PlaybackManager` and its tests.
 
----
+### To do
+- [ ] Update or remove service-side pagination assumptions.
+- [ ] Run targeted `core/radioplayer` and `feature/stationlist` tests.
+- [ ] Remove dead code after the new path is stable.
 
-This document is committed to the repository so work can continue across interruptions. For incremental work, update the session's todos (tracked via the SQL todos table) and reference this document.
+## Files Likely to Change
+
+- `core/radioplayer/src/main/kotlin/io/github/agimaulana/radio/core/radioplayer/RadioService.kt`
+- `core/radioplayer/src/main/kotlin/io/github/agimaulana/radio/core/radioplayer/internal/RadioPlayerControllerImpl.kt`
+- `core/radioplayer/src/main/kotlin/io/github/agimaulana/radio/core/radioplayer/internal/PlaybackManager.kt`
+- `feature/stationlist/src/main/java/io/github/agimaulana/radio/feature/stationlist/StationListViewModel.kt`
+- `core/radioplayer/src/test/...`
+- `docs/playback-queue-plan.md`
+
+## Risks
+
+- Browse tree shape may need adjustment after the first implementation pass.
+- `PlaybackManager` removal could expose hidden dependencies in tests or UI behavior.
+- Android Auto playback expectations may differ from current in-app flow.
+- `onTaskRemoved()` behavior can regress if it still relies on weak playback-state checks.
+
+## Test Plan
+
+- Unit test browse root creation.
+- Unit test children item mapping.
+- Unit test playback start path without resolver callback.
+- Keep restore tests for `playback_context_type` and `playback_context_query`.
+- Verify `StationListViewModel` still starts playback from pinned and non-pinned stations.
+- Smoke test playback, previous/next, and process-death restore.
+
+## Notes
+
+- This doc is the queue/playback migration tracker.
+- Keep it updated as each phase lands.
+- Use it to avoid mixing the service migration with unrelated feature work.
