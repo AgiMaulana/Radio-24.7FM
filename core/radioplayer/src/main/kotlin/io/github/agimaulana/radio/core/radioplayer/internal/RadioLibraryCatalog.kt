@@ -5,11 +5,14 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 internal class RadioLibraryCatalog(
     private val getRadioStationsUseCase: GetRadioStationsUseCase,
 ) {
     private var cachedChildren: List<MediaItem>? = null
+    private val cacheMutex = Mutex()
 
     fun rootItem(): MediaItem {
         return MediaItem.Builder()
@@ -44,7 +47,9 @@ internal class RadioLibraryCatalog(
     suspend fun findChild(mediaId: String): MediaItem? {
         if (mediaId == ROOT_MEDIA_ID) return rootItem()
 
-        val allChildren = cachedChildren ?: loadAllChildren().also { cachedChildren = it }
+        val allChildren = cachedChildren ?: cacheMutex.withLock {
+            cachedChildren ?: loadAllChildren().also { cachedChildren = it }
+        }
         return allChildren.firstOrNull { it.mediaId == mediaId }
     }
 
