@@ -24,11 +24,21 @@ internal class RadioLibraryCatalog(
     }
 
     suspend fun loadChildren(page: Int, pageSize: Int): List<MediaItem> {
-        val allChildren = cachedChildren ?: loadAllChildren().also { cachedChildren = it }
         val startIndex = page * pageSize
-        if (startIndex >= allChildren.size) return emptyList()
-        val endIndex = minOf(startIndex + pageSize, allChildren.size)
-        return allChildren.subList(startIndex, endIndex)
+        if (pageSize <= 0) return emptyList()
+
+        val firstCatalogPage = startIndex / CATALOG_PAGE_SIZE + 1
+        val lastCatalogPage = (startIndex + pageSize - 1) / CATALOG_PAGE_SIZE + 1
+        val stations = mutableListOf<RadioStation>()
+
+        for (catalogPage in firstCatalogPage..lastCatalogPage) {
+            val pageStations = loadStationsPage(catalogPage)
+            if (pageStations.isEmpty()) break
+            stations.addAll(pageStations)
+        }
+
+        val offsetInStations = startIndex - (firstCatalogPage - 1) * CATALOG_PAGE_SIZE
+        return stations.drop(offsetInStations).take(pageSize).map { it.toMediaItem() }
     }
 
     suspend fun findChild(mediaId: String): MediaItem? {
@@ -66,13 +76,22 @@ internal class RadioLibraryCatalog(
                     .setIsPlayable(true)
                     .setTitle(name)
                     .setSubtitle(tags.firstOrNull().orEmpty())
-                    .setArtworkUri(imageUrl.toUri())
+                    .setArtworkUri(imageUrl.takeIf { it.isNotBlank() }?.toUri())
                     .build()
             )
             .build()
     }
 
+    private suspend fun loadStationsPage(page: Int): List<RadioStation> {
+        return getRadioStationsUseCase.execute(
+            page = page,
+            searchName = null,
+            location = null
+        )
+    }
+
     companion object {
         internal const val ROOT_MEDIA_ID = "root"
+        private const val CATALOG_PAGE_SIZE = 10
     }
 }

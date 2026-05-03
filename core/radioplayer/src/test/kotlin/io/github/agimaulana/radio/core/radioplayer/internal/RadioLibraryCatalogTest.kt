@@ -61,6 +61,32 @@ class RadioLibraryCatalogTest {
         assertTrue(outOfRange.isEmpty())
     }
 
+    @Test
+    fun loadChildren_omitsArtworkWhenImageUrlBlank() = runTest {
+        coEvery {
+            getRadioStationsUseCase.execute(page = 1, searchName = null, location = null)
+        } returns listOf(
+            RadioStation(
+                stationUuid = "station-1",
+                name = "Station 1",
+                tags = listOf("Genre 1"),
+                imageUrl = "",
+                url = "https://example.com/stream-1",
+                resolvedUrl = "https://example.com/resolved-1"
+            )
+        )
+        coEvery {
+            getRadioStationsUseCase.execute(page = 2, searchName = null, location = null)
+        } returns emptyList()
+
+        val catalog = RadioLibraryCatalog(getRadioStationsUseCase)
+
+        val children = catalog.loadChildren(page = 0, pageSize = 10)
+
+        assertEquals(1, children.size)
+        assertEquals(null, children[0].mediaMetadata.artworkUri)
+    }
+
     private fun buildStations(startIndex: Int, count: Int): List<RadioStation> {
         return (0 until count).map { offset ->
             val index = startIndex + offset

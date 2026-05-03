@@ -14,13 +14,18 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.guava.future
 import timber.log.Timber
 
 @OptIn(UnstableApi::class)
 internal class RadioSessionCallback(
     private val radioLibraryCatalog: RadioLibraryCatalog,
 ) : MediaLibraryService.MediaLibrarySession.Callback {
+    private val callbackScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onConnect(
         session: MediaSession,
@@ -59,13 +64,15 @@ internal class RadioSessionCallback(
             startIndex,
             startPositionMs
         )
-        return Futures.immediateFuture(
+        return callbackScope.future {
             MediaSession.MediaItemsWithStartPosition(
-                mediaItems.map(::resolveMediaItem),
+                mediaItems.map { requested ->
+                    radioLibraryCatalog.findChild(requested.mediaId) ?: requested
+                },
                 startIndex,
                 startPositionMs
             )
-        )
+        }
     }
 
     override fun onAddMediaItems(
@@ -78,7 +85,11 @@ internal class RadioSessionCallback(
             controller.packageName,
             mediaItems.size
         )
-        return Futures.immediateFuture(mediaItems.map(::resolveMediaItem))
+        return callbackScope.future {
+            mediaItems.map { requested ->
+                radioLibraryCatalog.findChild(requested.mediaId) ?: requested
+            }
+        }
     }
 
     override fun onCustomCommand(
@@ -122,18 +133,16 @@ internal class RadioSessionCallback(
             )
         }
 
-        val fallbackItem = runBlocking {
-            radioLibraryCatalog.loadChildren(page = 0, pageSize = 1).firstOrNull()
-        } ?: radioLibraryCatalog.rootItem()
-
-        val startPositionMs = if (isForPlayback) 0L else C.TIME_UNSET
-        return Futures.immediateFuture(
+        return callbackScope.future {
+            val fallbackItem = radioLibraryCatalog.loadChildren(page = 0, pageSize = 1).firstOrNull()
+                ?: radioLibraryCatalog.rootItem()
+            val startPositionMs = if (isForPlayback) 0L else C.TIME_UNSET
             MediaSession.MediaItemsWithStartPosition(
                 listOf(fallbackItem),
                 0,
                 startPositionMs
             )
-        )
+        }
     }
 
     override fun onMediaButtonEvent(
@@ -181,17 +190,10 @@ internal class RadioSessionCallback(
             return Futures.immediateFuture(LibraryResult.ofItemList(emptyList(), params))
         }
 
-        val stations = runBlocking {
-            radioLibraryCatalog.loadChildren(page, pageSize)
+        return callbackScope.future {
+            val stations = radioLibraryCatalog.loadChildren(page, pageSize)
+            LibraryResult.ofItemList(stations, params)
         }
-
-        return Futures.immediateFuture(LibraryResult.ofItemList(stations, params))
-    }
-
-    private fun resolveMediaItem(requested: MediaItem): MediaItem {
-        return runBlocking {
-            radioLibraryCatalog.findChild(requested.mediaId)
-        } ?: requested
     }
 
     private fun handlePlayStationCommand(
@@ -203,21 +205,26 @@ internal class RadioSessionCallback(
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))
         }
 
-        val mediaItem = runBlocking {
-            radioLibraryCatalog.findChild(mediaId)
-        } ?: return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))
+        return callbackScope.future {
+            val mediaItem = radioLibraryCatalog.findChild(mediaId)
+                ?: return@future SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE)
 
-        val startPositionMs = args.getLong(ARG_START_POSITION_MS, 0L)
-        Timber.tag(TAG).d(
-            "play station mediaId=%s startPositionMs=%d",
-            mediaId,
-            startPositionMs
-        )
+            val startPositionMs = args.getLong(ARG_START_POSITION_MS, 0L)
+            Timber.tag(TAG).d(
+                "play station mediaId=%s startPositionMs=%d",
+                mediaId,
+                startPositionMs
+            )
 
-        session.player.setMediaItem(mediaItem, startPositionMs)
-        session.player.prepare()
-        session.player.play()
-        return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+            session.player.setMediaItem(mediaItem, startPositionMs)
+            session.player.prepare()
+            session.player.play()
+            SessionResult(SessionResult.RESULT_SUCCESS)
+        }
+    }
+
+    fun close() {
+        callbackScope.cancel()
     }
 
     private companion object {

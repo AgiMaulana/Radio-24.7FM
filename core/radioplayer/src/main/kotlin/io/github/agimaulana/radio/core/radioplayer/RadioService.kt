@@ -26,13 +26,15 @@ class RadioService : MediaLibraryService() {
 
     private var mediaSession: MediaLibraryService.MediaLibrarySession? = null
     private lateinit var radioLibraryCatalog: RadioLibraryCatalog
+    private lateinit var radioSessionCallback: RadioSessionCallback
 
     override fun onCreate() {
         super.onCreate()
         val player = createPlayer()
         radioLibraryCatalog = RadioLibraryCatalog(getRadioStationsUseCase)
+        radioSessionCallback = RadioSessionCallback(radioLibraryCatalog)
 
-        mediaSession = MediaLibraryService.MediaLibrarySession.Builder(this, player, RadioSessionCallback(radioLibraryCatalog))
+        mediaSession = MediaLibraryService.MediaLibrarySession.Builder(this, player, radioSessionCallback)
             .setSessionActivity(createPendingMainActivityIntent())
             .build()
         setMediaNotificationProvider(DefaultMediaNotificationProvider.Builder(this).build())
@@ -57,6 +59,9 @@ class RadioService : MediaLibraryService() {
             player.release()
             release()
             mediaSession = null
+        }
+        if (::radioSessionCallback.isInitialized) {
+            radioSessionCallback.close()
         }
         super.onDestroy()
     }
