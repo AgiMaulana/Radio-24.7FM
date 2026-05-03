@@ -28,30 +28,50 @@ class RadioLibraryCatalogTest {
     }
 
     @Test
-    fun loadChildren_maps_stations_to_media_items() = runTest {
+    fun loadChildren_returns_requested_page_slice() = runTest {
         coEvery {
             getRadioStationsUseCase.execute(page = 1, searchName = null, location = null)
-        } returns listOf(
-            RadioStation(
-                stationUuid = "station-1",
-                name = "Station One",
-                tags = listOf("News"),
-                imageUrl = "https://example.com/image.png",
-                url = "https://example.com/stream",
-                resolvedUrl = "https://example.com/resolved"
-            )
-        )
+        } returns buildStations(1, 10)
+        coEvery {
+            getRadioStationsUseCase.execute(page = 2, searchName = null, location = null)
+        } returns buildStations(11, 10)
+        coEvery {
+            getRadioStationsUseCase.execute(page = 3, searchName = null, location = null)
+        } returns buildStations(21, 5)
+        coEvery {
+            getRadioStationsUseCase.execute(page = 4, searchName = null, location = null)
+        } returns emptyList()
 
         val catalog = RadioLibraryCatalog(getRadioStationsUseCase)
 
-        val children = catalog.loadChildren()
+        val firstPage = catalog.loadChildren(page = 0, pageSize = 10)
+        val secondPage = catalog.loadChildren(page = 1, pageSize = 10)
+        val thirdPage = catalog.loadChildren(page = 2, pageSize = 10)
+        val outOfRange = catalog.loadChildren(page = 3, pageSize = 10)
 
-        assertEquals(1, children.size)
-        val item = children.single()
-        assertEquals("station-1", item.mediaId)
-        assertEquals("https://example.com/resolved", item.localConfiguration?.uri.toString())
-        assertEquals("Station One", item.mediaMetadata.title?.toString())
-        assertEquals("News", item.mediaMetadata.subtitle?.toString())
-        assertTrue(item.mediaMetadata.isPlayable == true)
+        assertEquals(10, firstPage.size)
+        assertEquals("station-1", firstPage.first().mediaId)
+        assertEquals("station-10", firstPage.last().mediaId)
+        assertEquals(10, secondPage.size)
+        assertEquals("station-11", secondPage.first().mediaId)
+        assertEquals("station-20", secondPage.last().mediaId)
+        assertEquals(5, thirdPage.size)
+        assertEquals("station-21", thirdPage.first().mediaId)
+        assertEquals("station-25", thirdPage.last().mediaId)
+        assertTrue(outOfRange.isEmpty())
+    }
+
+    private fun buildStations(startIndex: Int, count: Int): List<RadioStation> {
+        return (0 until count).map { offset ->
+            val index = startIndex + offset
+            RadioStation(
+                stationUuid = "station-$index",
+                name = "Station $index",
+                tags = listOf("Genre $index"),
+                imageUrl = "https://example.com/image-$index.png",
+                url = "https://example.com/stream-$index",
+                resolvedUrl = "https://example.com/resolved-$index"
+            )
+        }
     }
 }

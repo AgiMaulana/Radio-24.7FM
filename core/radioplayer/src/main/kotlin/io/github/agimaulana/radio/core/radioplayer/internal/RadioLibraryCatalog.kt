@@ -9,6 +9,8 @@ import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
 internal class RadioLibraryCatalog(
     private val getRadioStationsUseCase: GetRadioStationsUseCase,
 ) {
+    private var cachedChildren: List<MediaItem>? = null
+
     fun rootItem(): MediaItem {
         return MediaItem.Builder()
             .setMediaId(ROOT_MEDIA_ID)
@@ -21,12 +23,30 @@ internal class RadioLibraryCatalog(
             .build()
     }
 
-    suspend fun loadChildren(): List<MediaItem> {
-        val stations = getRadioStationsUseCase.execute(
-            page = 1,
-            searchName = null,
-            location = null
-        )
+    suspend fun loadChildren(page: Int, pageSize: Int): List<MediaItem> {
+        val allChildren = cachedChildren ?: loadAllChildren().also { cachedChildren = it }
+        val startIndex = page * pageSize
+        if (startIndex >= allChildren.size) return emptyList()
+        val endIndex = minOf(startIndex + pageSize, allChildren.size)
+        return allChildren.subList(startIndex, endIndex)
+    }
+
+    private suspend fun loadAllChildren(): List<MediaItem> {
+        val stations = mutableListOf<RadioStation>()
+        var nextPage = 1
+
+        while (true) {
+            val pageStations = getRadioStationsUseCase.execute(
+                page = nextPage,
+                searchName = null,
+                location = null
+            )
+            if (pageStations.isEmpty()) break
+
+            stations.addAll(pageStations)
+            nextPage++
+        }
+
         return stations.map { it.toMediaItem() }
     }
 

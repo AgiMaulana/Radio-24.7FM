@@ -8,15 +8,15 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
-import com.google.common.collect.ImmutableList
-import com.google.common.util.concurrent.Futures
+import androidx.media3.exoplayer.DefaultLivePlaybackSpeedControl
+import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
-import androidx.media3.exoplayer.DefaultLivePlaybackSpeedControl
-import androidx.media3.exoplayer.DefaultLoadControl
-import androidx.media3.exoplayer.ExoPlayer
+import com.google.common.collect.ImmutableList
+import com.google.common.util.concurrent.Futures
 import dagger.hilt.android.AndroidEntryPoint
 import io.github.agimaulana.radio.core.radioplayer.internal.RadioLibraryCatalog
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
@@ -130,7 +130,7 @@ class RadioService : MediaLibraryService() {
             }
 
             val stations = runBlocking {
-                radioLibraryCatalog.loadChildren()
+                radioLibraryCatalog.loadChildren(page, pageSize)
             }
 
             return Futures.immediateFuture(LibraryResult.ofItemList(stations, params))
