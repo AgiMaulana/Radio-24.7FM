@@ -14,6 +14,8 @@ import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerControllerFactory
 import io.github.agimaulana.radio.domain.api.entity.GeoLatLong
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
+import io.github.agimaulana.radio.domain.api.repository.CatalogState
+import io.github.agimaulana.radio.domain.api.repository.CatalogStateRepository
 import io.github.agimaulana.radio.domain.api.repository.PinnedStationLimitReachedException
 import io.github.agimaulana.radio.domain.api.usecase.GetPinnedStationsUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationUseCase
@@ -49,6 +51,7 @@ class StationListViewModel @Inject constructor(
     private val radioPlayerControllerFactory: RadioPlayerControllerFactory,
     private val stationListTracker: StationListTracker,
     private val locationProvider: LocationProvider,
+    private val catalogStateRepository: CatalogStateRepository,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(UiState())
@@ -231,6 +234,14 @@ class StationListViewModel @Inject constructor(
             if (stationName.isNotBlank()) {
                 stationListTracker.trackSearchSubmitted(stationName)
             }
+            catalogStateRepository.save(
+                CatalogState(
+                    query = stationName,
+                    source = if (stationName.isNotBlank()) CatalogState.Source.SEARCH else CatalogState.Source.ALL,
+                    locationLat = _uiState.value.currentPosition?.latitude,
+                    locationLon = _uiState.value.currentPosition?.longitude
+                )
+            )
             fetchRadioStations(force = true)
         }
     }
@@ -324,6 +335,14 @@ class StationListViewModel @Inject constructor(
                     hasMorePages = true,
                 )
             }
+            catalogStateRepository.save(
+                CatalogState(
+                    query = _uiState.value.filterStationName,
+                    source = CatalogState.Source.LOCATION,
+                    locationLat = location.latitude,
+                    locationLon = location.longitude
+                )
+            )
             fetchRadioStations(force = true)
         }
     }
@@ -431,6 +450,11 @@ class StationListViewModel @Inject constructor(
                     _uiState.update { it.copy(selectedStation = uiStation) }
                     updatePlayerColors(uiStation.imageUrl)
                 }
+            }
+
+            PlaybackEvent.PlaylistChanged -> {
+                // Handle playlist changes if needed, e.g., to sync with auto-pagination
+                // for now we can just rely on the existing list or refresh if necessary
             }
         }
     }

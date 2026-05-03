@@ -1,6 +1,5 @@
 package io.github.agimaulana.radio.core.radioplayer.internal
 
-import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaSession
@@ -26,8 +25,8 @@ class RadioSessionCallbackTest {
     private val player = mockk<Player>(relaxed = true)
 
     @Test
-    fun onSetMediaItems_resolvesRadioStationFromCatalog() = runTest {
-        val station = radioStation(
+    fun onSetMediaItems_resolvesRadioStationAndExpandsPlaylist() = runTest {
+        val station1 = radioStation(
             stationUuid = "station-1",
             name = "Station One",
             tags = listOf("news"),
@@ -35,28 +34,7 @@ class RadioSessionCallbackTest {
             url = "https://example.com/one",
             resolvedUrl = "https://stream.example.com/one"
         )
-        val callback = callbackForStations(listOf(station))
-        val controller = controller()
-        val session = session()
-
-        val result = callback.onSetMediaItems(
-            mediaSession = session,
-            controller = controller,
-            mediaItems = listOf(MediaItem.Builder().setMediaId("station-1").build()),
-            startIndex = 0,
-            startPositionMs = 1500L
-        ).get()
-
-        assertEquals(1, result.mediaItems.size)
-        assertEquals("station-1", result.mediaItems[0].mediaId)
-        assertEquals("https://stream.example.com/one", result.mediaItems[0].localConfiguration?.uri.toString())
-        assertEquals(0, result.startIndex)
-        assertEquals(1500L, result.startPositionMs)
-    }
-
-    @Test
-    fun onCustomCommand_playStation_setsPlayerAndStartsPlayback() = runTest {
-        val station = radioStation(
+        val station2 = radioStation(
             stationUuid = "station-2",
             name = "Station Two",
             tags = listOf("talk"),
@@ -64,30 +42,26 @@ class RadioSessionCallbackTest {
             url = "https://example.com/two",
             resolvedUrl = "https://stream.example.com/two"
         )
-        val callback = callbackForStations(listOf(station))
+        val callback = callbackForStations(listOf(station1, station2))
         val controller = controller()
         val session = session()
 
-        val result = callback.onCustomCommand(
-            session = session,
+        val result = callback.onSetMediaItems(
+            mediaSession = session,
             controller = controller,
-            customCommand = SessionCommand(
-                "io.github.agimaulana.radio.action.PLAY_STATION",
-                Bundle.EMPTY
-            ),
-            args = Bundle().apply {
-                putString("media_id", "station-2")
-                putLong("start_position_ms", 1234L)
-            }
+            mediaItems = listOf(MediaItem.Builder().setMediaId("station-2").build()),
+            startIndex = 0,
+            startPositionMs = 1500L
         ).get()
 
-        assertEquals(SessionResult.RESULT_SUCCESS, result.resultCode)
-        verifyOrder {
-            player.setMediaItem(match { it.mediaId == "station-2" }, 1234L)
-            player.prepare()
-            player.play()
-        }
+        assertEquals(2, result.mediaItems.size)
+        assertEquals("station-1", result.mediaItems[0].mediaId)
+        assertEquals("station-2", result.mediaItems[1].mediaId)
+        assertEquals("https://stream.example.com/two", result.mediaItems[1].localConfiguration?.uri.toString())
+        assertEquals(1, result.startIndex)
+        assertEquals(1500L, result.startPositionMs)
     }
+
 
     @Test
     fun onPlaybackResumption_returnsFirstCatalogItemWhenNothingIsPlaying() = runTest {

@@ -59,10 +59,15 @@ internal class RadioLibraryCatalog(
         restore()
         if (mediaId == ROOT_MEDIA_ID) return rootItem()
 
-        val allChildren = cachedChildren ?: cacheMutex.withLock {
+        val allChildren = getPlaylist()
+        return allChildren.firstOrNull { it.mediaId == mediaId }
+    }
+
+    suspend fun getPlaylist(): List<MediaItem> {
+        restore()
+        return cachedChildren ?: cacheMutex.withLock {
             cachedChildren ?: loadAllChildren().also { cachedChildren = it }
         }
-        return allChildren.firstOrNull { it.mediaId == mediaId }
     }
 
     suspend fun restore() {
@@ -189,6 +194,6 @@ internal class RadioLibraryCatalog(
 
     companion object {
         internal const val ROOT_MEDIA_ID = "root"
-        private const val CATALOG_PAGE_SIZE = 10
+        internal const val CATALOG_PAGE_SIZE = 10
     }
 }

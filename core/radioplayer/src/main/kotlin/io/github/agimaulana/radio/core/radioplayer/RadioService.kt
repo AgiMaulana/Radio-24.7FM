@@ -18,6 +18,11 @@ import io.github.agimaulana.radio.core.radioplayer.internal.RadioLibraryCatalog
 import io.github.agimaulana.radio.core.radioplayer.internal.RadioSessionCallback
 import io.github.agimaulana.radio.domain.api.repository.CatalogStateRepository
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @OptIn(UnstableApi::class)
@@ -29,11 +34,13 @@ class RadioService : MediaLibraryService() {
     private var mediaSession: MediaLibraryService.MediaLibrarySession? = null
     private lateinit var radioLibraryCatalog: RadioLibraryCatalog
     private lateinit var radioSessionCallback: RadioSessionCallback
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var isLoadingNextPage = false
 
     override fun onCreate() {
         super.onCreate()
-        val player = createPlayer()
         radioLibraryCatalog = RadioLibraryCatalog(getRadioStationsUseCase, catalogStateRepository)
+        val player = createPlayer()
         radioSessionCallback = RadioSessionCallback(radioLibraryCatalog)
 
         mediaSession = MediaLibraryService.MediaLibrarySession.Builder(this, player, radioSessionCallback)
@@ -65,11 +72,12 @@ class RadioService : MediaLibraryService() {
         if (::radioSessionCallback.isInitialized) {
             radioSessionCallback.close()
         }
+        serviceScope.cancel()
         super.onDestroy()
     }
 
     private fun createPlayer(): ExoPlayer {
-        return ExoPlayer.Builder(this)
+        val player = ExoPlayer.Builder(this)
             .setLoadControl(DefaultLoadControl())
             .setLivePlaybackSpeedControl(DefaultLivePlaybackSpeedControl.Builder().build())
             .setAudioAttributes(
@@ -80,6 +88,37 @@ class RadioService : MediaLibraryService() {
                 true
             )
             .build()
+
+        player.addListener(object : Player.Listener {
+            override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
+                if (mediaItem == null) return
+                val currentIndex = player.currentMediaItemIndex
+                val playlistSize = player.mediaItemCount
+                if (!isLoadingNextPage && currentIndex >= playlistSize - 2 && playlistSize > 0) {
+                    serviceScope.launch {
+                        isLoadingNextPage = true
+                        try {
+                            val nextPage = (playlistSize / RadioLibraryCatalog.CATALOG_PAGE_SIZE)
+                            val newItems = radioLibraryCatalog.loadChildren(
+                                nextPage,
+                                RadioLibraryCatalog.CATALOG_PAGE_SIZE
+                            )
+                            if (newItems.isNotEmpty()) {
+                                val currentIds = (0 until player.mediaItemCount)
+                                    .map { player.getMediaItemAt(it).mediaId }.toSet()
+                                val filteredNewItems = newItems.filter { it.mediaId !in currentIds }
+                                if (filteredNewItems.isNotEmpty()) {
+                                    player.addMediaItems(filteredNewItems)
+                                }
+                            }
+                        } finally {
+                            isLoadingNextPage = false
+                        }
+                    }
+                }
+            }
+        })
+        return player
     }
 
     private fun createPendingMainActivityIntent(): PendingIntent {
