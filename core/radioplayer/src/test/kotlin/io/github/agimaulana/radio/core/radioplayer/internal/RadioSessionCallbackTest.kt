@@ -7,6 +7,7 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
+import io.github.agimaulana.radio.domain.api.repository.CatalogStateRepository
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
 import io.mockk.coEvery
 import io.mockk.every
@@ -117,9 +118,11 @@ class RadioSessionCallbackTest {
 
     private fun callbackForStations(stations: List<RadioStation>): RadioSessionCallback {
         val useCase = mockk<GetRadioStationsUseCase>()
+        val catalogStateRepository = mockk<CatalogStateRepository>(relaxed = true)
+        coEvery { catalogStateRepository.load() } returns null
         coEvery { useCase.execute(page = 1, searchName = null, location = null) } returns stations
         coEvery { useCase.execute(page = 2, searchName = null, location = null) } returns emptyList()
-        return RadioSessionCallback(RadioLibraryCatalog(useCase))
+        return RadioSessionCallback(RadioLibraryCatalog(useCase, catalogStateRepository))
     }
 
     private fun controller(): MediaSession.ControllerInfo {
