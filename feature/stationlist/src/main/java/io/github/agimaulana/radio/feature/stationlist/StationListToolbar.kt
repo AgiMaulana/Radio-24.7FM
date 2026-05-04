@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import io.github.agimaulana.radio.core.design.RadioTheme
 import io.github.agimaulana.radio.core.design.theme.PreviewTheme
+import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController.CastState
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.Action
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.UiState
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.UiState.Station
@@ -143,13 +144,15 @@ private fun ToolbarContent(
                 .offset(y = lerp(155.dp, 20.dp, progress))
         )
 
-        CastButton(
-            castState = uiState.castState,
-            onClick = onCastClick,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .offset(y = 8.dp)
-        )
+        if (uiState.castState != CastState.NO_DEVICES) {
+            CastButton(
+                castState = uiState.castState,
+                onClick = onCastClick,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(y = 8.dp)
+            )
+        }
 
         CustomSearchBar(
             value = uiState.filterStationName.orEmpty(),
@@ -157,7 +160,14 @@ private fun ToolbarContent(
             placeholder = if (progress < 0.5f) "Search your favourite station..." else "Search...",
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(start = lerp(0.dp, 95.dp, progress), end = lerp(0.dp, 48.dp, progress))
+                .padding(
+                    start = lerp(0.dp, 95.dp, progress),
+                    end = if (uiState.castState != CastState.NO_DEVICES) {
+                        lerp(0.dp, 48.dp, progress)
+                    } else {
+                        0.dp
+                    }
+                )
                 .offset(y = lerp(205.dp, 8.dp, progress))
                 .fillMaxWidth()
         )

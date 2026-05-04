@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import io.github.agimaulana.radio.core.design.theme.PreviewTheme
+import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController.CastState
 import io.github.agimaulana.radio.feature.stationlist.R
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.UiState.Station
@@ -54,7 +55,7 @@ internal fun FullPlayer(
     station: Station,
     playerColors: PlayerColors,
     featureFlag: StationListViewModel.UiState.FeatureFlag,
-    castState: io.github.agimaulana.radio.core.radioplayer.RadioPlayerController.CastState,
+    castState: CastState,
     onPlay: () -> Unit,
     onPause: () -> Unit,
     onStop: () -> Unit,
@@ -165,7 +166,7 @@ internal fun FullPlayer(
 private fun FullPlayerHeader(
     isBuffering: Boolean,
     isMoreMenuEnabled: Boolean,
-    castState: io.github.agimaulana.radio.core.radioplayer.RadioPlayerController.CastState,
+    castState: CastState,
     onCollapse: () -> Unit,
     onCastClick: () -> Unit,
     onMore: () -> Unit,
@@ -193,10 +194,12 @@ private fun FullPlayerHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            CastButton(
-                castState = castState,
-                onClick = onCastClick
-            )
+            if (castState != CastState.NO_DEVICES) {
+                CastButton(
+                    castState = castState,
+                    onClick = onCastClick
+                )
+            }
 
             IconButton(
                 onClick = onCollapse,
@@ -469,7 +472,7 @@ private fun FullPlayerPreview() {
                 darkMuted = Color(0xFF0e0c14),
             ),
             featureFlag = StationListViewModel.UiState.FeatureFlag(),
-            castState = io.github.agimaulana.radio.core.radioplayer.RadioPlayerController.CastState.NOT_CONNECTED,
+            castState = CastState.NOT_CONNECTED,
             onPlay = {},
             onPause = {},
             onStop = {},
@@ -502,7 +505,7 @@ private fun FullPlayerBufferingPreview() {
                 darkMuted = Color(0xFF0e0c14),
             ),
             featureFlag = StationListViewModel.UiState.FeatureFlag(),
-            castState = io.github.agimaulana.radio.core.radioplayer.RadioPlayerController.CastState.NOT_CONNECTED,
+            castState = CastState.NOT_CONNECTED,
             onPlay = {},
             onPause = {},
             onStop = {},

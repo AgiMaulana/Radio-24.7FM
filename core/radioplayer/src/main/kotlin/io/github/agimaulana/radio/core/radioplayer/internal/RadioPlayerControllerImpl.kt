@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.media3.session.MediaController
 import com.google.android.gms.cast.framework.CastContext
 import com.google.android.gms.cast.framework.CastStateListener
+import com.google.common.util.concurrent.MoreExecutors
 import io.github.agimaulana.radio.core.radioplayer.PlaybackEvent
 import io.github.agimaulana.radio.core.radioplayer.RadioMediaItem
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
@@ -13,6 +14,7 @@ import io.github.agimaulana.radio.core.radioplayer.toRadioMediaItem
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import timber.log.Timber
 
 internal class RadioPlayerControllerImpl(
     private val mediaController: MediaController,
@@ -37,14 +39,32 @@ internal class RadioPlayerControllerImpl(
         _castState.value = mapCastState(state)
     }
 
+    private var castContext: CastContext? = null
+    private var isReleased = false
+
     init {
+        initializeCastContext()
+    }
+
+    private fun initializeCastContext() {
         try {
-            CastContext.getSharedInstance(context)?.let { castContext ->
-                castContext.addCastStateListener(castStateListener)
-                _castState.value = mapCastState(castContext.castState)
-            }
+            // Note: This is currently UI-only. Actual remote playback requires CastPlayer integration.
+            // Using Task-based API to avoid blocking the main thread during initialization.
+            CastContext.getSharedInstance(context, MoreExecutors.directExecutor())
+                .addOnSuccessListener { context ->
+                    if (isReleased) {
+                        context.removeCastStateListener(castStateListener)
+                        return@addOnSuccessListener
+                    }
+                    castContext = context
+                    context.addCastStateListener(castStateListener)
+                    _castState.value = mapCastState(context.castState)
+                }
+                .addOnFailureListener { e ->
+                    Timber.tag("RadioPlayerController").e(e, "Failed to initialize CastContext")
+                }
         } catch (e: Exception) {
-            // Cast context might not be available
+            Timber.tag("RadioPlayerController").w(e, "CastContext not available")
         }
     }
 
@@ -125,11 +145,9 @@ internal class RadioPlayerControllerImpl(
     }
 
     override fun release() {
-        try {
-            CastContext.getSharedInstance(context)?.removeCastStateListener(castStateListener)
-        } catch (e: Exception) {
-            // Ignore
-        }
+        isReleased = true
+        castContext?.removeCastStateListener(castStateListener)
+        castContext = null
         playbackEventFlow.release()
         mediaController.release()
     }

@@ -58,8 +58,10 @@ import io.github.agimaulana.radio.feature.stationlist.component.StationContextMe
 import io.github.agimaulana.radio.feature.stationlist.player.FullPlayer
 import io.github.agimaulana.radio.feature.stationlist.player.MiniPlayer
 import androidx.mediarouter.app.MediaRouteChooserDialog
+import androidx.mediarouter.app.MediaRouteControllerDialog
 import androidx.mediarouter.media.MediaRouteSelector
 import com.google.android.gms.cast.CastMediaControlIntent
+import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController.CastState
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -142,15 +144,19 @@ fun StationListRoute(
         contextMenuState = contextMenuState,
         onAction = viewModel::onAction,
         eventFlow = viewModel.uiEvent,
-        showLocationPermissionSheet = uiState.showLocationPermissionSheet,
-        onLaunchLocationPermissionRequest = {
-            locationPermissionState.launchPermissionRequest()
-        },
-        onDismissLocationPermission = {
-            resolveLocationPermission(isGranted = false)
-        },
+        locationPermissionHandlers = LocationPermissionHandlers(
+            showSheet = uiState.showLocationPermissionSheet,
+            onLaunchRequest = { locationPermissionState.launchPermissionRequest() },
+            onDismiss = { resolveLocationPermission(isGranted = false) }
+        )
     )
 }
+
+private data class LocationPermissionHandlers(
+    val showSheet: Boolean,
+    val onLaunchRequest: () -> Unit,
+    val onDismiss: () -> Unit
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -159,28 +165,74 @@ private fun StationListScreen(
     playerState: GlassPlayerState,
     toolbarDimensions: ToolbarDimensionsHelper,
     contextMenuState: StationContextMenuState,
-    showLocationPermissionSheet: Boolean,
-    onLaunchLocationPermissionRequest: () -> Unit,
-    onDismissLocationPermission: () -> Unit,
+    locationPermissionHandlers: LocationPermissionHandlers,
     eventFlow: Flow<UiEvent>,
     modifier: Modifier = Modifier,
     onAction: (Action) -> Unit = {},
 ) {
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val undoLabel = remember(context) { context.getString(R.string.undo) }
 
-    if (showLocationPermissionSheet) {
-        LocationPermissionBottomSheet(
-            onAllowClick = onLaunchLocationPermissionRequest,
-            onDismissRequest = onDismissLocationPermission,
-        )
-    }
+    StationListLocationSheet(locationPermissionHandlers)
 
     UpdateSystemBars()
 
+    StationListEventObserver(eventFlow, context, snackbarHostState, uiState)
+
+    val nestedScrollConnection = remember(toolbarDimensions, listState) {
+        StationListNestedScrollConnection(
+            onScroll = { toolbarDimensions.onScroll(it) },
+            canScrollDown = {
+                listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+            }
+        )
+    }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        StationListPlayerLayout(
+            uiState = uiState,
+            playerState = playerState,
+            onAction = onAction
+        ) {
+            StationListContent(
+                uiState = uiState,
+                listState = listState,
+                dims = toolbarDimensions.toData(),
+                nestedScrollConnection = nestedScrollConnection,
+                snackbarHostState = snackbarHostState,
+                onAction = onAction,
+                onLongClick = { contextMenuState.show(it) }
+            )
+        }
+
+        StationListContextMenuWrapper(
+            contextMenuState = contextMenuState,
+            onAction = onAction,
+            snackbarHostState = snackbarHostState,
+            undoLabel = undoLabel
+        )
+    }
+}
+
+@Composable
+private fun StationListLocationSheet(handlers: LocationPermissionHandlers) {
+    if (handlers.showSheet) {
+        LocationPermissionBottomSheet(
+            onAllowClick = handlers.onLaunchRequest,
+            onDismissRequest = handlers.onDismiss,
+        )
+    }
+}
+
+@Composable
+private fun StationListEventObserver(
+    eventFlow: Flow<UiEvent>,
+    context: android.content.Context,
+    snackbarHostState: SnackbarHostState,
+    uiState: UiState
+) {
     LaunchedEffect(eventFlow, context) {
         eventFlow.collect { event ->
             when (event) {
@@ -190,85 +242,91 @@ private fun StationListScreen(
                     )
                 }
                 UiEvent.ShowCastChooser -> {
-                    try {
-                        val selector = MediaRouteSelector.Builder()
-                            .addControlCategory(
-                                CastMediaControlIntent.categoryForCast(
-                                    CastMediaControlIntent.DEFAULT_MEDIA_RECEIVER_APPLICATION_ID
-                                )
-                            )
-                            .build()
-                        val dialog = MediaRouteChooserDialog(context)
-                        dialog.routeSelector = selector
-                        dialog.show()
-                    } catch (e: Exception) {
-                        Timber.e(e, "Failed to show cast chooser dialog")
-                    }
+                    showCastChooser(context, uiState.castState)
                 }
             }
         }
     }
+}
 
-    val nestedScrollConnection = remember(toolbarDimensions, listState) {
-        StationListNestedScrollConnection(
-            onScroll = { delta ->
-                toolbarDimensions.onScroll(delta)
-            },
-            canScrollDown = { listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0 }
-        )
-    }
-
-    Box(modifier = modifier.fillMaxSize()) {
-        GlassSlidingPlayerLayout(
-            state = playerState,
-            modifier = Modifier.fillMaxSize(),
-            miniPlayerContent = {
-                StationMiniPlayer(uiState.selectedStation, onAction, playerState)
-            },
-            fullPlayerContent = { progress ->
-                StationFullPlayer(progress, uiState, onAction, playerState)
-            }
-        ) {
-            StationListContent(
-                uiState = uiState,
-                listState = listState,
-                dims = toolbarDimensions.toData(),
-                nestedScrollConnection = nestedScrollConnection,
-                snackbarHostState = snackbarHostState,
-                onAction = onAction,
-                onLongClick = { station ->
-                    contextMenuState.show(station)
-                }
-            )
-        }
-
-        StationContextMenu(
-            showMenu = contextMenuState.showMenu,
-            station = contextMenuState.station,
-            useBottomSheet = contextMenuState.useBottomSheet,
-            onDismiss = contextMenuState::dismiss,
-            onAction = { action ->
-                if (action is Action.UnpinStation) {
-                    val stationToUnpin = contextMenuState.station
-                    onAction(action)
-                    if (stationToUnpin != null) {
-                        scope.launch {
-                            val result = snackbarHostState.showSnackbar(
-                                message = context.getString(R.string.pinned_removed_message, stationToUnpin.name),
-                                actionLabel = undoLabel,
-                                duration = androidx.compose.material3.SnackbarDuration.Short
-                            )
-                            if (result == SnackbarResult.ActionPerformed) {
-                                onAction(Action.PinStation(stationToUnpin))
-                            }
+@Composable
+private fun StationListContextMenuWrapper(
+    contextMenuState: StationContextMenuState,
+    onAction: (Action) -> Unit,
+    snackbarHostState: SnackbarHostState,
+    undoLabel: String
+) {
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    StationContextMenu(
+        showMenu = contextMenuState.showMenu,
+        station = contextMenuState.station,
+        useBottomSheet = contextMenuState.useBottomSheet,
+        onDismiss = contextMenuState::dismiss,
+        onAction = { action ->
+            if (action is Action.UnpinStation) {
+                val stationToUnpin = contextMenuState.station
+                onAction(action)
+                if (stationToUnpin != null) {
+                    scope.launch {
+                        val result = snackbarHostState.showSnackbar(
+                            message = context.getString(R.string.pinned_removed_message, stationToUnpin.name),
+                            actionLabel = undoLabel,
+                            duration = androidx.compose.material3.SnackbarDuration.Short
+                        )
+                        if (result == SnackbarResult.ActionPerformed) {
+                            onAction(Action.PinStation(stationToUnpin))
                         }
                     }
-                } else {
-                    onAction(action)
                 }
-                contextMenuState.dismiss()
+            } else {
+                onAction(action)
             }
-        )
+            contextMenuState.dismiss()
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun StationListPlayerLayout(
+    uiState: UiState,
+    playerState: GlassPlayerState,
+    onAction: (Action) -> Unit,
+    content: @Composable () -> Unit
+) {
+    GlassSlidingPlayerLayout(
+        state = playerState,
+        modifier = Modifier.fillMaxSize(),
+        miniPlayerContent = {
+            StationMiniPlayer(uiState.selectedStation, onAction, playerState)
+        },
+        fullPlayerContent = { progress ->
+            StationFullPlayer(progress, uiState, onAction, playerState)
+        }
+    ) {
+        content()
+    }
+}
+
+private fun showCastChooser(context: android.content.Context, castState: CastState) {
+    try {
+        val selector = MediaRouteSelector.Builder()
+            .addControlCategory(
+                CastMediaControlIntent.categoryForCast(
+                    CastMediaControlIntent.DEFAULT_MEDIA_RECEIVER_APPLICATION_ID
+                )
+            )
+            .build()
+        if (castState == CastState.CONNECTED) {
+            MediaRouteControllerDialog(context).show()
+        } else {
+            val dialog = MediaRouteChooserDialog(context)
+            dialog.routeSelector = selector
+            dialog.show()
+        }
+    } catch (e: Exception) {
+        Timber.tag("StationListScreen").e(e, "Failed to show cast chooser dialog")
     }
 }
 
@@ -422,9 +480,11 @@ private fun StationListScreenPreview() {
                 statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
             ),
             contextMenuState = rememberStationContextMenuState(),
-            showLocationPermissionSheet = false,
-            onLaunchLocationPermissionRequest = {},
-            onDismissLocationPermission = {},
+            locationPermissionHandlers = LocationPermissionHandlers(
+                showSheet = false,
+                onLaunchRequest = {},
+                onDismiss = {}
+            ),
             eventFlow = emptyFlow(),
         )
     }
