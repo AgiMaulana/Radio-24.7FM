@@ -7,6 +7,7 @@ interface RadioPlayerController {
     val event: Flow<PlaybackEvent>
     val currentMediaId: String?
     val isPlaying: Boolean
+    val castState: Flow<CastState>
 
     // Single-item compatibility
     fun setMediaItem(radioMediaItem: RadioMediaItem)
@@ -45,6 +46,10 @@ interface RadioPlayerController {
     fun pause()
     fun stop()
     fun release()
+
+    enum class CastState {
+        NO_DEVICES, NOT_CONNECTED, CONNECTING, CONNECTED
+    }
 
     data class PlaybackContext(
         val type: Type,

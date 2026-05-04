@@ -54,6 +54,8 @@ lifecycleRuntimeKtx = "2.10.0"
 composeBom = "2024.09.00"
 media3Session = "1.9.0"
 media3Exoplayer = "1.9.0"
+playServicesCastFramework = "22.3.1"
+androidxMediarouter = "1.8.1"
 timber = "5.0.1"
 sentry = "8.39.1"
 sentryAndroidGradle = "5.12.2"
@@ -61,6 +63,7 @@ sentryAndroidGradle = "5.12.2"
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-media3-session = { group = "androidx.media3", name = "media3-session", version.ref = "media3Session" }
+androidx-media3-cast = { group = "androidx.media3", name = "media3-cast", version.ref = "media3Session" }
 androidx-media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "media3Exoplayer" }
 androidx-media3-exoplayer-hls = { group = "androidx.media3", name = "media3-exoplayer-hls", version.ref = "media3Exoplayer" }
 timber = { module = "com.jakewharton.timber:timber", version.ref = "timber" }
@@ -116,7 +119,9 @@ collections-immutable = { module = "org.jetbrains.kotlinx:kotlinx-collections-im
 lottie-compose = { module = "com.airbnb.android:lottie-compose", version.ref = "lottieCompose" }
 androidx-swiperefreshlayout = { module = "androidx.swiperefreshlayout:swiperefreshlayout", version.ref = "swiperefreshlayout" }
 androidx-palette = { group = "androidx.palette", name = "palette", version.ref = "androidxPalette" }
+androidx-mediarouter = { group = "androidx.mediarouter", name = "mediarouter", version.ref = "androidxMediarouter" }
 androidx-startup = { group = "androidx.startup", name = "startup-runtime", version.ref = "androidxStartup" }
+play-services-cast-framework = { group = "com.google.android.gms", name = "play-services-cast-framework", version.ref = "playServicesCastFramework" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 androidx-compose-animation-graphics = { group = "androidx.compose.animation", name = "animation-graphics", version.ref = "compose" }
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "androidxDataStore" }

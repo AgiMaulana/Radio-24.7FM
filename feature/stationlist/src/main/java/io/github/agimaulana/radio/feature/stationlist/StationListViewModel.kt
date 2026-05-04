@@ -77,6 +77,11 @@ class StationListViewModel @Inject constructor(
         viewModelScope.launch {
             radioPlayerController = radioPlayerControllerFactory.get().apply {
                 viewModelScope.launch { event.collect(::onPlaybackEventReceived) }
+                viewModelScope.launch {
+                    castState.collect { state ->
+                        _uiState.update { it.copy(castState = state) }
+                    }
+                }
             }
             restoreSelectedStation()
         }
@@ -199,6 +204,10 @@ class StationListViewModel @Inject constructor(
             is Action.PinStation -> handlePinStation(action.station)
 
             is Action.UnpinStation -> handleUnpinStation(action.stationUuid)
+
+            Action.ClickCast -> viewModelScope.launch {
+                _uiEvent.emit(UiEvent.ShowCastChooser)
+            }
         }
     }
 
@@ -540,6 +549,7 @@ class StationListViewModel @Inject constructor(
         val locationPermissionResolved: Boolean = false,
         val showLocationPermissionSheet: Boolean = true,
         val locationSettingsResolution: ResolvableApiException? = null,
+        val castState: RadioPlayerController.CastState = RadioPlayerController.CastState.NO_DEVICES,
     ) {
         data class Station(
             val serverUuid: String,
@@ -580,10 +590,12 @@ class StationListViewModel @Inject constructor(
         data class OnLocationSettingsResolved(val isResolved: Boolean) : Action
         data class PinStation(val station: UiState.Station) : Action
         data class UnpinStation(val stationUuid: String) : Action
+        data object ClickCast : Action
     }
 
     sealed interface UiEvent {
         data class ShowPinnedLimitReached(val maxPins: Int) : UiEvent
+        data object ShowCastChooser : UiEvent
     }
 
     companion object {

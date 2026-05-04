@@ -39,8 +39,10 @@ import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import io.github.agimaulana.radio.core.design.RadioTheme
 import io.github.agimaulana.radio.core.design.theme.PreviewTheme
+import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.Action
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.UiState
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.UiState.Station
+import io.github.agimaulana.radio.feature.stationlist.component.CastButton
 import kotlinx.collections.immutable.persistentListOf
 
 private val HeroBackgroundColor = Color(0xFF1C1A24)
@@ -54,6 +56,7 @@ internal fun StationListToolbar(
     dims: ToolbarDimensions,
     uiState: UiState,
     onSearch: (String) -> Unit,
+    onCastClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val currentHeight = lerp(dims.expandedHeight, dims.collapsedHeight, dims.progress)
@@ -73,7 +76,8 @@ internal fun StationListToolbar(
         ToolbarContent(
             progress = dims.progress,
             uiState = uiState,
-            onSearch = onSearch
+            onSearch = onSearch,
+            onCastClick = onCastClick
         )
     }
 }
@@ -117,6 +121,7 @@ private fun ToolbarContent(
     progress: Float,
     uiState: UiState,
     onSearch: (String) -> Unit,
+    onCastClick: () -> Unit,
 ) {
     Box(
         modifier = Modifier
@@ -138,13 +143,21 @@ private fun ToolbarContent(
                 .offset(y = lerp(155.dp, 20.dp, progress))
         )
 
+        CastButton(
+            castState = uiState.castState,
+            onClick = onCastClick,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .offset(y = 8.dp)
+        )
+
         CustomSearchBar(
             value = uiState.filterStationName.orEmpty(),
             onValueChange = onSearch,
             placeholder = if (progress < 0.5f) "Search your favourite station..." else "Search...",
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(start = lerp(0.dp, 95.dp, progress))
+                .padding(start = lerp(0.dp, 95.dp, progress), end = lerp(0.dp, 48.dp, progress))
                 .offset(y = lerp(205.dp, 8.dp, progress))
                 .fillMaxWidth()
         )
@@ -289,7 +302,8 @@ private fun StationListToolbarPreview() {
                     )
                 )
             ),
-            onSearch = {}
+            onSearch = {},
+            onCastClick = {}
         )
     }
 }

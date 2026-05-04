@@ -46,6 +46,7 @@ import io.github.agimaulana.radio.core.design.theme.PreviewTheme
 import io.github.agimaulana.radio.feature.stationlist.R
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.UiState.Station
+import io.github.agimaulana.radio.feature.stationlist.component.CastButton
 import io.github.agimaulana.radio.feature.stationlist.component.PlayingWaveIndicator
 
 @Composable
@@ -53,10 +54,12 @@ internal fun FullPlayer(
     station: Station,
     playerColors: PlayerColors,
     featureFlag: StationListViewModel.UiState.FeatureFlag,
+    castState: io.github.agimaulana.radio.core.radioplayer.RadioPlayerController.CastState,
     onPlay: () -> Unit,
     onPause: () -> Unit,
     onStop: () -> Unit,
     onCollapse: () -> Unit,
+    onCastClick: () -> Unit,
     modifier: Modifier = Modifier,
     progress: Float = 1f,
 ) {
@@ -84,7 +87,9 @@ internal fun FullPlayer(
             FullPlayerHeader(
                 isBuffering = station.isBuffering,
                 isMoreMenuEnabled = featureFlag.isMoreMenuEnabled,
+                castState = castState,
                 onCollapse = onCollapse,
+                onCastClick = onCastClick,
                 onMore = { /* TODO */ },
                 progress = progress,
                 dynamicTopPadding = dynamicTopPadding
@@ -160,7 +165,9 @@ internal fun FullPlayer(
 private fun FullPlayerHeader(
     isBuffering: Boolean,
     isMoreMenuEnabled: Boolean,
+    castState: io.github.agimaulana.radio.core.radioplayer.RadioPlayerController.CastState,
     onCollapse: () -> Unit,
+    onCastClick: () -> Unit,
     onMore: () -> Unit,
     progress: Float,
     dynamicTopPadding: androidx.compose.ui.unit.Dp,
@@ -174,25 +181,35 @@ private fun FullPlayerHeader(
     ) {
         Text(
             text = if (isBuffering) "BUFFERING" else "NOW PLAYING",
-            modifier = Modifier.align(Alignment.Center),
+            modifier = Modifier.align(Alignment.CenterStart),
             style = MaterialTheme.typography.labelLarge,
             color = Color.White.copy(alpha = 0.7f),
             fontWeight = FontWeight.Bold,
             letterSpacing = 2.sp
         )
 
-        IconButton(
-            onClick = onCollapse,
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .size(40.dp)
-                .background(Color.White.copy(alpha = 0.1f), CircleShape)
+        Row(
+            modifier = Modifier.align(Alignment.CenterEnd),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_collapse),
-                contentDescription = "Collapse",
-                tint = Color.White,
+            CastButton(
+                castState = castState,
+                onClick = onCastClick
             )
+
+            IconButton(
+                onClick = onCollapse,
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(Color.White.copy(alpha = 0.1f), CircleShape)
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_collapse),
+                    contentDescription = "Collapse",
+                    tint = Color.White,
+                )
+            }
         }
 
         if (isMoreMenuEnabled) {
@@ -452,10 +469,12 @@ private fun FullPlayerPreview() {
                 darkMuted = Color(0xFF0e0c14),
             ),
             featureFlag = StationListViewModel.UiState.FeatureFlag(),
+            castState = io.github.agimaulana.radio.core.radioplayer.RadioPlayerController.CastState.NOT_CONNECTED,
             onPlay = {},
             onPause = {},
             onStop = {},
             onCollapse = {},
+            onCastClick = {},
         )
     }
 }
@@ -483,10 +502,12 @@ private fun FullPlayerBufferingPreview() {
                 darkMuted = Color(0xFF0e0c14),
             ),
             featureFlag = StationListViewModel.UiState.FeatureFlag(),
+            castState = io.github.agimaulana.radio.core.radioplayer.RadioPlayerController.CastState.NOT_CONNECTED,
             onPlay = {},
             onPause = {},
             onStop = {},
             onCollapse = {},
+            onCastClick = {},
         )
     }
 }
@@ -518,10 +539,12 @@ private fun FullPlayerSheetModePreview() {
                     darkMuted = Color(0xFF0e0c14),
                 ),
                 featureFlag = StationListViewModel.UiState.FeatureFlag(),
+                castState = io.github.agimaulana.radio.core.radioplayer.RadioPlayerController.CastState.NOT_CONNECTED,
                 onPlay = {},
                 onPause = {},
                 onStop = {},
                 onCollapse = {},
+                onCastClick = {},
                 modifier = Modifier.fillMaxSize()
             )
         }

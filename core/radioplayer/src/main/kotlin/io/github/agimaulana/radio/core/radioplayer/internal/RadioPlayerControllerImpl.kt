@@ -1,18 +1,26 @@
 package io.github.agimaulana.radio.core.radioplayer.internal
 
+import android.content.Context
 import androidx.media3.session.MediaController
+import com.google.android.gms.cast.framework.CastContext
+import com.google.android.gms.cast.framework.CastStateListener
 import io.github.agimaulana.radio.core.radioplayer.PlaybackEvent
 import io.github.agimaulana.radio.core.radioplayer.RadioMediaItem
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
+import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController.CastState
 import io.github.agimaulana.radio.core.radioplayer.toMediaItem
 import io.github.agimaulana.radio.core.radioplayer.toRadioMediaItem
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 internal class RadioPlayerControllerImpl(
     private val mediaController: MediaController,
+    private val context: Context,
 ) : RadioPlayerController {
 
     private val playbackEventFlow = PlaybackEventFlow(mediaController)
+    private val _castState = MutableStateFlow(CastState.NO_DEVICES)
 
     override val event: Flow<PlaybackEvent>
         get() = playbackEventFlow.event
@@ -22,6 +30,23 @@ internal class RadioPlayerControllerImpl(
 
     override val isPlaying: Boolean
         get() = mediaController.isPlaying
+
+    override val castState: Flow<CastState> = _castState.asStateFlow()
+
+    private val castStateListener = CastStateListener { state ->
+        _castState.value = mapCastState(state)
+    }
+
+    init {
+        try {
+            CastContext.getSharedInstance(context)?.let { castContext ->
+                castContext.addCastStateListener(castStateListener)
+                _castState.value = mapCastState(castContext.castState)
+            }
+        } catch (e: Exception) {
+            // Cast context might not be available
+        }
+    }
 
     // Single-item compatibility
     override fun setMediaItem(radioMediaItem: RadioMediaItem) {
@@ -100,7 +125,22 @@ internal class RadioPlayerControllerImpl(
     }
 
     override fun release() {
+        try {
+            CastContext.getSharedInstance(context)?.removeCastStateListener(castStateListener)
+        } catch (e: Exception) {
+            // Ignore
+        }
         playbackEventFlow.release()
         mediaController.release()
+    }
+
+    private fun mapCastState(state: Int): CastState {
+        return when (state) {
+            com.google.android.gms.cast.framework.CastState.NO_DEVICES_AVAILABLE -> CastState.NO_DEVICES
+            com.google.android.gms.cast.framework.CastState.NOT_CONNECTED -> CastState.NOT_CONNECTED
+            com.google.android.gms.cast.framework.CastState.CONNECTING -> CastState.CONNECTING
+            com.google.android.gms.cast.framework.CastState.CONNECTED -> CastState.CONNECTED
+            else -> CastState.NO_DEVICES
+        }
     }
 }

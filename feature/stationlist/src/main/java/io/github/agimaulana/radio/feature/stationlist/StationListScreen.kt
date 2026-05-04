@@ -57,6 +57,9 @@ import io.github.agimaulana.radio.feature.stationlist.component.LocationPermissi
 import io.github.agimaulana.radio.feature.stationlist.component.StationContextMenu
 import io.github.agimaulana.radio.feature.stationlist.player.FullPlayer
 import io.github.agimaulana.radio.feature.stationlist.player.MiniPlayer
+import androidx.mediarouter.app.MediaRouteChooserDialog
+import androidx.mediarouter.media.MediaRouteSelector
+import com.google.android.gms.cast.CastMediaControlIntent
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -186,6 +189,22 @@ private fun StationListScreen(
                         message = context.getString(R.string.pinned_limit_reached_message, event.maxPins)
                     )
                 }
+                UiEvent.ShowCastChooser -> {
+                    try {
+                        val selector = MediaRouteSelector.Builder()
+                            .addControlCategory(
+                                CastMediaControlIntent.categoryForCast(
+                                    CastMediaControlIntent.DEFAULT_MEDIA_RECEIVER_APPLICATION_ID
+                                )
+                            )
+                            .build()
+                        val dialog = MediaRouteChooserDialog(context)
+                        dialog.routeSelector = selector
+                        dialog.show()
+                    } catch (e: Exception) {
+                        Timber.e(e, "Failed to show cast chooser dialog")
+                    }
+                }
             }
         }
     }
@@ -298,6 +317,7 @@ private fun StationFullPlayer(
             station = station,
             playerColors = uiState.playerColors,
             featureFlag = uiState.featureFlag,
+            castState = uiState.castState,
             onPlay = { onAction(Action.Play(station)) },
             onPause = { onAction(Action.Pause(station)) },
             onStop = {
@@ -309,6 +329,7 @@ private fun StationFullPlayer(
                 onAction(Action.CollapsePlayer(source = "collapse_button"))
                 playerState.collapse()
             },
+            onCastClick = { onAction(Action.ClickCast) },
             modifier = Modifier.fillMaxWidth()
         )
     }
@@ -329,7 +350,8 @@ private fun StationListContent(
             StationListToolbar(
                 dims = dims,
                 uiState = uiState,
-                onSearch = { onAction(Action.Search(it)) }
+                onSearch = { onAction(Action.Search(it)) },
+                onCastClick = { onAction(Action.ClickCast) }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
