@@ -43,3 +43,13 @@ internal fun RadioMediaItem.toMediaItem(
         .setMediaMetadata(metadataBuilder.build())
         .build()
 }
+
+fun MediaItem.toRadioMediaItem() = RadioMediaItem(
+    mediaId = mediaId,
+    streamUrl = localConfiguration?.uri?.toString().orEmpty(),
+    radioMetadata = RadioMediaItem.RadioMetadata(
+        stationName = mediaMetadata.title?.toString().orEmpty(),
+        genre = mediaMetadata.subtitle?.toString().orEmpty(),
+        imageUrl = mediaMetadata.artworkUri?.toString().orEmpty()
+    )
+)

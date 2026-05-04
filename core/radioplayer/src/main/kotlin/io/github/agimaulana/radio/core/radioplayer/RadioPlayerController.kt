@@ -35,6 +35,8 @@ interface RadioPlayerController {
         context: PlaybackContext = PlaybackContext(DEFAULT, null)
     )
 
+    fun getPlaylist(): List<RadioMediaItem>
+
     val mediaItemCount: Int
     val currentMediaItemIndex: Int
 

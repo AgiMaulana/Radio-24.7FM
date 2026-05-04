@@ -31,6 +31,10 @@ class PlaybackEventFlow(
         _event.trySend(PlaybackEvent.MediaItemTransition(mediaItem?.mediaId))
     }
 
+    override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
+        _event.trySend(PlaybackEvent.PlaylistChanged)
+    }
+
     fun release() {
         mediaController.removeListener(this)
     }

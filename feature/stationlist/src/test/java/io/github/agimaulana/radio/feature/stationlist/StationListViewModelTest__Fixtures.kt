@@ -8,6 +8,7 @@ import io.github.agimaulana.radio.core.radioplayer.RadioMediaItem
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerControllerFactory
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
+import io.github.agimaulana.radio.domain.api.repository.CatalogStateRepository
 import io.github.agimaulana.radio.domain.api.usecase.GetPinnedStationsUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
@@ -58,6 +59,9 @@ abstract class StationListViewModelTest__Fixtures {
     @RelaxedMockK
     protected lateinit var locationProvider: LocationProvider
 
+    @RelaxedMockK
+    protected lateinit var catalogStateRepository: CatalogStateRepository
+
     @MockK
     protected lateinit var context: Context
 
@@ -106,6 +110,7 @@ abstract class StationListViewModelTest__Fixtures {
             radioPlayerControllerFactory = radioPlayerControllerFactory,
             stationListTracker = stationListTracker,
             locationProvider = locationProvider,
+            catalogStateRepository = catalogStateRepository,
             context = context
         )
     }

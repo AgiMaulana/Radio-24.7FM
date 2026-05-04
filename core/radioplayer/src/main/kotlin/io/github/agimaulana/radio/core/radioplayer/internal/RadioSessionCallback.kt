@@ -40,12 +40,8 @@ internal class RadioSessionCallback(
             .add(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
             .build()
 
-        val availableSessionCommands = connectionResult.availableSessionCommands.buildUpon()
-            .add(PLAY_STATION_COMMAND)
-            .build()
-
         return MediaSession.ConnectionResult.accept(
-            availableSessionCommands,
+            connectionResult.availableSessionCommands,
             customPlayerCommands
         )
     }
@@ -65,11 +61,33 @@ internal class RadioSessionCallback(
             startPositionMs
         )
         return callbackScope.future {
+            val firstItem = mediaItems.firstOrNull()
+            val (playlist, resolvedIndex) = if (firstItem != null && mediaItems.size == 1) {
+                val catalogPlaylist = radioLibraryCatalog.getPlaylist()
+                val index = catalogPlaylist.indexOfFirst { it.mediaId == firstItem.mediaId }
+                if (index >= 0) {
+                    catalogPlaylist to index
+                } else {
+                    // Item not in catalog (could be a direct ID from an external source)
+                    // Try to find it and build a playlist around it or just use it as is
+                    val resolvedItem = radioLibraryCatalog.findChild(firstItem.mediaId) ?: firstItem
+                    listOf(resolvedItem) to 0
+                }
+            } else {
+                val hasNoUri = mediaItems.any { it.localConfiguration == null }
+                val resolvedItems = if (hasNoUri) {
+                    mediaItems.map { requested ->
+                        radioLibraryCatalog.findChild(requested.mediaId) ?: requested
+                    }
+                } else {
+                    mediaItems
+                }
+                resolvedItems to startIndex
+            }
+
             MediaSession.MediaItemsWithStartPosition(
-                mediaItems.map { requested ->
-                    radioLibraryCatalog.findChild(requested.mediaId) ?: requested
-                },
-                startIndex,
+                playlist,
+                resolvedIndex,
                 startPositionMs
             )
         }
@@ -104,10 +122,7 @@ internal class RadioSessionCallback(
             customCommand.customAction
         )
 
-        return when (customCommand.customAction) {
-            ACTION_PLAY_STATION -> handlePlayStationCommand(session, args)
-            else -> Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))
-        }
+        return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))
     }
 
     override fun onPlaybackResumption(
@@ -121,27 +136,24 @@ internal class RadioSessionCallback(
             isForPlayback
         )
 
-        val currentMediaItem = mediaSession.player.currentMediaItem
-        if (currentMediaItem != null) {
-            val startPositionMs = if (isForPlayback) mediaSession.player.currentPosition else C.TIME_UNSET
-            return Futures.immediateFuture(
-                MediaSession.MediaItemsWithStartPosition(
-                    listOf(currentMediaItem),
-                    C.INDEX_UNSET,
-                    startPositionMs
-                )
-            )
-        }
-
         return callbackScope.future {
-            val fallbackItem = radioLibraryCatalog.loadChildren(page = 0, pageSize = 1).firstOrNull()
-                ?: radioLibraryCatalog.rootItem()
-            val startPositionMs = if (isForPlayback) 0L else C.TIME_UNSET
-            MediaSession.MediaItemsWithStartPosition(
-                listOf(fallbackItem),
-                0,
-                startPositionMs
-            )
+            val playlist = radioLibraryCatalog.getPlaylist()
+            val currentMediaItem = mediaSession.player.currentMediaItem
+            val startPositionMs = if (isForPlayback) mediaSession.player.currentPosition else C.TIME_UNSET
+
+            val (items, index) = if (currentMediaItem != null) {
+                val foundIndex = playlist.indexOfFirst { it.mediaId == currentMediaItem.mediaId }
+                if (foundIndex >= 0) {
+                    playlist to foundIndex
+                } else {
+                    listOf(currentMediaItem) to C.INDEX_UNSET
+                }
+            } else {
+                val fallbackItem = playlist.firstOrNull() ?: radioLibraryCatalog.rootItem()
+                listOf(fallbackItem) to 0
+            }
+
+            MediaSession.MediaItemsWithStartPosition(items, index, startPositionMs)
         }
     }
 
@@ -196,43 +208,11 @@ internal class RadioSessionCallback(
         }
     }
 
-    private fun handlePlayStationCommand(
-        session: MediaSession,
-        args: Bundle
-    ): com.google.common.util.concurrent.ListenableFuture<SessionResult> {
-        val mediaId = args.getString(ARG_MEDIA_ID).orEmpty()
-        if (mediaId.isBlank()) {
-            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE))
-        }
-
-        return callbackScope.future {
-            val mediaItem = radioLibraryCatalog.findChild(mediaId)
-                ?: return@future SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE)
-
-            val startPositionMs = args.getLong(ARG_START_POSITION_MS, 0L)
-            Timber.tag(TAG).d(
-                "play station mediaId=%s startPositionMs=%d",
-                mediaId,
-                startPositionMs
-            )
-
-            session.player.setMediaItem(mediaItem, startPositionMs)
-            session.player.prepare()
-            session.player.play()
-            SessionResult(SessionResult.RESULT_SUCCESS)
-        }
-    }
-
     fun close() {
         callbackScope.cancel()
     }
 
     private companion object {
         const val TAG = "RadioSessionCallback"
-        const val ACTION_PLAY_STATION = "io.github.agimaulana.radio.action.PLAY_STATION"
-        const val ARG_MEDIA_ID = "media_id"
-        const val ARG_START_POSITION_MS = "start_position_ms"
-
-        val PLAY_STATION_COMMAND = SessionCommand(ACTION_PLAY_STATION, Bundle.EMPTY)
     }
 }

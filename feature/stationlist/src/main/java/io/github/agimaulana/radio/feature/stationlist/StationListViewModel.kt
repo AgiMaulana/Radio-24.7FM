@@ -14,6 +14,8 @@ import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerControllerFactory
 import io.github.agimaulana.radio.domain.api.entity.GeoLatLong
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
+import io.github.agimaulana.radio.domain.api.repository.CatalogState
+import io.github.agimaulana.radio.domain.api.repository.CatalogStateRepository
 import io.github.agimaulana.radio.domain.api.repository.PinnedStationLimitReachedException
 import io.github.agimaulana.radio.domain.api.usecase.GetPinnedStationsUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationUseCase
@@ -49,6 +51,7 @@ class StationListViewModel @Inject constructor(
     private val radioPlayerControllerFactory: RadioPlayerControllerFactory,
     private val stationListTracker: StationListTracker,
     private val locationProvider: LocationProvider,
+    private val catalogStateRepository: CatalogStateRepository,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(UiState())
@@ -231,6 +234,14 @@ class StationListViewModel @Inject constructor(
             if (stationName.isNotBlank()) {
                 stationListTracker.trackSearchSubmitted(stationName)
             }
+            catalogStateRepository.save(
+                CatalogState(
+                    query = stationName,
+                    source = if (stationName.isNotBlank()) CatalogState.Source.SEARCH else CatalogState.Source.ALL,
+                    locationLat = _uiState.value.currentPosition?.latitude,
+                    locationLon = _uiState.value.currentPosition?.longitude
+                )
+            )
             fetchRadioStations(force = true)
         }
     }
@@ -324,6 +335,14 @@ class StationListViewModel @Inject constructor(
                     hasMorePages = true,
                 )
             }
+            catalogStateRepository.save(
+                CatalogState(
+                    query = _uiState.value.filterStationName,
+                    source = CatalogState.Source.LOCATION,
+                    locationLat = location.latitude,
+                    locationLon = location.longitude
+                )
+            )
             fetchRadioStations(force = true)
         }
     }
@@ -432,6 +451,51 @@ class StationListViewModel @Inject constructor(
                     updatePlayerColors(uiStation.imageUrl)
                 }
             }
+
+            PlaybackEvent.PlaylistChanged -> {
+                syncWithPlayer()
+            }
+        }
+    }
+
+    private fun syncWithPlayer() {
+        val controller = radioPlayerController ?: return
+        val playerPlaylist = controller.getPlaylist()
+        if (playerPlaylist.isEmpty()) return
+
+        val currentMediaId = controller.currentMediaId
+        val isPlaying = controller.isPlaying
+        val pinnedUuids = _uiState.value.pinnedStations.map { it.serverUuid }.toSet()
+
+        _uiState.update { state ->
+            val existingStations = state.stations
+            val firstPlayerId = playerPlaylist.first().mediaId
+            
+            val isAppend = existingStations.isNotEmpty() && 
+                          existingStations.any { it.serverUuid == firstPlayerId }
+
+            val updatedStations = if (isAppend) {
+                // If it's an append, we reconcile the lists to preserve existing objects if possible
+                playerPlaylist.map { playerItem ->
+                    val existing = existingStations.find { it.serverUuid == playerItem.mediaId }
+                    if (existing != null) {
+                        existing.copy(
+                            isPlaying = isPlaying && (existing.serverUuid == currentMediaId)
+                        )
+                    } else {
+                        playerItem.toUiStateStation(pinnedUuids, currentMediaId, isPlaying)
+                    }
+                }.toPersistentList()
+            } else {
+                playerPlaylist.map { item ->
+                    item.toUiStateStation(pinnedUuids, currentMediaId, isPlaying)
+                }.toPersistentList()
+            }
+
+            state.copy(
+                stations = updatedStations,
+                hasMorePages = updatedStations.size >= PAGE_SIZE
+            )
         }
     }
 
@@ -539,6 +603,21 @@ private fun RadioStation.toUiStateStation(
     isBuffering = false,
     isPlaying = false,
     isPinned = stationUuid in pinnedUuids
+)
+
+private fun RadioMediaItem.toUiStateStation(
+    pinnedUuids: Set<String>,
+    currentMediaId: String?,
+    isPlaying: Boolean
+) = StationListViewModel.UiState.Station(
+    serverUuid = mediaId,
+    name = radioMetadata.stationName,
+    genre = radioMetadata.genre,
+    imageUrl = radioMetadata.imageUrl,
+    streamUrl = streamUrl,
+    isBuffering = false,
+    isPlaying = isPlaying && (mediaId == currentMediaId),
+    isPinned = mediaId in pinnedUuids
 )
 
 private fun StationListViewModel.UiState.Station.toRadioMediaItem() = RadioMediaItem(

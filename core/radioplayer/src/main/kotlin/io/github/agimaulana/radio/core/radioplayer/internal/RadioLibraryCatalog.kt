@@ -7,12 +7,15 @@ import io.github.agimaulana.radio.domain.api.entity.GeoLatLong
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
 import io.github.agimaulana.radio.domain.api.repository.CatalogState
 import io.github.agimaulana.radio.domain.api.repository.CatalogStateRepository
+import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import timber.log.Timber
 
 internal class RadioLibraryCatalog(
     private val getRadioStationsUseCase: GetRadioStationsUseCase,
+    private val getRadioStationUseCase: GetRadioStationUseCase,
     private val catalogStateRepository: CatalogStateRepository,
 ) {
     @Volatile private var cachedChildren: List<MediaItem>? = null
@@ -59,10 +62,25 @@ internal class RadioLibraryCatalog(
         restore()
         if (mediaId == ROOT_MEDIA_ID) return rootItem()
 
-        val allChildren = cachedChildren ?: cacheMutex.withLock {
-            cachedChildren ?: loadAllChildren().also { cachedChildren = it }
+        val allChildren = getPlaylist()
+        val cached = allChildren.firstOrNull { it.mediaId == mediaId }
+
+        return cached ?: run {
+            try {
+                getRadioStationUseCase.execute(mediaId).toMediaItem()
+            } catch (_: NoSuchElementException) {
+                null
+            } catch (_: Exception) {
+                null
+            }
         }
-        return allChildren.firstOrNull { it.mediaId == mediaId }
+    }
+
+    suspend fun getPlaylist(): List<MediaItem> {
+        restore()
+        return cachedChildren ?: cacheMutex.withLock {
+            cachedChildren ?: loadInitialChildren().also { cachedChildren = it }
+        }
     }
 
     suspend fun restore() {
@@ -87,6 +105,10 @@ internal class RadioLibraryCatalog(
 
     suspend fun loadNextPage() {
         updateState { it.copy(page = it.page + 1) }
+    }
+
+    suspend fun getCurrentPage(): Int {
+        return currentState().page
     }
 
     suspend fun updateLocation(location: GeoLatLong?) {
@@ -134,12 +156,12 @@ internal class RadioLibraryCatalog(
             previousState.source != updatedState.source
     }
 
-    private suspend fun loadAllChildren(): List<MediaItem> {
+    private suspend fun loadInitialChildren(): List<MediaItem> {
         val state = currentState()
         val stations = mutableListOf<RadioStation>()
         var nextPage = 1
 
-        while (true) {
+        while (nextPage <= MAX_INITIAL_PAGES) {
             val pageStations = loadStationsPage(nextPage, state)
             if (pageStations.isEmpty()) break
 
@@ -151,12 +173,17 @@ internal class RadioLibraryCatalog(
     }
 
     private fun RadioStation.toMediaItem(): MediaItem {
+        val streamUri = resolvedUrl.ifEmpty { url }
+        if (streamUri.isBlank()) {
+            Timber.tag("RadioLibraryCatalog").w("Radio station %s has no stream URL", name)
+        }
+
         return MediaItem.Builder()
             .setMediaId(stationUuid)
-            .setUri(resolvedUrl.ifEmpty { url })
+            .setUri(streamUri.takeIf { it.isNotBlank() }?.toUri())
             .setMediaMetadata(
                 MediaMetadata.Builder()
-                    .setIsPlayable(true)
+                    .setIsPlayable(streamUri.isNotBlank())
                     .setTitle(name)
                     .setSubtitle(tags.firstOrNull().orEmpty())
                     .setArtworkUri(imageUrl.takeIf { it.isNotBlank() }?.toUri())
@@ -189,6 +216,7 @@ internal class RadioLibraryCatalog(
 
     companion object {
         internal const val ROOT_MEDIA_ID = "root"
-        private const val CATALOG_PAGE_SIZE = 10
+        internal const val CATALOG_PAGE_SIZE = 10
+        private const val MAX_INITIAL_PAGES = 3
     }
 }
