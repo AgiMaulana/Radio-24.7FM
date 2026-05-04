@@ -11,6 +11,7 @@ import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import timber.log.Timber
 
 internal class RadioLibraryCatalog(
     private val getRadioStationsUseCase: GetRadioStationsUseCase,
@@ -106,6 +107,10 @@ internal class RadioLibraryCatalog(
         updateState { it.copy(page = it.page + 1) }
     }
 
+    suspend fun getCurrentPage(): Int {
+        return currentState().page
+    }
+
     suspend fun updateLocation(location: GeoLatLong?) {
         updateState {
             it.copy(
@@ -168,12 +173,17 @@ internal class RadioLibraryCatalog(
     }
 
     private fun RadioStation.toMediaItem(): MediaItem {
+        val streamUri = resolvedUrl.ifEmpty { url }
+        if (streamUri.isBlank()) {
+            Timber.tag("RadioLibraryCatalog").w("Radio station %s has no stream URL", name)
+        }
+
         return MediaItem.Builder()
             .setMediaId(stationUuid)
-            .setUri(resolvedUrl.ifEmpty { url })
+            .setUri(streamUri.takeIf { it.isNotBlank() }?.toUri())
             .setMediaMetadata(
                 MediaMetadata.Builder()
-                    .setIsPlayable(true)
+                    .setIsPlayable(streamUri.isNotBlank())
                     .setTitle(name)
                     .setSubtitle(tags.firstOrNull().orEmpty())
                     .setArtworkUri(imageUrl.takeIf { it.isNotBlank() }?.toUri())

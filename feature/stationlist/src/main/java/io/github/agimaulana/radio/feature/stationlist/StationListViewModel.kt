@@ -461,29 +461,41 @@ class StationListViewModel @Inject constructor(
     private fun syncWithPlayer() {
         val controller = radioPlayerController ?: return
         val playerPlaylist = controller.getPlaylist()
+        if (playerPlaylist.isEmpty()) return
+
         val currentMediaId = controller.currentMediaId
         val isPlaying = controller.isPlaying
         val pinnedUuids = _uiState.value.pinnedStations.map { it.serverUuid }.toSet()
 
-        val syncedStations = playerPlaylist.map { item ->
-            item.toUiStateStation(
-                pinnedUuids = pinnedUuids,
-                currentMediaId = currentMediaId,
-                isPlaying = isPlaying
-            )
-        }.toPersistentList()
-
         _uiState.update { state ->
-            // Only sync if the player actually has items, otherwise keep what we have
-            if (syncedStations.isNotEmpty()) {
-                state.copy(
-                    stations = syncedStations,
-                    // If player has more items than our PAGE_SIZE, we probably have more pages
-                    hasMorePages = syncedStations.size >= PAGE_SIZE
-                )
+            val existingStations = state.stations
+            val firstPlayerId = playerPlaylist.first().mediaId
+            
+            val isAppend = existingStations.isNotEmpty() && 
+                          existingStations.any { it.serverUuid == firstPlayerId }
+
+            val updatedStations = if (isAppend) {
+                // If it's an append, we reconcile the lists to preserve existing objects if possible
+                playerPlaylist.map { playerItem ->
+                    val existing = existingStations.find { it.serverUuid == playerItem.mediaId }
+                    if (existing != null) {
+                        existing.copy(
+                            isPlaying = isPlaying && (existing.serverUuid == currentMediaId)
+                        )
+                    } else {
+                        playerItem.toUiStateStation(pinnedUuids, currentMediaId, isPlaying)
+                    }
+                }.toPersistentList()
             } else {
-                state
+                playerPlaylist.map { item ->
+                    item.toUiStateStation(pinnedUuids, currentMediaId, isPlaying)
+                }.toPersistentList()
             }
+
+            state.copy(
+                stations = updatedStations,
+                hasMorePages = updatedStations.size >= PAGE_SIZE
+            )
         }
     }
 

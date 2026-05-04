@@ -14,6 +14,7 @@ import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import dagger.hilt.android.AndroidEntryPoint
+import io.github.agimaulana.radio.core.radioplayer.internal.PlaylistPaginator
 import io.github.agimaulana.radio.core.radioplayer.internal.RadioLibraryCatalog
 import io.github.agimaulana.radio.core.radioplayer.internal.RadioSessionCallback
 import io.github.agimaulana.radio.domain.api.repository.CatalogStateRepository
@@ -37,7 +38,7 @@ class RadioService : MediaLibraryService() {
     private lateinit var radioLibraryCatalog: RadioLibraryCatalog
     private lateinit var radioSessionCallback: RadioSessionCallback
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private var isLoadingNextPage = false
+    private var playlistPaginator: PlaylistPaginator? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -48,6 +49,8 @@ class RadioService : MediaLibraryService() {
         )
         val player = createPlayer()
         radioSessionCallback = RadioSessionCallback(radioLibraryCatalog)
+
+        playlistPaginator = PlaylistPaginator(player, radioLibraryCatalog, serviceScope)
 
         mediaSession = MediaLibraryService.MediaLibrarySession.Builder(this, player, radioSessionCallback)
             .setSessionActivity(createPendingMainActivityIntent())
@@ -70,6 +73,7 @@ class RadioService : MediaLibraryService() {
     }
 
     override fun onDestroy() {
+        playlistPaginator = null
         mediaSession?.run {
             player.release()
             release()
@@ -83,7 +87,7 @@ class RadioService : MediaLibraryService() {
     }
 
     private fun createPlayer(): ExoPlayer {
-        val player = ExoPlayer.Builder(this)
+        return ExoPlayer.Builder(this)
             .setLoadControl(DefaultLoadControl())
             .setLivePlaybackSpeedControl(DefaultLivePlaybackSpeedControl.Builder().build())
             .setAudioAttributes(
@@ -94,37 +98,6 @@ class RadioService : MediaLibraryService() {
                 true
             )
             .build()
-
-        player.addListener(object : Player.Listener {
-            override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
-                if (mediaItem == null) return
-                val currentIndex = player.currentMediaItemIndex
-                val playlistSize = player.mediaItemCount
-                if (!isLoadingNextPage && currentIndex >= playlistSize - 2 && playlistSize > 0) {
-                    isLoadingNextPage = true
-                    serviceScope.launch {
-                        try {
-                            val nextPage = (playlistSize / RadioLibraryCatalog.CATALOG_PAGE_SIZE)
-                            val newItems = radioLibraryCatalog.loadChildren(
-                                nextPage,
-                                RadioLibraryCatalog.CATALOG_PAGE_SIZE
-                            )
-                            if (newItems.isNotEmpty()) {
-                                val currentIds = (0 until player.mediaItemCount)
-                                    .map { player.getMediaItemAt(it).mediaId }.toSet()
-                                val filteredNewItems = newItems.filter { it.mediaId !in currentIds }
-                                if (filteredNewItems.isNotEmpty()) {
-                                    player.addMediaItems(filteredNewItems)
-                                }
-                            }
-                        } finally {
-                            isLoadingNextPage = false
-                        }
-                    }
-                }
-            }
-        })
-        return player
     }
 
     private fun createPendingMainActivityIntent(): PendingIntent {
