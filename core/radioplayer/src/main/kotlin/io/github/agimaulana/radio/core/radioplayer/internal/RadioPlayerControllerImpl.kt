@@ -48,7 +48,6 @@ internal class RadioPlayerControllerImpl(
 
     private fun initializeCastContext() {
         try {
-            // Note: This is currently UI-only. Actual remote playback requires CastPlayer integration.
             // Using Task-based API to avoid blocking the main thread during initialization.
             CastContext.getSharedInstance(context, MoreExecutors.directExecutor())
                 .addOnSuccessListener { context ->

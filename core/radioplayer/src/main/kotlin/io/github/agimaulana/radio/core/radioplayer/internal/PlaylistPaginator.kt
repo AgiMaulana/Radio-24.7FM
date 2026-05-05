@@ -7,7 +7,7 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 
 internal class PlaylistPaginator(
-    private val player: Player,
+    private var player: Player,
     private val catalog: RadioLibraryCatalog,
     private val scope: CoroutineScope,
 ) {
@@ -15,12 +15,22 @@ internal class PlaylistPaginator(
     private var lastLoadedPage = -1
     private var hasMorePages = true
 
+    private val playerListener = object : Player.Listener {
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            checkPagination()
+        }
+    }
+
     init {
-        player.addListener(object : Player.Listener {
-            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                checkPagination()
-            }
-        })
+        player.addListener(playerListener)
+    }
+
+    fun updatePlayer(newPlayer: Player) {
+        player.removeListener(playerListener)
+        player = newPlayer
+        player.addListener(playerListener)
+        reset()
+        checkPagination()
     }
 
     fun reset() {
@@ -84,5 +94,9 @@ internal class PlaylistPaginator(
         if (filtered.isNotEmpty()) {
             player.addMediaItems(filtered)
         }
+    }
+
+    fun release() {
+        player.removeListener(playerListener)
     }
 }

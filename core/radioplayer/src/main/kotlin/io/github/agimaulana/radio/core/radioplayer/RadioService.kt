@@ -3,6 +3,7 @@ package io.github.agimaulana.radio.core.radioplayer
 import android.app.PendingIntent
 import android.content.Intent
 import androidx.annotation.OptIn
+import androidx.media3.cast.CastPlayer
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.Player
@@ -13,6 +14,10 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
+import com.google.android.gms.cast.framework.CastContext
+import com.google.android.gms.cast.framework.CastSession
+import com.google.android.gms.cast.framework.SessionManagerListener
+import com.google.common.util.concurrent.MoreExecutors
 import dagger.hilt.android.AndroidEntryPoint
 import io.github.agimaulana.radio.core.radioplayer.internal.PlaylistPaginator
 import io.github.agimaulana.radio.core.radioplayer.internal.RadioLibraryCatalog
@@ -24,7 +29,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 @OptIn(UnstableApi::class)
@@ -40,6 +45,43 @@ class RadioService : MediaLibraryService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var playlistPaginator: PlaylistPaginator? = null
 
+    private lateinit var exoPlayer: ExoPlayer
+    private var castPlayer: CastPlayer? = null
+    private var castContext: CastContext? = null
+
+    private val sessionManagerListener = object : SessionManagerListener<CastSession> {
+        override fun onSessionStarted(session: CastSession, sessionId: String) {
+            castPlayer?.let { switchToPlayer(it) }
+        }
+
+        override fun onSessionEnded(session: CastSession, error: Int) {
+            switchToPlayer(exoPlayer)
+        }
+
+        override fun onSessionResumed(session: CastSession, wasSuspended: Boolean) {
+            castPlayer?.let { switchToPlayer(it) }
+        }
+
+        override fun onSessionStarting(session: CastSession) {
+            // No-op
+        }
+        override fun onSessionStartFailed(session: CastSession, error: Int) {
+            // No-op
+        }
+        override fun onSessionEnding(session: CastSession) {
+            // No-op
+        }
+        override fun onSessionResuming(session: CastSession, sessionId: String) {
+            // No-op
+        }
+        override fun onSessionResumeFailed(session: CastSession, error: Int) {
+            // No-op
+        }
+        override fun onSessionSuspended(session: CastSession, reason: Int) {
+            // No-op
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         radioLibraryCatalog = RadioLibraryCatalog(
@@ -47,15 +89,68 @@ class RadioService : MediaLibraryService() {
             getRadioStationUseCase,
             catalogStateRepository
         )
-        val player = createPlayer()
+        exoPlayer = createExoPlayer()
         radioSessionCallback = RadioSessionCallback(radioLibraryCatalog)
 
-        playlistPaginator = PlaylistPaginator(player, radioLibraryCatalog, serviceScope)
+        playlistPaginator = PlaylistPaginator(exoPlayer, radioLibraryCatalog, serviceScope)
 
-        mediaSession = MediaLibraryService.MediaLibrarySession.Builder(this, player, radioSessionCallback)
+        mediaSession = MediaLibrarySession.Builder(this, exoPlayer, radioSessionCallback)
             .setSessionActivity(createPendingMainActivityIntent())
             .build()
         setMediaNotificationProvider(DefaultMediaNotificationProvider.Builder(this).build())
+
+        initializeCast()
+    }
+
+    private fun initializeCast() {
+        try {
+            CastContext.getSharedInstance(this, MoreExecutors.directExecutor())
+                .addOnSuccessListener { context ->
+                    castContext = context
+                    castPlayer = CastPlayer(context)
+                    context.sessionManager.addSessionManagerListener(sessionManagerListener, CastSession::class.java)
+                    
+                    // Check if already connected
+                    if (context.sessionManager.currentCastSession?.isConnected == true) {
+                        castPlayer?.let { switchToPlayer(it) }
+                    }
+                }
+                .addOnFailureListener { e ->
+                    Timber.tag("RadioService").e(e, "Failed to initialize CastContext")
+                }
+        } catch (e: Exception) {
+            Timber.tag("RadioService").w(e, "CastContext not available")
+        }
+    }
+
+    private fun switchToPlayer(newPlayer: Player) {
+        val session = mediaSession ?: return
+        val currentPlayer = session.player
+        if (currentPlayer === newPlayer) return
+
+        // Save state from current player
+        val playbackState = currentPlayer.playbackState
+        val isPlaying = currentPlayer.isPlaying
+        val mediaItems = (0 until currentPlayer.mediaItemCount).map { currentPlayer.getMediaItemAt(it) }
+        val currentWindowIndex = currentPlayer.currentMediaItemIndex
+        val currentPosition = currentPlayer.currentPosition
+
+        currentPlayer.stop()
+        currentPlayer.clearMediaItems()
+
+        // Setup new player
+        newPlayer.setMediaItems(mediaItems, currentWindowIndex, currentPosition)
+        session.player = newPlayer
+
+        if (playbackState != Player.STATE_IDLE) {
+            newPlayer.prepare()
+            if (isPlaying) {
+                newPlayer.play()
+            }
+        }
+        
+        // Update paginator to point to the active player
+        playlistPaginator?.updatePlayer(newPlayer)
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibraryService.MediaLibrarySession? {
@@ -66,14 +161,19 @@ class RadioService : MediaLibraryService() {
         val player = mediaSession?.player
         if (
             player == null ||
-            (player.mediaItemCount == 0 && player.playbackState == Player.STATE_IDLE)
+            (player.mediaItemCount == 0 && (player.playbackState == Player.STATE_IDLE))
         ) {
             stopSelf()
         }
     }
 
     override fun onDestroy() {
+        playlistPaginator?.release()
         playlistPaginator = null
+        
+        castContext?.sessionManager?.removeSessionManagerListener(sessionManagerListener, CastSession::class.java)
+        castPlayer?.release()
+
         mediaSession?.run {
             player.release()
             release()
@@ -86,7 +186,7 @@ class RadioService : MediaLibraryService() {
         super.onDestroy()
     }
 
-    private fun createPlayer(): ExoPlayer {
+    private fun createExoPlayer(): ExoPlayer {
         return ExoPlayer.Builder(this)
             .setLoadControl(DefaultLoadControl())
             .setLivePlaybackSpeedControl(DefaultLivePlaybackSpeedControl.Builder().build())
