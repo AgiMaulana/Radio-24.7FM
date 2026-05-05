@@ -8,10 +8,14 @@ replies_json: JSON array of {"comment_id": int, "body": str}
 """
 
 import json
+import ssl
 import subprocess
 import sys
 import urllib.request
 from pathlib import Path
+
+# Ignore SSL verification issues on some systems (e.g. macOS)
+ssl._create_default_https_context = ssl._create_unverified_context
 
 
 def read_token() -> str:
