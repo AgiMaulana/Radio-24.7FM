@@ -40,7 +40,6 @@ import androidx.compose.ui.unit.sp
 import io.github.agimaulana.radio.core.design.RadioTheme
 import io.github.agimaulana.radio.core.design.theme.PreviewTheme
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController.CastState
-import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.Action
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.UiState
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.UiState.Station
 import io.github.agimaulana.radio.feature.stationlist.component.CastButton
@@ -144,7 +143,7 @@ private fun ToolbarContent(
                 .offset(y = lerp(155.dp, 20.dp, progress))
         )
 
-        if (uiState.castState != CastState.NO_DEVICES) {
+//        if (uiState.castState != CastState.NO_DEVICES) {
             CastButton(
                 castState = uiState.castState,
                 onClick = onCastClick,
@@ -152,7 +151,7 @@ private fun ToolbarContent(
                     .align(Alignment.TopEnd)
                     .offset(y = 8.dp)
             )
-        }
+//        }
 
         CustomSearchBar(
             value = uiState.filterStationName.orEmpty(),

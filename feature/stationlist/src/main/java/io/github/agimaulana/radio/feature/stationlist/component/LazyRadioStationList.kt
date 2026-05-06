@@ -24,8 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.agimaulana.radio.core.design.RadioTheme
 import io.github.agimaulana.radio.feature.stationlist.R
-import io.github.agimaulana.radio.feature.stationlist.player.BufferingIcon
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.UiState.Station
+import io.github.agimaulana.radio.feature.stationlist.player.BufferingIcon
 import kotlinx.collections.immutable.ImmutableList
 
 @Composable
@@ -102,7 +102,7 @@ internal fun LazyRadioStationList(
                 )
             }
         } else {
-            items(stations, key = { it.serverUuid }) {
+            items(stations, key = { it.serverUuid.ifEmpty { "station_${it.name}_${it.streamUrl}" } }) {
                 StationTile(
                     station = it,
                     onClick = { onClick(it) },

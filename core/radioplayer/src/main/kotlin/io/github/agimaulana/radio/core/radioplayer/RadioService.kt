@@ -4,9 +4,12 @@ import android.app.PendingIntent
 import android.content.Intent
 import androidx.annotation.OptIn
 import androidx.media3.cast.CastPlayer
+import androidx.media3.cast.MediaItemConverter
 import androidx.media3.cast.RemoteCastPlayer
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLivePlaybackSpeedControl
@@ -15,7 +18,10 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
+import com.google.android.gms.cast.MediaInfo
+import com.google.android.gms.cast.MediaQueueItem
 import com.google.android.gms.cast.framework.CastContext
+import com.google.android.gms.common.images.WebImage
 import com.google.common.util.concurrent.MoreExecutors
 import dagger.hilt.android.AndroidEntryPoint
 import io.github.agimaulana.radio.core.radioplayer.internal.PlaylistPaginator
@@ -63,10 +69,23 @@ class RadioService : MediaLibraryService() {
         val castPlayerBuilder = CastPlayer.Builder(this).setLocalPlayer(exoPlayer)
 
         try {
+            val mediaItemConverter = object : MediaItemConverter {
+                override fun toMediaQueueItem(mediaItem: MediaItem): MediaQueueItem {
+                    return mediaItem.toMediaQueueItem()
+                }
+
+                override fun toMediaItem(mediaQueueItem: MediaQueueItem): MediaItem {
+                    return mediaQueueItem.toMediaItem()
+                }
+            }
             CastContext.getSharedInstance(this, MoreExecutors.directExecutor())
                 .addOnSuccessListener {
-                    val remotePlayer = RemoteCastPlayer.Builder(this).build()
-                    val castPlayer = castPlayerBuilder.setRemotePlayer(remotePlayer).build()
+                    val remotePlayer = RemoteCastPlayer.Builder(this)
+                        .setMediaItemConverter(mediaItemConverter)
+                        .build()
+                    val castPlayer = castPlayerBuilder.setRemotePlayer(remotePlayer)
+                        .setLocalPlayer(exoPlayer)
+                        .build()
                     setupSession(castPlayer)
                 }
                 .addOnFailureListener { e ->
@@ -140,5 +159,48 @@ class RadioService : MediaLibraryService() {
             packageManager.getLaunchIntentForPackage(packageName),
             PendingIntent.FLAG_IMMUTABLE
         )
+    }
+
+    private fun MediaItem.toMediaQueueItem(): MediaQueueItem {
+        val metadata = this.mediaMetadata
+
+        val castMetadata = com.google.android.gms.cast.MediaMetadata(
+            com.google.android.gms.cast.MediaMetadata.MEDIA_TYPE_MUSIC_TRACK
+        ).apply {
+            putString(com.google.android.gms.cast.MediaMetadata.KEY_TITLE, metadata.title?.toString().orEmpty())
+            putString(com.google.android.gms.cast.MediaMetadata.KEY_SUBTITLE, metadata.subtitle?.toString().orEmpty())
+            putString(com.google.android.gms.cast.MediaMetadata.KEY_ARTIST, metadata.artist?.toString().orEmpty())
+            metadata.albumTitle?.let {
+                putString(com.google.android.gms.cast.MediaMetadata.KEY_ALBUM_TITLE, it.toString())
+            }
+            metadata.artworkUri?.let { addImage(WebImage(it)) }
+        }
+
+        val mediaInfo = MediaInfo.Builder(this.localConfiguration?.uri.toString())
+            .setStreamType(MediaInfo.STREAM_TYPE_LIVE)
+            .setContentType(this.localConfiguration?.mimeType ?: "audio/mpeg")
+            .setMetadata(castMetadata)
+            .build()
+
+        return MediaQueueItem.Builder(mediaInfo)
+            .setAutoplay(true)
+            .build()
+    }
+
+    private fun MediaQueueItem.toMediaItem(): MediaItem {
+        val castMetadata = this.media?.metadata
+
+        return MediaItem.Builder()
+            .setUri(this.media?.contentId)
+            .setMimeType(this.media?.contentType)
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(castMetadata?.getString(com.google.android.gms.cast.MediaMetadata.KEY_TITLE))
+                    .setSubtitle(castMetadata?.getString(com.google.android.gms.cast.MediaMetadata.KEY_SUBTITLE))
+                    .setArtist(castMetadata?.getString(com.google.android.gms.cast.MediaMetadata.KEY_ARTIST))
+                    .setArtworkUri(castMetadata?.images?.firstOrNull()?.url)
+                    .build()
+            )
+            .build()
     }
 }

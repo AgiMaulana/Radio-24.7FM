@@ -71,7 +71,7 @@ internal fun PinnedStationRow(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            items(pinnedStations, key = { it.serverUuid }) { station ->
+            items(pinnedStations, key = { it.serverUuid.ifEmpty { "pinned_${it.name}_${it.streamUrl}" } }) { station ->
                 PinnedStationChip(
                     station = station,
                     onClick = { onStationClick(station) },
