@@ -12,9 +12,9 @@ import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
-import io.github.agimaulana.radio.core.radioplayer.RadioLibraryContract
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
+import io.github.agimaulana.radio.core.radioplayer.RadioLibraryContract
 import io.github.agimaulana.radio.domain.api.entity.GeoLatLong
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -190,6 +190,18 @@ internal class RadioSessionCallback(
         params: MediaLibraryService.LibraryParams?
     ): com.google.common.util.concurrent.ListenableFuture<LibraryResult<MediaItem>> {
         return Futures.immediateFuture(LibraryResult.ofItem(radioLibraryCatalog.rootItem(), params))
+    }
+
+    override fun onGetItem(
+        session: MediaLibraryService.MediaLibrarySession,
+        browser: MediaSession.ControllerInfo,
+        mediaId: String
+    ): com.google.common.util.concurrent.ListenableFuture<LibraryResult<MediaItem>> {
+        return callbackScope.future {
+            radioLibraryCatalog.findChild(mediaId)?.let { item ->
+                LibraryResult.ofItem(item, null)
+            } ?: LibraryResult.ofError(LibraryResult.RESULT_ERROR_BAD_VALUE)
+        }
     }
 
     override fun onGetChildren(

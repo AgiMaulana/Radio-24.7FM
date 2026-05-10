@@ -2,7 +2,6 @@ package io.github.agimaulana.radio.core.radioplayer.internal
 
 import android.os.Bundle
 import androidx.annotation.OptIn
-import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaBrowser
 import androidx.media3.session.MediaLibraryService
@@ -70,19 +69,10 @@ internal class RadioBrowserControllerImpl : RadioBrowserController {
     }
 
     override suspend fun getStation(mediaId: String): RadioMediaItem? {
-        getPinned().firstOrNull { it.mediaId == mediaId }?.let { return it }
-
         val mediaBrowser = browser ?: return null
         return withContext(Dispatchers.Main.immediate) {
-            val result = mediaBrowser.getChildren(
-                RadioLibraryContract.STATIONS_MEDIA_ID,
-                0,
-                Int.MAX_VALUE,
-                null
-            ).await()
-            result.value.orEmpty()
-                .map { it.toRadioMediaItem() }
-                .firstOrNull { it.mediaId == mediaId }
+            val result = mediaBrowser.getItem(mediaId).await()
+            result.value?.toRadioMediaItem()
         }
     }
 

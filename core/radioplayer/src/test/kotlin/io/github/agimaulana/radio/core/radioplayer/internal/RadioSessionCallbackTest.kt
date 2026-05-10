@@ -4,8 +4,6 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
-import androidx.media3.session.SessionCommand
-import androidx.media3.session.SessionResult
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
 import io.github.agimaulana.radio.domain.api.repository.CatalogStateRepository
 import io.github.agimaulana.radio.domain.api.usecase.GetPinnedStationsUseCase
@@ -14,7 +12,6 @@ import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.verifyOrder
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -112,6 +109,31 @@ class RadioSessionCallbackTest {
         assertEquals(2, items.size)
         assertEquals(RadioLibraryCatalog.PINNED_MEDIA_ID, items[0].mediaId)
         assertEquals(RadioLibraryCatalog.STATIONS_MEDIA_ID, items[1].mediaId)
+    }
+
+    @Test
+    fun onGetItem_returnsResolvedStation() = runTest {
+        val station = radioStation(
+            stationUuid = "station-4",
+            name = "Station Four",
+            tags = listOf("music"),
+            imageUrl = "https://example.com/four.png",
+            url = "https://example.com/four",
+            resolvedUrl = "https://stream.example.com/four"
+        )
+        val callback = callbackForStations(listOf(station))
+        val controller = controller()
+        val session = librarySession()
+
+        val result = callback.onGetItem(
+            session = session,
+            browser = controller,
+            mediaId = "station-4"
+        ).get()
+
+        val item = requireNotNull(result.value)
+        assertEquals("station-4", item.mediaId)
+        assertEquals("https://stream.example.com/four", item.localConfiguration?.uri.toString())
     }
 
     private fun callbackForStations(stations: List<RadioStation>): RadioSessionCallback {
