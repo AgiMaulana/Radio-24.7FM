@@ -185,6 +185,74 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
     }
 
     @Test
+    fun `given initial list near end when viewport changes then do not fetch until end transition`() = runTest {
+        turbineScope {
+            val uiState = viewModel.uiState.testIn(backgroundScope)
+            uiState.awaitItem() // initial
+
+            coEvery {
+                radioBrowser.getStations(
+                    page = 0,
+                    pageSize = 10,
+                    searchName = null,
+                    location = null
+                )
+            } returns emptyList()
+
+            viewModel.init(hasLocationPermission = false, shouldShowRationale = false)
+            runCurrent()
+            uiState.awaitItem()
+
+            viewModel.onAction(
+                StationListViewModel.Action.LoadMore(
+                    totalItems = 10,
+                    lastVisibleIndex = 9
+                )
+            )
+            runCurrent()
+
+            coVerify(exactly = 0) {
+                radioBrowser.getStations(
+                    page = 0,
+                    pageSize = 10,
+                    searchName = null,
+                    location = null
+                )
+            }
+
+            viewModel.onAction(
+                StationListViewModel.Action.LoadMore(
+                    totalItems = 10,
+                    lastVisibleIndex = 2
+                )
+            )
+            runCurrent()
+
+            viewModel.onAction(
+                StationListViewModel.Action.LoadMore(
+                    totalItems = 10,
+                    lastVisibleIndex = 9
+                )
+            )
+            runCurrent()
+
+            with(uiState.awaitItem()) {
+                assertEquals(1, currentPage)
+                assertFalse(isStationsLoading)
+            }
+
+            coVerify(exactly = 1) {
+                radioBrowser.getStations(
+                    page = 0,
+                    pageSize = 10,
+                    searchName = null,
+                    location = null
+                )
+            }
+        }
+    }
+
+    @Test
     fun `given station is not playing when clicked then set radio and play`() {
         val station = newUiStateStation(withServerUuid = "radio-1")
         every { radioPlayerController.currentMediaId } returns "radio-2"

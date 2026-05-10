@@ -58,6 +58,7 @@ class StationListViewModel @Inject constructor(
     private var searchJob: Job? = null
     private var fetchJob: Job? = null
     private var pinnedStationsJob: Job? = null
+    private var isStationsListNearEnd: Boolean? = null
 
     fun init(
         hasLocationPermission: Boolean = false,
@@ -119,9 +120,11 @@ class StationListViewModel @Inject constructor(
 
     fun onAction(action: Action) {
         when (action) {
-            Action.LoadMore -> {
-                stationListTracker.trackLoadMore(page = _uiState.value.currentPage + 1)
-                fetchRadioStations()
+            is Action.LoadMore -> {
+                handleLoadMore(
+                    totalItems = action.totalItems,
+                    lastVisibleIndex = action.lastVisibleIndex
+                )
             }
 
             is Action.Search -> handleSearch(action.stationName)
@@ -217,6 +220,7 @@ class StationListViewModel @Inject constructor(
 
     private fun handleSearch(stationName: String) {
         searchJob?.cancel()
+        isStationsListNearEnd = null
         _uiState.update {
             it.copy(
                 filterStationName = stationName,
@@ -284,6 +288,7 @@ class StationListViewModel @Inject constructor(
             )
         }
         if (!isGranted) {
+            isStationsListNearEnd = null
             fetchRadioStations()
             return
         }
@@ -299,9 +304,11 @@ class StationListViewModel @Inject constructor(
 
             val location = locationProvider.getCurrentLocation()
             if (location == null) {
+                isStationsListNearEnd = null
                 fetchRadioStations()
                 return@launch
             }
+            isStationsListNearEnd = null
             _uiState.update {
                 it.copy(
                     locationName = listOf(location.adminArea, location.city)
@@ -324,6 +331,20 @@ class StationListViewModel @Inject constructor(
         if (isResolved) {
             handleLocationPermissionGranted(true)
         } else {
+            isStationsListNearEnd = null
+            fetchRadioStations()
+        }
+    }
+
+    private fun handleLoadMore(totalItems: Int, lastVisibleIndex: Int) {
+        if (totalItems <= 0) return
+
+        val isNearEnd = lastVisibleIndex >= totalItems - STATIONS_LIST_NEAR_END_THRESHOLD
+        val previousIsNearEnd = isStationsListNearEnd
+        isStationsListNearEnd = isNearEnd
+
+        if (isNearEnd && previousIsNearEnd == false) {
+            stationListTracker.trackLoadMore(page = _uiState.value.currentPage + 1)
             fetchRadioStations()
         }
     }
@@ -530,7 +551,10 @@ class StationListViewModel @Inject constructor(
     }
 
     sealed interface Action {
-        data object LoadMore : Action
+        data class LoadMore(
+            val totalItems: Int,
+            val lastVisibleIndex: Int
+        ) : Action
         data class Search(val stationName: String) : Action
         data class Click(val station: UiState.Station) : Action
         data class Play(val station: UiState.Station) : Action
@@ -552,6 +576,7 @@ class StationListViewModel @Inject constructor(
     companion object {
         internal const val SEARCH_DEBOUNCE_MS = 300L
         internal const val PAGE_SIZE = 10
+        private const val STATIONS_LIST_NEAR_END_THRESHOLD = 3
     }
 }
 
@@ -605,16 +630,6 @@ private fun StationListViewModel.UiState.Station.toRadioStation() = RadioStation
     imageUrl = imageUrl,
     url = streamUrl,
     resolvedUrl = streamUrl,
-)
-
-private fun RadioStation.toRadioMediaItem() = RadioMediaItem(
-    mediaId = stationUuid,
-    streamUrl = url,
-    radioMetadata = RadioMediaItem.RadioMetadata(
-        stationName = name,
-        genre = tags.getOrNull(0).orEmpty(),
-        imageUrl = imageUrl
-    )
 )
 
 private fun ImmutableList<StationListViewModel.UiState.Station>.togglePlayingStateForStations(

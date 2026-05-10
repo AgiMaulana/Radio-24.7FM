@@ -343,7 +343,9 @@ private fun StationListContent(
             listState = listState,
             onClick = { onAction(Action.Click(it)) },
             onLongClick = onLongClick,
-            onReachEnd = { onAction(Action.LoadMore) },
+            onViewportChanged = { totalItems, lastVisibleIndex ->
+                onAction(Action.LoadMore(totalItems, lastVisibleIndex))
+            },
             contentPadding = PaddingValues(
                 top = lerp(dims.expandedHeight, dims.collapsedHeight, dims.progress) + 16.dp,
                 bottom = innerPadding.calculateBottomPadding() + 80.dp,
