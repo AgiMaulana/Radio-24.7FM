@@ -10,15 +10,15 @@ import io.github.agimaulana.radio.core.radioplayer.RadioLibraryContract
 import io.github.agimaulana.radio.core.radioplayer.RadioMediaItem
 import io.github.agimaulana.radio.core.radioplayer.toRadioMediaItem
 import io.github.agimaulana.radio.domain.api.entity.GeoLatLong
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -28,29 +28,12 @@ internal class RadioBrowserControllerImpl(
     private val pinnedStationLimit: Int,
 ) : RadioBrowserController {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val pinnedInvalidations = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    private val _pinnedStations = MutableStateFlow<List<RadioMediaItem>>(emptyList())
     private var browser: MediaBrowser? = null
     private var pinnedSubscriptionJob: Job? = null
 
-    override val pinnedStations: Flow<List<RadioMediaItem>> = flow {
-        var lastPinned = emptyList<RadioMediaItem>()
-        lastPinned = runCatching { getPinned() }
-            .getOrElse { error ->
-                if (error is CancellationException) throw error
-                Timber.tag(TAG).w(error, "Failed to refresh pinned stations")
-                lastPinned
-            }
-        emit(lastPinned)
-        pinnedInvalidations.collect {
-            lastPinned = runCatching { getPinned() }
-                .getOrElse { error ->
-                    if (error is CancellationException) throw error
-                    Timber.tag(TAG).w(error, "Failed to refresh pinned stations")
-                    lastPinned
-                }
-            emit(lastPinned)
-        }
-    }
+    override val pinnedStations: Flow<List<RadioMediaItem>> =
+        _pinnedStations.asStateFlow()
 
     val browserListener = object : MediaBrowser.Listener {
         override fun onChildrenChanged(
@@ -60,7 +43,9 @@ internal class RadioBrowserControllerImpl(
             params: MediaLibraryService.LibraryParams?
         ) {
             if (parentId == RadioLibraryContract.PINNED_MEDIA_ID) {
-                pinnedInvalidations.tryEmit(Unit)
+                scope.launch {
+                    refreshPinned()
+                }
             }
         }
     }
@@ -72,6 +57,21 @@ internal class RadioBrowserControllerImpl(
             withContext(Dispatchers.Main.immediate) {
                 browser.subscribe(RadioLibraryContract.PINNED_MEDIA_ID, null).await()
             }
+
+            refreshPinned()
+        }
+    }
+
+    private suspend fun refreshPinned() {
+        val currentPinned = _pinnedStations.value
+
+        _pinnedStations.value = runCatching {
+            getPinned()
+        }.getOrElse { error ->
+            if (error is CancellationException) throw error
+
+            Timber.tag(TAG).w(error, "Failed to refresh pinned stations")
+            currentPinned
         }
     }
 
