@@ -2,6 +2,7 @@ package io.github.agimaulana.radio.core.radioplayer.internal
 
 import android.os.Bundle
 import androidx.annotation.OptIn
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaBrowser
 import androidx.media3.session.MediaLibraryService
@@ -38,7 +39,7 @@ internal class RadioBrowserControllerImpl(
     override val pinnedStations: Flow<List<RadioMediaItem>> =
         _pinnedStations.asStateFlow()
 
-    val browserListener = object : MediaBrowser.Listener {
+    val browserListener = object : MediaBrowser.Listener, Player.Listener {
         override fun onChildrenChanged(
             browser: MediaBrowser,
             parentId: String,
