@@ -1,10 +1,10 @@
 package io.github.agimaulana.radio.core.radioplayer
 
 import io.github.agimaulana.radio.domain.api.entity.GeoLatLong
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.Flow
 
 interface RadioBrowserController {
-    val pinnedStations: StateFlow<List<RadioMediaItem>>
+    val pinnedStations: Flow<List<RadioMediaItem>>
 
     suspend fun getPinned(): List<RadioMediaItem>
 

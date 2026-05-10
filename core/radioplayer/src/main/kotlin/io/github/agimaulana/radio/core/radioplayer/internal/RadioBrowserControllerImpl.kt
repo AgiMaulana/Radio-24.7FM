@@ -15,21 +15,25 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 internal class RadioBrowserControllerImpl : RadioBrowserController {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val _pinnedStations = MutableStateFlow<List<RadioMediaItem>>(emptyList())
+    private val pinnedInvalidations = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     private var browser: MediaBrowser? = null
     private var pinnedSubscriptionJob: Job? = null
 
-    override val pinnedStations: StateFlow<List<RadioMediaItem>>
-        get() = _pinnedStations.asStateFlow()
+    override val pinnedStations: Flow<List<RadioMediaItem>> = flow {
+        emit(getPinned())
+        pinnedInvalidations.collect {
+            emit(getPinned())
+        }
+    }
 
     val browserListener = object : MediaBrowser.Listener {
         override fun onChildrenChanged(
@@ -39,7 +43,7 @@ internal class RadioBrowserControllerImpl : RadioBrowserController {
             params: MediaLibraryService.LibraryParams?
         ) {
             if (parentId == RadioLibraryContract.PINNED_MEDIA_ID) {
-                refreshPinnedStations()
+                pinnedInvalidations.tryEmit(Unit)
             }
         }
     }
@@ -51,7 +55,6 @@ internal class RadioBrowserControllerImpl : RadioBrowserController {
             withContext(Dispatchers.Main.immediate) {
                 browser.subscribe(RadioLibraryContract.PINNED_MEDIA_ID, null).await()
             }
-            refreshPinnedStations()
         }
     }
 
@@ -118,15 +121,5 @@ internal class RadioBrowserControllerImpl : RadioBrowserController {
         browser?.release()
         browser = null
         scope.cancel()
-    }
-
-    private fun refreshPinnedStations() {
-        scope.launch {
-            runCatching {
-                getPinned()
-            }.onSuccess { pinned ->
-                _pinnedStations.value = pinned
-            }
-        }
     }
 }

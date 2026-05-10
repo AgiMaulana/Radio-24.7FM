@@ -4,8 +4,8 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import io.github.agimaulana.radio.core.network.test.CoroutineMainDispatcherRule
 import io.github.agimaulana.radio.core.radioplayer.PlaybackEvent
-import io.github.agimaulana.radio.core.radioplayer.RadioBrowserFactory
 import io.github.agimaulana.radio.core.radioplayer.RadioBrowserController
+import io.github.agimaulana.radio.core.radioplayer.RadioBrowserFactory
 import io.github.agimaulana.radio.core.radioplayer.RadioMediaItem
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerControllerFactory
@@ -21,7 +21,7 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.mockk
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.receiveAsFlow
 import org.junit.Before
 import org.junit.Rule
@@ -55,8 +55,6 @@ abstract class StationListViewModelTest__Fixtures {
 
     protected lateinit var playbackEventChannel: Channel<PlaybackEvent>
     protected lateinit var radioBrowser: RadioBrowserController
-    protected lateinit var pinnedStationsFlow: MutableStateFlow<List<RadioMediaItem>>
-
     protected lateinit var viewModel: StationListViewModel
 
     @get:Rule
@@ -79,10 +77,9 @@ abstract class StationListViewModelTest__Fixtures {
             radioPlayerControllerFactory.get()
         } returns radioPlayerController
         radioBrowser = mockk(relaxed = true)
-        pinnedStationsFlow = MutableStateFlow(emptyList())
         every {
             radioBrowser.pinnedStations
-        } returns pinnedStationsFlow
+        } returns flowOf(emptyList())
         coEvery {
             radioBrowser.getStation(any())
         } returns null
