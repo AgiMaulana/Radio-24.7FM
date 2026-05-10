@@ -174,6 +174,7 @@ class RadioLibraryCatalogTest {
     @Test
     fun getStations_usesExplicitSearchAndLocation() = runTest {
         val location = io.github.agimaulana.radio.domain.api.entity.GeoLatLong(-6.2, 106.8)
+        coEvery { catalogStateRepository.load() } returns null
         coEvery {
             getRadioStationsUseCase.execute(page = 1, searchName = "jazz", location = location)
         } returns buildStations(1, 10)
@@ -198,6 +199,15 @@ class RadioLibraryCatalogTest {
         assertEquals(10, stations.size)
         coVerify {
             getRadioStationsUseCase.execute(page = 1, searchName = "jazz", location = location)
+        }
+        coVerify {
+            catalogStateRepository.save(match {
+                it.query == "jazz" &&
+                    it.locationLat == location.latitude &&
+                    it.locationLon == location.longitude &&
+                    it.page == 0 &&
+                    it.source == CatalogState.Source.LOCATION
+            })
         }
     }
 

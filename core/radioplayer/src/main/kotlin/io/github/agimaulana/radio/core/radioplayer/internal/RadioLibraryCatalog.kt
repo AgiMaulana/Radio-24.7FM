@@ -66,6 +66,21 @@ internal class RadioLibraryCatalog(
         search: String? = null,
         location: GeoLatLong? = null,
     ): List<MediaItem> {
+        restore()
+        updateState {
+            it.copy(
+                query = search,
+                locationLat = location?.latitude,
+                locationLon = location?.longitude,
+                page = page,
+                source = when {
+                    location != null -> CatalogState.Source.LOCATION
+                    !search.isNullOrBlank() -> CatalogState.Source.SEARCH
+                    else -> CatalogState.Source.ALL
+                },
+            )
+        }
+
         if (pageSize <= 0) return emptyList()
 
         val startIndex = page * pageSize
