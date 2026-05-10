@@ -18,19 +18,20 @@ import io.github.agimaulana.radio.core.radioplayer.internal.PlaylistPaginator
 import io.github.agimaulana.radio.core.radioplayer.internal.RadioLibraryCatalog
 import io.github.agimaulana.radio.core.radioplayer.internal.RadioSessionCallback
 import io.github.agimaulana.radio.domain.api.repository.CatalogStateRepository
+import io.github.agimaulana.radio.domain.api.usecase.GetPinnedStationsUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @OptIn(UnstableApi::class)
 @AndroidEntryPoint
 class RadioService : MediaLibraryService() {
     @Inject lateinit var getRadioStationsUseCase: GetRadioStationsUseCase
+    @Inject lateinit var getPinnedStationsUseCase: GetPinnedStationsUseCase
     @Inject lateinit var getRadioStationUseCase: GetRadioStationUseCase
     @Inject lateinit var catalogStateRepository: CatalogStateRepository
 
@@ -44,6 +45,7 @@ class RadioService : MediaLibraryService() {
         super.onCreate()
         radioLibraryCatalog = RadioLibraryCatalog(
             getRadioStationsUseCase,
+            getPinnedStationsUseCase,
             getRadioStationUseCase,
             catalogStateRepository
         )
@@ -52,13 +54,13 @@ class RadioService : MediaLibraryService() {
 
         playlistPaginator = PlaylistPaginator(player, radioLibraryCatalog, serviceScope)
 
-        mediaSession = MediaLibraryService.MediaLibrarySession.Builder(this, player, radioSessionCallback)
+        mediaSession = MediaLibrarySession.Builder(this, player, radioSessionCallback)
             .setSessionActivity(createPendingMainActivityIntent())
             .build()
         setMediaNotificationProvider(DefaultMediaNotificationProvider.Builder(this).build())
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibraryService.MediaLibrarySession? {
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
         return mediaSession
     }
 

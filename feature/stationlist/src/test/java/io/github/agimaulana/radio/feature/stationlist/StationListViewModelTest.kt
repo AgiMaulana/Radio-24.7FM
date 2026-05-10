@@ -5,7 +5,6 @@ import app.cash.turbine.turbineScope
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController.PlaybackContext
 import io.github.agimaulana.radio.domain.api.entity.GeoLatLong
 import io.github.agimaulana.radio.domain.api.repository.PinnedStationLimitReachedException
-import io.github.agimaulana.radio.feature.stationlist.datafactories.newRadioStation
 import io.github.agimaulana.radio.feature.stationlist.datafactories.newUiStateStation
 import io.github.agimaulana.radio.feature.stationlist.location.LocationProvider
 import io.mockk.coEvery
@@ -122,8 +121,17 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
             )
             coEvery { locationProvider.getCurrentLocation() } returns locationInfo
             coEvery {
-                getRadioStationsUseCase.execute(page = 1, searchName = null, location = any())
+                radioBrowser.getStations(
+                    page = 0,
+                    pageSize = 10,
+                    searchName = null,
+                    location = GeoLatLong(-6.2, 106.8)
+                )
             } returns emptyList()
+
+            viewModel.init(hasLocationPermission = false, shouldShowRationale = false)
+            runCurrent()
+            uiState.awaitItem()
 
             viewModel.onAction(StationListViewModel.Action.OnLocationPermissionGranted(isGranted = true))
 
@@ -143,13 +151,7 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
                 assertFalse(isStationsLoading)
             }
 
-            coVerify {
-                getRadioStationsUseCase.execute(
-                    page = 1,
-                    searchName = null,
-                    location = GeoLatLong(-6.2, 106.8)
-                )
-            }
+            coVerify { radioBrowser.getStations(page = 0, pageSize = 10, searchName = null, location = GeoLatLong(-6.2, 106.8)) }
         }
     }
 
@@ -159,9 +161,11 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
             val uiState = viewModel.uiState.testIn(backgroundScope)
             uiState.awaitItem() // initial
 
-            coEvery {
-                getRadioStationsUseCase.execute(page = 1, searchName = null, location = null)
-            } returns emptyList()
+            coEvery { radioBrowser.getStations(page = 0, pageSize = 10, searchName = null, location = null) } returns emptyList()
+
+            viewModel.init(hasLocationPermission = false, shouldShowRationale = false)
+            runCurrent()
+            uiState.awaitItem()
 
             viewModel.onAction(StationListViewModel.Action.OnLocationPermissionGranted(isGranted = false))
 
@@ -176,9 +180,7 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
                 assertFalse(isStationsLoading)
             }
 
-            coVerify {
-                getRadioStationsUseCase.execute(page = 1, searchName = null, location = null)
-            }
+            coVerify { radioBrowser.getStations(page = 0, pageSize = 10, searchName = null, location = null) }
         }
     }
 
@@ -218,21 +220,17 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
     @Test
     fun `when pin station then execute use case`() = runTest {
         val station = newUiStateStation(withServerUuid = "uuid-1")
-        val domainStation = newRadioStation(withStationUuid = "uuid-1")
-        coEvery { getRadioStationUseCase.execute("uuid-1") } returns domainStation
 
         viewModel.onAction(StationListViewModel.Action.PinStation(station))
         runCurrent()
 
-        coVerify { pinStationUseCase.execute(domainStation) }
+        coVerify { pinStationUseCase.execute(station.toRadioStation()) }
     }
 
     @Test
     fun `when pin station reaches limit then emit snackbar event`() = runTest {
         val station = newUiStateStation(withServerUuid = "uuid-1")
-        val domainStation = newRadioStation(withStationUuid = "uuid-1")
-        coEvery { getRadioStationUseCase.execute("uuid-1") } returns domainStation
-        coEvery { pinStationUseCase.execute(domainStation) } throws PinnedStationLimitReachedException(maxPins = 8)
+        coEvery { pinStationUseCase.execute(station.toRadioStation()) } throws PinnedStationLimitReachedException(maxPins = 8)
 
         viewModel.uiEvent.test {
             viewModel.onAction(StationListViewModel.Action.PinStation(station))

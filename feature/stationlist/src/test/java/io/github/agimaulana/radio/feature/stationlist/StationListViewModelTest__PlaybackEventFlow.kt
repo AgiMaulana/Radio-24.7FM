@@ -19,8 +19,8 @@ class StationListViewModelTest__PlaybackEventFlow  : StationListViewModelTest__F
                 withName = "Radio 123",
             )
             coEvery {
-                getRadioStationUseCase.execute(station.stationUuid)
-            } returns station
+                radioBrowser.getStation(station.stationUuid)
+            } returns station.toUiStateStation().toRadioMediaItem()
             val uiState = viewModel.uiState.testIn(backgroundScope)
 
             viewModel.init(hasLocationPermission = false, hasAskedPermission = false, shouldShowRationale = false)

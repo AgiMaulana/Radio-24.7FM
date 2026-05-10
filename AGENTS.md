@@ -45,7 +45,7 @@ Detekt — always append: --console=plain 2>&1 | grep -E '(detekt|e:|w:|error:|w
 
 ## Tech Stack
 
-- Kotlin 2.2.10, AGP 8.13.0, SDK 36
+- Kotlin 2.2.20, AGP 8.13.0, SDK 36
 - Jetpack Compose, Hilt DI, Media3
 - Detekt for linting
 

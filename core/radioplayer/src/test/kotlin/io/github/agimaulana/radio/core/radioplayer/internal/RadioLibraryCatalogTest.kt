@@ -3,10 +3,12 @@ package io.github.agimaulana.radio.core.radioplayer.internal
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
 import io.github.agimaulana.radio.domain.api.repository.CatalogState
 import io.github.agimaulana.radio.domain.api.repository.CatalogStateRepository
+import io.github.agimaulana.radio.domain.api.usecase.GetPinnedStationsUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -19,6 +21,7 @@ import org.robolectric.RobolectricTestRunner
 class RadioLibraryCatalogTest {
 
     private val getRadioStationsUseCase = mockk<GetRadioStationsUseCase>()
+    private val getPinnedStationsUseCase = mockk<GetPinnedStationsUseCase>()
     private val getRadioStationUseCase = mockk<GetRadioStationUseCase>()
     private val catalogStateRepository = mockk<CatalogStateRepository>(relaxed = true)
 
@@ -26,6 +29,7 @@ class RadioLibraryCatalogTest {
     fun rootItem_returnsBrowsableRoot() {
         val catalog = RadioLibraryCatalog(
             getRadioStationsUseCase,
+            getPinnedStationsUseCase,
             getRadioStationUseCase,
             catalogStateRepository
         )
@@ -55,6 +59,7 @@ class RadioLibraryCatalogTest {
 
         val catalog = RadioLibraryCatalog(
             getRadioStationsUseCase,
+            getPinnedStationsUseCase,
             getRadioStationUseCase,
             catalogStateRepository
         )
@@ -98,6 +103,7 @@ class RadioLibraryCatalogTest {
 
         val catalog = RadioLibraryCatalog(
             getRadioStationsUseCase,
+            getPinnedStationsUseCase,
             getRadioStationUseCase,
             catalogStateRepository
         )
@@ -126,6 +132,7 @@ class RadioLibraryCatalogTest {
 
         val catalog = RadioLibraryCatalog(
             getRadioStationsUseCase,
+            getPinnedStationsUseCase,
             getRadioStationUseCase,
             catalogStateRepository
         )
@@ -134,6 +141,64 @@ class RadioLibraryCatalogTest {
 
         assertEquals(10, children.size)
         coVerify { catalogStateRepository.save(match { it.page == 0 }) }
+    }
+
+    @Test
+    fun getPinned_returnsPinnedStations() = runTest {
+        every { getPinnedStationsUseCase.execute() } returns kotlinx.coroutines.flow.flowOf(
+            listOf(
+                RadioStation(
+                    stationUuid = "pinned-1",
+                    name = "Pinned 1",
+                    tags = listOf("Genre 1"),
+                    imageUrl = "https://example.com/pinned-1.png",
+                    url = "https://example.com/stream-pinned-1",
+                    resolvedUrl = "https://example.com/resolved-pinned-1"
+                )
+            )
+        )
+
+        val catalog = RadioLibraryCatalog(
+            getRadioStationsUseCase,
+            getPinnedStationsUseCase,
+            getRadioStationUseCase,
+            catalogStateRepository
+        )
+
+        val pinned = catalog.getPinned()
+
+        assertEquals(1, pinned.size)
+        assertEquals("pinned-1", pinned.first().mediaId)
+    }
+
+    @Test
+    fun getStations_usesExplicitSearchAndLocation() = runTest {
+        val location = io.github.agimaulana.radio.domain.api.entity.GeoLatLong(-6.2, 106.8)
+        coEvery {
+            getRadioStationsUseCase.execute(page = 1, searchName = "jazz", location = location)
+        } returns buildStations(1, 10)
+        coEvery {
+            getRadioStationsUseCase.execute(page = 2, searchName = "jazz", location = location)
+        } returns emptyList()
+
+        val catalog = RadioLibraryCatalog(
+            getRadioStationsUseCase,
+            getPinnedStationsUseCase,
+            getRadioStationUseCase,
+            catalogStateRepository
+        )
+
+        val stations = catalog.getStations(
+            page = 0,
+            pageSize = 10,
+            search = "jazz",
+            location = location
+        )
+
+        assertEquals(10, stations.size)
+        coVerify {
+            getRadioStationsUseCase.execute(page = 1, searchName = "jazz", location = location)
+        }
     }
 
     private fun buildStations(startIndex: Int, count: Int): List<RadioStation> {

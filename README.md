@@ -18,7 +18,7 @@ A modern Android application for streaming radio stations, built with Jetpack Co
 
 ## 🛠 Tech Stack
 
-- **Language**: Kotlin 2.2.10
+- **Language**: Kotlin 2.2.20
 - **UI Framework**: Jetpack Compose
 - **Architecture**: Multi-module Clean Architecture + MVI/MVVM
 - **Dependency Injection**: Hilt

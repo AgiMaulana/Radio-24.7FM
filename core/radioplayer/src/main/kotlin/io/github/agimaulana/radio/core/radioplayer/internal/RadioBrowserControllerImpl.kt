@@ -1,0 +1,142 @@
+package io.github.agimaulana.radio.core.radioplayer.internal
+
+import android.os.Bundle
+import androidx.annotation.OptIn
+import androidx.media3.common.MediaItem
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.session.MediaBrowser
+import androidx.media3.session.MediaLibraryService
+import io.github.agimaulana.radio.core.radioplayer.RadioBrowserController
+import io.github.agimaulana.radio.core.radioplayer.RadioLibraryContract
+import io.github.agimaulana.radio.core.radioplayer.RadioMediaItem
+import io.github.agimaulana.radio.core.radioplayer.toRadioMediaItem
+import io.github.agimaulana.radio.domain.api.entity.GeoLatLong
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.guava.await
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+internal class RadioBrowserControllerImpl : RadioBrowserController {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val _pinnedStations = MutableStateFlow<List<RadioMediaItem>>(emptyList())
+    private var browser: MediaBrowser? = null
+    private var pinnedSubscriptionJob: Job? = null
+
+    override val pinnedStations: StateFlow<List<RadioMediaItem>>
+        get() = _pinnedStations.asStateFlow()
+
+    val browserListener = object : MediaBrowser.Listener {
+        override fun onChildrenChanged(
+            browser: MediaBrowser,
+            parentId: String,
+            itemCount: Int,
+            params: MediaLibraryService.LibraryParams?
+        ) {
+            if (parentId == RadioLibraryContract.PINNED_MEDIA_ID) {
+                refreshPinnedStations()
+            }
+        }
+    }
+
+    fun attach(browser: MediaBrowser) {
+        this.browser = browser
+        pinnedSubscriptionJob?.cancel()
+        pinnedSubscriptionJob = scope.launch {
+            withContext(Dispatchers.Main.immediate) {
+                browser.subscribe(RadioLibraryContract.PINNED_MEDIA_ID, null).await()
+            }
+            refreshPinnedStations()
+        }
+    }
+
+    override suspend fun getPinned(): List<RadioMediaItem> {
+        val mediaBrowser = browser ?: return emptyList()
+        return withContext(Dispatchers.Main.immediate) {
+            val result = mediaBrowser.getChildren(
+                RadioLibraryContract.PINNED_MEDIA_ID,
+                0,
+                Int.MAX_VALUE,
+                null
+            ).await()
+            result.value.orEmpty().map { it.toRadioMediaItem() }
+        }
+    }
+
+    override suspend fun getStation(mediaId: String): RadioMediaItem? {
+        getPinned().firstOrNull { it.mediaId == mediaId }?.let { return it }
+
+        val mediaBrowser = browser ?: return null
+        return withContext(Dispatchers.Main.immediate) {
+            val result = mediaBrowser.getChildren(
+                RadioLibraryContract.STATIONS_MEDIA_ID,
+                0,
+                Int.MAX_VALUE,
+                null
+            ).await()
+            result.value.orEmpty()
+                .map { it.toRadioMediaItem() }
+                .firstOrNull { it.mediaId == mediaId }
+        }
+    }
+
+    @OptIn(UnstableApi::class)
+    override suspend fun getStations(
+        page: Int,
+        pageSize: Int,
+        searchName: String?,
+        location: GeoLatLong?,
+    ): List<RadioMediaItem> {
+        val mediaBrowser = browser ?: return emptyList()
+        val extras = Bundle().apply {
+            searchName?.takeIf { it.isNotBlank() }?.let {
+                putString(RadioLibraryContract.EXTRA_SEARCH, it)
+            }
+            location?.let {
+                putDouble(RadioLibraryContract.EXTRA_LOCATION_LAT, it.latitude)
+                putDouble(RadioLibraryContract.EXTRA_LOCATION_LON, it.longitude)
+            }
+        }
+        val params = if (extras.isEmpty) {
+            null
+        } else {
+            MediaLibraryService.LibraryParams.Builder()
+                .setExtras(extras)
+                .build()
+        }
+
+        return withContext(Dispatchers.Main.immediate) {
+            val result = mediaBrowser.getChildren(
+                RadioLibraryContract.STATIONS_MEDIA_ID,
+                page,
+                pageSize,
+                params
+            ).await()
+            result.value.orEmpty().map { it.toRadioMediaItem() }
+        }
+    }
+
+    override fun release() {
+        pinnedSubscriptionJob?.cancel()
+        browser?.unsubscribe(RadioLibraryContract.PINNED_MEDIA_ID)
+        browser?.release()
+        browser = null
+        scope.cancel()
+    }
+
+    private fun refreshPinnedStations() {
+        scope.launch {
+            runCatching {
+                getPinned()
+            }.onSuccess { pinned ->
+                _pinnedStations.value = pinned
+            }
+        }
+    }
+}

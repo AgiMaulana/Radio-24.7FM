@@ -4,17 +4,14 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import io.github.agimaulana.radio.core.network.test.CoroutineMainDispatcherRule
 import io.github.agimaulana.radio.core.radioplayer.PlaybackEvent
+import io.github.agimaulana.radio.core.radioplayer.RadioBrowserFactory
+import io.github.agimaulana.radio.core.radioplayer.RadioBrowserController
 import io.github.agimaulana.radio.core.radioplayer.RadioMediaItem
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerControllerFactory
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
-import io.github.agimaulana.radio.domain.api.repository.CatalogStateRepository
-import io.github.agimaulana.radio.domain.api.usecase.GetPinnedStationsUseCase
-import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationUseCase
-import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
 import io.github.agimaulana.radio.domain.api.usecase.PinStationUseCase
 import io.github.agimaulana.radio.domain.api.usecase.UnpinStationUseCase
-import io.github.agimaulana.radio.feature.stationlist.datafactories.newRadioStation
 import io.github.agimaulana.radio.feature.stationlist.datafactories.newUiStateStation
 import io.github.agimaulana.radio.feature.stationlist.location.LocationProvider
 import io.mockk.MockKAnnotations
@@ -24,7 +21,7 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.mockk
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import org.junit.Before
 import org.junit.Rule
@@ -33,16 +30,10 @@ import org.junit.Test
 abstract class StationListViewModelTest__Fixtures {
 
     @RelaxedMockK
-    protected lateinit var getRadioStationsUseCase: GetRadioStationsUseCase
-
-    @RelaxedMockK
     protected lateinit var radioPlayerControllerFactory: RadioPlayerControllerFactory
 
     @RelaxedMockK
-    protected lateinit var getRadioStationUseCase: GetRadioStationUseCase
-
-    @RelaxedMockK
-    protected lateinit var getPinnedStationsUseCase: GetPinnedStationsUseCase
+    protected lateinit var radioBrowserFactory: RadioBrowserFactory
 
     @RelaxedMockK
     protected lateinit var pinStationUseCase: PinStationUseCase
@@ -59,13 +50,12 @@ abstract class StationListViewModelTest__Fixtures {
     @RelaxedMockK
     protected lateinit var locationProvider: LocationProvider
 
-    @RelaxedMockK
-    protected lateinit var catalogStateRepository: CatalogStateRepository
-
     @MockK
     protected lateinit var context: Context
 
     protected lateinit var playbackEventChannel: Channel<PlaybackEvent>
+    protected lateinit var radioBrowser: RadioBrowserController
+    protected lateinit var pinnedStationsFlow: MutableStateFlow<List<RadioMediaItem>>
 
     protected lateinit var viewModel: StationListViewModel
 
@@ -88,29 +78,26 @@ abstract class StationListViewModelTest__Fixtures {
         coEvery {
             radioPlayerControllerFactory.get()
         } returns radioPlayerController
-        coEvery {
-            getRadioStationUseCase.execute(any())
-        } returns newRadioStation(
-            withStationUuid = "",
-            withName = "Test",
-        )
-        coEvery {
-            getRadioStationsUseCase.execute(page = 1, searchName = null, location = null)
-        } returns emptyList()
+        radioBrowser = mockk(relaxed = true)
+        pinnedStationsFlow = MutableStateFlow(emptyList())
         every {
-            getPinnedStationsUseCase.execute()
-        } returns flowOf(emptyList())
+            radioBrowser.pinnedStations
+        } returns pinnedStationsFlow
+        coEvery {
+            radioBrowser.getStation(any())
+        } returns null
+        coEvery {
+            radioBrowserFactory.get()
+        } returns radioBrowser
+        coEvery { radioBrowser.getStations(any(), any(), any(), any()) } returns emptyList<RadioMediaItem>()
 
         viewModel = StationListViewModel(
-            getRadioStationsUseCase = getRadioStationsUseCase,
-            getRadioStationUseCase = getRadioStationUseCase,
-            getPinnedStationsUseCase = getPinnedStationsUseCase,
             pinStationUseCase = pinStationUseCase,
             unpinStationUseCase = unpinStationUseCase,
             radioPlayerControllerFactory = radioPlayerControllerFactory,
+            radioBrowserFactory = radioBrowserFactory,
             stationListTracker = stationListTracker,
             locationProvider = locationProvider,
-            catalogStateRepository = catalogStateRepository,
             context = context
         )
     }
@@ -146,6 +133,17 @@ abstract class StationListViewModelTest__Fixtures {
                 genre = genre,
                 imageUrl = imageUrl,
             )
+        )
+    }
+
+    protected fun StationListViewModel.UiState.Station.toRadioStation(): RadioStation {
+        return RadioStation(
+            stationUuid = serverUuid,
+            name = name,
+            tags = listOf(genre).filter { it.isNotBlank() },
+            imageUrl = imageUrl,
+            url = streamUrl,
+            resolvedUrl = streamUrl,
         )
     }
 }
