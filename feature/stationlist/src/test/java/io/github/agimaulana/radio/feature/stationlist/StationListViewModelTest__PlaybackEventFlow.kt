@@ -4,9 +4,14 @@ import app.cash.turbine.turbineScope
 import io.github.agimaulana.radio.core.radioplayer.PlaybackEvent
 import io.github.agimaulana.radio.core.radioplayer.PlaybackState
 import io.github.agimaulana.radio.feature.stationlist.datafactories.newRadioStation
+import io.github.agimaulana.radio.feature.stationlist.datafactories.newUiStateStation
 import io.mockk.coEvery
+import io.mockk.every
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class StationListViewModelTest__PlaybackEventFlow  : StationListViewModelTest__Fixtures() {
@@ -19,8 +24,8 @@ class StationListViewModelTest__PlaybackEventFlow  : StationListViewModelTest__F
                 withName = "Radio 123",
             )
             coEvery {
-                getRadioStationUseCase.execute(station.stationUuid)
-            } returns station
+                radioBrowser.getStation(station.stationUuid)
+            } returns station.toUiStateStation().toRadioMediaItem()
             val uiState = viewModel.uiState.testIn(backgroundScope)
 
             viewModel.init(hasLocationPermission = false, hasAskedPermission = false, shouldShowRationale = false)
@@ -62,6 +67,67 @@ class StationListViewModelTest__PlaybackEventFlow  : StationListViewModelTest__F
                 )
             }
             // region end: when playing state changed then update selected station
+        }
+    }
+
+    @Test
+    fun `when playlist changed then preserve station list shape`() = runTest {
+        turbineScope {
+            val uiStationOne = newUiStateStation(
+                withServerUuid = "radio-1",
+                withName = "Radio 1"
+            )
+            val uiStationTwo = newUiStateStation(
+                withServerUuid = "radio-2",
+                withName = "Radio 2"
+            )
+            coEvery {
+                radioBrowser.getStations(
+                    page = 0,
+                    pageSize = 10,
+                    searchName = null,
+                    location = null
+                )
+            } returns listOf(
+                uiStationOne.toRadioMediaItem(),
+                uiStationTwo.toRadioMediaItem()
+            )
+
+            var currentMediaId = ""
+            var isPlaying = false
+            every { radioPlayerController.currentMediaId } answers { currentMediaId }
+            every { radioPlayerController.isPlaying } answers { isPlaying }
+            every { radioPlayerController.getPlaylist() } returns listOf(
+                uiStationOne.toRadioMediaItem()
+            )
+
+            val uiState = viewModel.uiState.testIn(backgroundScope)
+
+            viewModel.init(
+                hasLocationPermission = false,
+                hasAskedPermission = false,
+                shouldShowRationale = false
+            )
+            viewModel.onAction(StationListViewModel.Action.OnLocationPermissionGranted(isGranted = false))
+            runCurrent()
+
+            with(uiState.expectMostRecentItem()) {
+                assertEquals(2, stations.size)
+                assertFalse(stations[0].isPlaying)
+                assertFalse(stations[1].isPlaying)
+            }
+
+            currentMediaId = "radio-1"
+            isPlaying = true
+            playbackEventChannel.send(PlaybackEvent.PlaylistChanged)
+            runCurrent()
+
+            with(uiState.awaitItem()) {
+                assertEquals(2, stations.size)
+                assertEquals("radio-1", stations[0].serverUuid)
+                assertTrue(stations[0].isPlaying)
+                assertFalse(stations[1].isPlaying)
+            }
         }
     }
 

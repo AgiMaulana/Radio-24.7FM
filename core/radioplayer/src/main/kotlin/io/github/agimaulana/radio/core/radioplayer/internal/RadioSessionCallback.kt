@@ -14,6 +14,8 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
+import io.github.agimaulana.radio.core.radioplayer.RadioLibraryContract
+import io.github.agimaulana.radio.domain.api.entity.GeoLatLong
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -190,6 +192,18 @@ internal class RadioSessionCallback(
         return Futures.immediateFuture(LibraryResult.ofItem(radioLibraryCatalog.rootItem(), params))
     }
 
+    override fun onGetItem(
+        session: MediaLibraryService.MediaLibrarySession,
+        browser: MediaSession.ControllerInfo,
+        mediaId: String
+    ): com.google.common.util.concurrent.ListenableFuture<LibraryResult<MediaItem>> {
+        return callbackScope.future {
+            radioLibraryCatalog.findChild(mediaId)?.let { item ->
+                LibraryResult.ofItem(item, null)
+            } ?: LibraryResult.ofError(LibraryResult.RESULT_ERROR_BAD_VALUE)
+        }
+    }
+
     override fun onGetChildren(
         session: MediaLibraryService.MediaLibrarySession,
         browser: MediaSession.ControllerInfo,
@@ -198,13 +212,41 @@ internal class RadioSessionCallback(
         pageSize: Int,
         params: MediaLibraryService.LibraryParams?
     ): com.google.common.util.concurrent.ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
-        if (parentId != RadioLibraryCatalog.ROOT_MEDIA_ID) {
-            return Futures.immediateFuture(LibraryResult.ofItemList(emptyList(), params))
-        }
-
         return callbackScope.future {
-            val stations = radioLibraryCatalog.loadChildren(page, pageSize)
-            LibraryResult.ofItemList(stations, params)
+            val items = when (parentId) {
+                RadioLibraryContract.ROOT_MEDIA_ID -> listOf(
+                    radioLibraryCatalog.pinnedItem(),
+                    radioLibraryCatalog.stationsItem()
+                )
+
+                RadioLibraryContract.PINNED_MEDIA_ID -> radioLibraryCatalog.getPinned()
+
+                RadioLibraryContract.STATIONS_MEDIA_ID -> {
+                    radioLibraryCatalog.getStations(
+                        page = page,
+                        pageSize = pageSize,
+                        search = params?.extras?.getString(RadioLibraryContract.EXTRA_SEARCH)
+                            ?.takeIf { it.isNotBlank() },
+                        location = params?.extras?.let { extras ->
+                            if (
+                                extras.containsKey(RadioLibraryContract.EXTRA_LOCATION_LAT) &&
+                                extras.containsKey(RadioLibraryContract.EXTRA_LOCATION_LON)
+                            ) {
+                                GeoLatLong(
+                                    latitude = extras.getDouble(RadioLibraryContract.EXTRA_LOCATION_LAT),
+                                    longitude = extras.getDouble(RadioLibraryContract.EXTRA_LOCATION_LON)
+                                )
+                            } else {
+                                null
+                            }
+                        }
+                    )
+                }
+
+                else -> emptyList()
+            }
+
+            LibraryResult.ofItemList(items, params)
         }
     }
 

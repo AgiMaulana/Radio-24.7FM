@@ -17,6 +17,8 @@ data class RadioMediaItem(
     )
 }
 
+private const val EXTRA_STREAM_URL = "radio_stream_url"
+
 internal fun RadioMediaItem.toMediaItem(
     contextType: String? = null,
     contextQuery: String? = null,
@@ -29,6 +31,7 @@ internal fun RadioMediaItem.toMediaItem(
 
     // Attach minimal playback context so the service can restore context after process death
     val extras = android.os.Bundle()
+    extras.putString(EXTRA_STREAM_URL, streamUrl)
     contextType?.let { extras.putString("playback_context_type", it) }
     contextQuery?.let { extras.putString("playback_context_query", it) }
     page?.let { extras.putInt("playback_context_page", it) }
@@ -39,14 +42,16 @@ internal fun RadioMediaItem.toMediaItem(
 
     return MediaItem.Builder()
         .setMediaId(mediaId)
-        .setUri(streamUrl)
+        .setUri(streamUrl.takeIf { it.isNotBlank() }?.toUri())
         .setMediaMetadata(metadataBuilder.build())
         .build()
 }
 
 fun MediaItem.toRadioMediaItem() = RadioMediaItem(
     mediaId = mediaId,
-    streamUrl = localConfiguration?.uri?.toString().orEmpty(),
+    streamUrl = localConfiguration?.uri?.toString().orEmpty().ifBlank {
+        mediaMetadata.extras?.getString(EXTRA_STREAM_URL).orEmpty()
+    },
     radioMetadata = RadioMediaItem.RadioMetadata(
         stationName = mediaMetadata.title?.toString().orEmpty(),
         genre = mediaMetadata.subtitle?.toString().orEmpty(),

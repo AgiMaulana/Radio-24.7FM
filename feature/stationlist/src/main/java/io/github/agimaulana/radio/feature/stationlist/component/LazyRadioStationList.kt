@@ -24,8 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.agimaulana.radio.core.design.RadioTheme
 import io.github.agimaulana.radio.feature.stationlist.R
-import io.github.agimaulana.radio.feature.stationlist.player.BufferingIcon
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.UiState.Station
+import io.github.agimaulana.radio.feature.stationlist.player.BufferingIcon
 import kotlinx.collections.immutable.ImmutableList
 
 @Composable
@@ -39,7 +39,7 @@ internal fun LazyRadioStationList(
     modifier: Modifier = Modifier,
     listState: LazyListState = rememberLazyListState(),
     contentPadding: PaddingValues = PaddingValues(0.dp),
-    onReachEnd: () -> Unit = {},
+    onViewportChanged: (totalItems: Int, lastVisibleIndex: Int) -> Unit = { _, _ -> },
 ) {
     val sectionLabelColor = contentColorFor(MaterialTheme.colorScheme.background).copy(alpha = 0.72f)
 
@@ -48,11 +48,9 @@ internal fun LazyRadioStationList(
             val layoutInfo = listState.layoutInfo
             val totalItems = layoutInfo.totalItemsCount
             val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            lastVisibleIndex >= totalItems - 3 && totalItems > 0
-        }.collect {
-            if (it) {
-                onReachEnd()
-            }
+            totalItems to lastVisibleIndex
+        }.collect { (totalItems, lastVisibleIndex) ->
+            onViewportChanged(totalItems, lastVisibleIndex)
         }
     }
 

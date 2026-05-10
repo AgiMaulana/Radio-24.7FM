@@ -2,17 +2,16 @@ package io.github.agimaulana.radio.core.radioplayer.internal
 
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
-import androidx.media3.session.SessionCommand
-import androidx.media3.session.SessionResult
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
 import io.github.agimaulana.radio.domain.api.repository.CatalogStateRepository
+import io.github.agimaulana.radio.domain.api.usecase.GetPinnedStationsUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.verifyOrder
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -91,11 +90,59 @@ class RadioSessionCallbackTest {
         assertEquals(0L, result.startPositionMs)
     }
 
+    @Test
+    fun onGetChildren_returnsRootCategories() = runTest {
+        val callback = callbackForStations(emptyList())
+        val controller = controller()
+        val session = librarySession()
+
+        val result = callback.onGetChildren(
+            session = session,
+            browser = controller,
+            parentId = RadioLibraryCatalog.ROOT_MEDIA_ID,
+            page = 0,
+            pageSize = 10,
+            params = null
+        ).get()
+
+        val items = requireNotNull(result.value)
+        assertEquals(2, items.size)
+        assertEquals(RadioLibraryCatalog.PINNED_MEDIA_ID, items[0].mediaId)
+        assertEquals(RadioLibraryCatalog.STATIONS_MEDIA_ID, items[1].mediaId)
+    }
+
+    @Test
+    fun onGetItem_returnsResolvedStation() = runTest {
+        val station = radioStation(
+            stationUuid = "station-4",
+            name = "Station Four",
+            tags = listOf("music"),
+            imageUrl = "https://example.com/four.png",
+            url = "https://example.com/four",
+            resolvedUrl = "https://stream.example.com/four"
+        )
+        val callback = callbackForStations(listOf(station))
+        val controller = controller()
+        val session = librarySession()
+
+        val result = callback.onGetItem(
+            session = session,
+            browser = controller,
+            mediaId = "station-4"
+        ).get()
+
+        val item = requireNotNull(result.value)
+        assertEquals("station-4", item.mediaId)
+        assertEquals("https://stream.example.com/four", item.localConfiguration?.uri.toString())
+    }
+
     private fun callbackForStations(stations: List<RadioStation>): RadioSessionCallback {
         val useCase = mockk<GetRadioStationsUseCase>()
+        val getPinnedStationsUseCase = mockk<GetPinnedStationsUseCase>()
         val getRadioStationUseCase = mockk<GetRadioStationUseCase>()
         val catalogStateRepository = mockk<CatalogStateRepository>(relaxed = true)
         coEvery { catalogStateRepository.load() } returns null
+        every { getPinnedStationsUseCase.execute() } returns kotlinx.coroutines.flow.flowOf(emptyList())
         coEvery { useCase.execute(page = 1, searchName = null, location = null) } returns stations
         coEvery { useCase.execute(page = 2, searchName = null, location = null) } returns emptyList()
         coEvery { getRadioStationUseCase.execute(any()) } answers {
@@ -103,7 +150,12 @@ class RadioSessionCallbackTest {
             stations.first { it.stationUuid == id }
         }
         return RadioSessionCallback(
-            RadioLibraryCatalog(useCase, getRadioStationUseCase, catalogStateRepository)
+            RadioLibraryCatalog(
+                useCase,
+                getPinnedStationsUseCase,
+                getRadioStationUseCase,
+                catalogStateRepository
+            )
         )
     }
 
@@ -117,6 +169,12 @@ class RadioSessionCallbackTest {
         return mockk<MediaSession>(relaxed = true).also {
             every { it.player } returns player
             every { player.currentMediaItem } returns null
+        }
+    }
+
+    private fun librarySession(): MediaLibraryService.MediaLibrarySession {
+        return mockk<MediaLibraryService.MediaLibrarySession>(relaxed = true).also {
+            every { it.player } returns player
         }
     }
 

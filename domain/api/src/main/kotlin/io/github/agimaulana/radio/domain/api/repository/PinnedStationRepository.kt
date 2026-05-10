@@ -4,6 +4,7 @@ import io.github.agimaulana.radio.domain.api.entity.RadioStation
 import kotlinx.coroutines.flow.Flow
 
 interface PinnedStationRepository {
+    val maxPins: Int
     fun getPinnedStations(): Flow<List<RadioStation>>
     suspend fun pinStation(station: RadioStation)
     suspend fun unpinStation(stationUuid: String)

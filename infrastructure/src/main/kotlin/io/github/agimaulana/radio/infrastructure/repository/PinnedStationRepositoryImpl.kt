@@ -34,6 +34,7 @@ class PinnedStationRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     moshi: Moshi
 ) : PinnedStationRepository {
+    override val maxPins: Int = MAX_PINS
     private val dataStore = context.pinnedStationsDataStore
 
     private val adapter = moshi.adapter<List<RadioStation>>(
@@ -59,8 +60,8 @@ class PinnedStationRepositoryImpl @Inject constructor(
             val current = decodePinnedStations(preferences[KEY_PINNED_STATIONS]).toMutableList()
             val isAlreadyPinned = current.any { it.stationUuid == station.stationUuid }
             if (isAlreadyPinned) return@edit
-            if (current.size >= MAX_PINS) {
-                throw PinnedStationLimitReachedException(MAX_PINS)
+            if (current.size >= maxPins) {
+                throw PinnedStationLimitReachedException(maxPins)
             }
             current.add(station)
             preferences[KEY_PINNED_STATIONS] = adapter.toJson(current)

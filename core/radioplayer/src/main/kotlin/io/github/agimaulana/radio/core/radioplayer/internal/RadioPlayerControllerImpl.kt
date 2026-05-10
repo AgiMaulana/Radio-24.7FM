@@ -34,6 +34,9 @@ internal class RadioPlayerControllerImpl(
         startIndex: Int,
         context: RadioPlayerController.PlaybackContext
     ) {
+        if (mediaController.mediaItemCount > 0) {
+            mediaController.stop()
+        }
         setMediaItems(items, startIndex, context)
         prepare()
         play()

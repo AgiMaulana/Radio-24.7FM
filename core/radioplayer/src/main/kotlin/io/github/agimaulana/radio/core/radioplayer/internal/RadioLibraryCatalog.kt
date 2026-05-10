@@ -7,14 +7,17 @@ import io.github.agimaulana.radio.domain.api.entity.GeoLatLong
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
 import io.github.agimaulana.radio.domain.api.repository.CatalogState
 import io.github.agimaulana.radio.domain.api.repository.CatalogStateRepository
+import io.github.agimaulana.radio.domain.api.usecase.GetPinnedStationsUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.flow.first
 import timber.log.Timber
 
 internal class RadioLibraryCatalog(
     private val getRadioStationsUseCase: GetRadioStationsUseCase,
+    private val getPinnedStationsUseCase: GetPinnedStationsUseCase,
     private val getRadioStationUseCase: GetRadioStationUseCase,
     private val catalogStateRepository: CatalogStateRepository,
 ) {
@@ -30,10 +33,73 @@ internal class RadioLibraryCatalog(
             .setMediaMetadata(
                 MediaMetadata.Builder()
                     .setIsBrowsable(true)
+                    .setIsPlayable(false)
                     .setTitle("Radio 24.7FM")
                     .build()
             )
             .build()
+    }
+
+    fun pinnedItem(): MediaItem {
+        return browsableCategoryItem(
+            mediaId = PINNED_MEDIA_ID,
+            title = "Pinned"
+        )
+    }
+
+    fun stationsItem(): MediaItem {
+        return browsableCategoryItem(
+            mediaId = STATIONS_MEDIA_ID,
+            title = "Stations"
+        )
+    }
+
+    suspend fun getPinned(): List<MediaItem> {
+        return getPinnedStationsUseCase.execute()
+            .first()
+            .map { it.toMediaItem() }
+    }
+
+    suspend fun getStations(
+        page: Int,
+        pageSize: Int,
+        search: String? = null,
+        location: GeoLatLong? = null,
+    ): List<MediaItem> {
+        restore()
+        updateState {
+            it.copy(
+                query = search,
+                locationLat = location?.latitude,
+                locationLon = location?.longitude,
+                page = page,
+                source = when {
+                    location != null -> CatalogState.Source.LOCATION
+                    !search.isNullOrBlank() -> CatalogState.Source.SEARCH
+                    else -> CatalogState.Source.ALL
+                },
+            )
+        }
+
+        if (pageSize <= 0) return emptyList()
+
+        val startIndex = page * pageSize
+        val firstCatalogPage = startIndex / CATALOG_PAGE_SIZE + 1
+        val lastCatalogPage = (startIndex + pageSize - 1) / CATALOG_PAGE_SIZE + 1
+        val stations = mutableListOf<RadioStation>()
+
+        for (catalogPage in firstCatalogPage..lastCatalogPage) {
+            val pageStations = loadStationsPage(
+                page = catalogPage,
+                search = search,
+                location = location
+            )
+            if (pageStations.isEmpty()) break
+            stations.addAll(pageStations)
+        }
+
+        val offsetInStations = startIndex - (firstCatalogPage - 1) * CATALOG_PAGE_SIZE
+        return stations.drop(offsetInStations).take(pageSize).map { it.toMediaItem() }
     }
 
     suspend fun loadChildren(page: Int, pageSize: Int): List<MediaItem> {
@@ -183,6 +249,7 @@ internal class RadioLibraryCatalog(
             .setUri(streamUri.takeIf { it.isNotBlank() }?.toUri())
             .setMediaMetadata(
                 MediaMetadata.Builder()
+                    .setIsBrowsable(false)
                     .setIsPlayable(streamUri.isNotBlank())
                     .setTitle(name)
                     .setSubtitle(tags.firstOrNull().orEmpty())
@@ -192,30 +259,60 @@ internal class RadioLibraryCatalog(
             .build()
     }
 
+    private suspend fun loadStationsPage(
+        page: Int,
+        search: String?,
+        location: GeoLatLong?,
+    ): List<RadioStation> {
+        return getRadioStationsUseCase.execute(
+            page = page,
+            searchName = search?.takeIf { it.isNotBlank() },
+            location = location
+        )
+    }
+
     private suspend fun loadStationsPage(page: Int, state: CatalogState): List<RadioStation> {
         return when (state.source) {
-            CatalogState.Source.ALL -> getRadioStationsUseCase.execute(
+            CatalogState.Source.ALL -> loadStationsPage(
                 page = page,
-                searchName = null,
+                search = null,
                 location = null
             )
 
-            CatalogState.Source.SEARCH -> getRadioStationsUseCase.execute(
+            CatalogState.Source.SEARCH -> loadStationsPage(
                 page = page,
-                searchName = state.query?.takeIf { it.isNotBlank() },
+                search = state.query,
                 location = null
             )
 
-            CatalogState.Source.LOCATION -> getRadioStationsUseCase.execute(
+            CatalogState.Source.LOCATION -> loadStationsPage(
                 page = page,
-                searchName = null,
+                search = null,
                 location = state.toLocation()
             )
         }
     }
 
+    private fun browsableCategoryItem(
+        mediaId: String,
+        title: String,
+    ): MediaItem {
+        return MediaItem.Builder()
+            .setMediaId(mediaId)
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setIsBrowsable(true)
+                    .setIsPlayable(false)
+                    .setTitle(title)
+                    .build()
+            )
+            .build()
+    }
+
     companion object {
         internal const val ROOT_MEDIA_ID = "root"
+        internal const val PINNED_MEDIA_ID = "pinned"
+        internal const val STATIONS_MEDIA_ID = "stations"
         internal const val CATALOG_PAGE_SIZE = 10
         private const val MAX_INITIAL_PAGES = 3
     }
