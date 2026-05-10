@@ -24,7 +24,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
-internal class RadioBrowserControllerImpl : RadioBrowserController {
+internal class RadioBrowserControllerImpl(
+    private val pinnedStationLimit: Int,
+) : RadioBrowserController {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val pinnedInvalidations = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     private var browser: MediaBrowser? = null
@@ -79,7 +81,7 @@ internal class RadioBrowserControllerImpl : RadioBrowserController {
             val result = mediaBrowser.getChildren(
                 RadioLibraryContract.PINNED_MEDIA_ID,
                 0,
-                Int.MAX_VALUE,
+                pinnedStationLimit,
                 null
             ).await()
             result.value.orEmpty().map { it.toRadioMediaItem() }
