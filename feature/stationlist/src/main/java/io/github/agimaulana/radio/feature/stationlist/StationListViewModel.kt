@@ -9,8 +9,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.agimaulana.radio.core.radioplayer.PlaybackEvent
 import io.github.agimaulana.radio.core.radioplayer.PlaybackState
-import io.github.agimaulana.radio.core.radioplayer.RadioBrowserFactory
 import io.github.agimaulana.radio.core.radioplayer.RadioBrowserController
+import io.github.agimaulana.radio.core.radioplayer.RadioBrowserFactory
 import io.github.agimaulana.radio.core.radioplayer.RadioMediaItem
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerControllerFactory
@@ -143,23 +143,14 @@ class StationListViewModel @Inject constructor(
                     // already loaded; just resume
                     radioPlayerController?.play()
                 } else {
-                    // Build playlist: if playing a pinned station, put pinned stations first then
-                    // remaining stations without duplicates
-                    val pinned = _uiState.value.pinnedStations
                     val main = _uiState.value.stations
-                    val combined = if (stationToPlay.isPinned) {
-                        val pinnedIds = pinned.map { it.serverUuid }.toSet()
-                        pinned + main.filterNot { it.serverUuid in pinnedIds }
-                    } else {
-                        main
-                    }
-                    val startIndex = combined.indexOfFirst {
+                    val startIndex = main.indexOfFirst {
                         it.serverUuid == stationToPlay.serverUuid
                     }
 
                     val context = _uiState.value.toPlaybackContext()
                     if (startIndex >= 0) {
-                        val playlist = combined.map { it.toRadioMediaItem() }
+                        val playlist = main.map { it.toRadioMediaItem() }
                         radioPlayerController?.apply {
                             startPlayback(
                                 items = playlist,
@@ -258,20 +249,12 @@ class StationListViewModel @Inject constructor(
                 stationName = station.name
             )
 
-            // Build playlist: if clicking a pinned station, put pinned stations first then remaining stations without duplicates
-            val pinned = _uiState.value.pinnedStations
             val main = _uiState.value.stations
-            val combined = if (station.isPinned) {
-                val pinnedIds = pinned.map { it.serverUuid }.toSet()
-                pinned + main.filterNot { it.serverUuid in pinnedIds }
-            } else {
-                main
-            }
-            val startIndex = combined.indexOfFirst { it.serverUuid == station.serverUuid }
+            val startIndex = main.indexOfFirst { it.serverUuid == station.serverUuid }
 
             val context = uiState.value.toPlaybackContext()
             if (startIndex >= 0) {
-                val playlist = combined.map { it.toRadioMediaItem() }
+                val playlist = main.map { it.toRadioMediaItem() }
                 radioPlayerController?.apply {
                     startPlayback(
                         items = playlist,
@@ -459,41 +442,21 @@ class StationListViewModel @Inject constructor(
 
     private fun syncWithPlayer() {
         val controller = radioPlayerController ?: return
-        val playerPlaylist = controller.getPlaylist()
-        if (playerPlaylist.isEmpty()) return
+        if (controller.getPlaylist().isEmpty()) return
 
         val currentMediaId = controller.currentMediaId
         val isPlaying = controller.isPlaying
-        val pinnedUuids = _uiState.value.pinnedStations.map { it.serverUuid }.toSet()
 
         _uiState.update { state ->
-            val existingStations = state.stations
-            val firstPlayerId = playerPlaylist.first().mediaId
-            
-            val isAppend = existingStations.isNotEmpty() && 
-                          existingStations.any { it.serverUuid == firstPlayerId }
-
-            val updatedStations = if (isAppend) {
-                // If it's an append, we reconcile the lists to preserve existing objects if possible
-                playerPlaylist.map { playerItem ->
-                    val existing = existingStations.find { it.serverUuid == playerItem.mediaId }
-                    if (existing != null) {
-                        existing.copy(
-                            isPlaying = isPlaying && (existing.serverUuid == currentMediaId)
-                        )
-                    } else {
-                        playerItem.toUiStateStation(pinnedUuids, currentMediaId, isPlaying)
-                    }
-                }.toPersistentList()
-            } else {
-                playerPlaylist.map { item ->
-                    item.toUiStateStation(pinnedUuids, currentMediaId, isPlaying)
-                }.toPersistentList()
-            }
-
             state.copy(
-                stations = updatedStations,
-                hasMorePages = updatedStations.size >= PAGE_SIZE
+                stations = state.stations.togglePlayingStateForStations(
+                    targetUuid = currentMediaId.orEmpty(),
+                    isPlaying = isPlaying
+                ),
+                pinnedStations = state.pinnedStations.togglePlayingStateForStations(
+                    targetUuid = currentMediaId.orEmpty(),
+                    isPlaying = isPlaying
+                ).toImmutableList()
             )
         }
     }
