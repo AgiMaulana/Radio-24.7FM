@@ -39,7 +39,7 @@ internal class RadioBrowserControllerImpl(
     override val pinnedStations: Flow<List<RadioMediaItem>> =
         _pinnedStations.asStateFlow()
 
-    private val browserListener: Player.Listener = object :
+    internal val browserListener = object :
         Player.Listener,
         MediaBrowser.Listener {
         override fun onChildrenChanged(
@@ -61,7 +61,7 @@ internal class RadioBrowserControllerImpl(
         pinnedSubscriptionJob?.cancel()
         pinnedSubscriptionJob = scope.launch {
             withContext(Dispatchers.Main.immediate) {
-                browser.addListener(browserListener)
+                browser.addListener(browserListener as Player.Listener)
                 browser.subscribe(RadioLibraryContract.PINNED_MEDIA_ID, null).await()
             }
 
@@ -142,7 +142,7 @@ internal class RadioBrowserControllerImpl(
 
     override fun release() {
         pinnedSubscriptionJob?.cancel()
-        browser?.removeListener(browserListener)
+        browser?.removeListener(browserListener as Player.Listener)
         browser?.unsubscribe(RadioLibraryContract.PINNED_MEDIA_ID)
         browser?.release()
         browser = null
