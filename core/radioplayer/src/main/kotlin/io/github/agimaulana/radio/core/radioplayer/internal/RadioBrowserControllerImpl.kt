@@ -15,12 +15,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 
 internal class RadioBrowserControllerImpl : RadioBrowserController {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -29,9 +31,22 @@ internal class RadioBrowserControllerImpl : RadioBrowserController {
     private var pinnedSubscriptionJob: Job? = null
 
     override val pinnedStations: Flow<List<RadioMediaItem>> = flow {
-        emit(getPinned())
+        var lastPinned = emptyList<RadioMediaItem>()
+        lastPinned = runCatching { getPinned() }
+            .getOrElse { error ->
+                if (error is CancellationException) throw error
+                Timber.tag(TAG).w(error, "Failed to refresh pinned stations")
+                lastPinned
+            }
+        emit(lastPinned)
         pinnedInvalidations.collect {
-            emit(getPinned())
+            lastPinned = runCatching { getPinned() }
+                .getOrElse { error ->
+                    if (error is CancellationException) throw error
+                    Timber.tag(TAG).w(error, "Failed to refresh pinned stations")
+                    lastPinned
+                }
+            emit(lastPinned)
         }
     }
 
@@ -121,5 +136,9 @@ internal class RadioBrowserControllerImpl : RadioBrowserController {
         browser?.release()
         browser = null
         scope.cancel()
+    }
+
+    private companion object {
+        const val TAG = "RadioBrowserController"
     }
 }
