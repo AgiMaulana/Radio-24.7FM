@@ -2,7 +2,6 @@ package io.github.agimaulana.radio.core.radioplayer.internal
 
 import android.os.Bundle
 import androidx.annotation.OptIn
-import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaBrowser
 import androidx.media3.session.MediaLibraryService
@@ -39,9 +38,7 @@ internal class RadioBrowserControllerImpl(
     override val pinnedStations: Flow<List<RadioMediaItem>> =
         _pinnedStations.asStateFlow()
 
-    internal val browserListener = object :
-        Player.Listener,
-        MediaBrowser.Listener {
+    internal val browserListener = object : MediaBrowser.Listener {
         override fun onChildrenChanged(
             browser: MediaBrowser,
             parentId: String,
@@ -61,7 +58,6 @@ internal class RadioBrowserControllerImpl(
         pinnedSubscriptionJob?.cancel()
         pinnedSubscriptionJob = scope.launch {
             withContext(Dispatchers.Main.immediate) {
-                browser.addListener(browserListener as Player.Listener)
                 browser.subscribe(RadioLibraryContract.PINNED_MEDIA_ID, null).await()
             }
 
@@ -142,7 +138,6 @@ internal class RadioBrowserControllerImpl(
 
     override fun release() {
         pinnedSubscriptionJob?.cancel()
-        browser?.removeListener(browserListener as Player.Listener)
         browser?.unsubscribe(RadioLibraryContract.PINNED_MEDIA_ID)
         browser?.release()
         browser = null
