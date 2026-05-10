@@ -39,7 +39,9 @@ internal class RadioBrowserControllerImpl(
     override val pinnedStations: Flow<List<RadioMediaItem>> =
         _pinnedStations.asStateFlow()
 
-    val browserListener = object : MediaBrowser.Listener, Player.Listener {
+    private val browserListener: Player.Listener = object :
+        Player.Listener,
+        MediaBrowser.Listener {
         override fun onChildrenChanged(
             browser: MediaBrowser,
             parentId: String,
