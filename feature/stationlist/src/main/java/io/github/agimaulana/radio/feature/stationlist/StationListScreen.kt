@@ -43,11 +43,16 @@ import androidx.compose.ui.unit.lerp
 import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.mediarouter.app.MediaRouteChooserDialog
+import androidx.mediarouter.app.MediaRouteControllerDialog
+import androidx.mediarouter.media.MediaRouteSelector
+import com.google.android.gms.cast.CastMediaControlIntent
 import io.github.agimaulana.radio.core.design.GlassPlayerState
 import io.github.agimaulana.radio.core.design.GlassSlidingPlayerLayout
 import io.github.agimaulana.radio.core.design.rememberGlassPlayerState
 import io.github.agimaulana.radio.core.design.rememberMultiplePermissionsState
 import io.github.agimaulana.radio.core.design.theme.PreviewTheme
+import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController.CastState
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.Action
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.UiEvent
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.UiState
@@ -139,15 +144,19 @@ fun StationListRoute(
         contextMenuState = contextMenuState,
         onAction = viewModel::onAction,
         eventFlow = viewModel.uiEvent,
-        showLocationPermissionSheet = uiState.showLocationPermissionSheet,
-        onLaunchLocationPermissionRequest = {
-            locationPermissionState.launchPermissionRequest()
-        },
-        onDismissLocationPermission = {
-            resolveLocationPermission(isGranted = false)
-        },
+        locationPermissionHandlers = LocationPermissionHandlers(
+            showSheet = uiState.showLocationPermissionSheet,
+            onLaunchRequest = { locationPermissionState.launchPermissionRequest() },
+            onDismiss = { resolveLocationPermission(isGranted = false) }
+        )
     )
 }
+
+private data class LocationPermissionHandlers(
+    val showSheet: Boolean,
+    val onLaunchRequest: () -> Unit,
+    val onDismiss: () -> Unit
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -156,59 +165,36 @@ private fun StationListScreen(
     playerState: GlassPlayerState,
     toolbarDimensions: ToolbarDimensionsHelper,
     contextMenuState: StationContextMenuState,
-    showLocationPermissionSheet: Boolean,
-    onLaunchLocationPermissionRequest: () -> Unit,
-    onDismissLocationPermission: () -> Unit,
+    locationPermissionHandlers: LocationPermissionHandlers,
     eventFlow: Flow<UiEvent>,
     modifier: Modifier = Modifier,
     onAction: (Action) -> Unit = {},
 ) {
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val undoLabel = remember(context) { context.getString(R.string.undo) }
 
-    if (showLocationPermissionSheet) {
-        LocationPermissionBottomSheet(
-            onAllowClick = onLaunchLocationPermissionRequest,
-            onDismissRequest = onDismissLocationPermission,
-        )
-    }
+    StationListLocationSheet(locationPermissionHandlers)
 
     UpdateSystemBars()
 
-    LaunchedEffect(eventFlow, context) {
-        eventFlow.collect { event ->
-            when (event) {
-                is UiEvent.ShowPinnedLimitReached -> {
-                    snackbarHostState.showSnackbar(
-                        message = context.getString(R.string.pinned_limit_reached_message, event.maxPins)
-                    )
-                }
-            }
-        }
-    }
+    StationListEventObserver(eventFlow, context, snackbarHostState, uiState)
 
     val nestedScrollConnection = remember(toolbarDimensions, listState) {
         StationListNestedScrollConnection(
-            onScroll = { delta ->
-                toolbarDimensions.onScroll(delta)
-            },
-            canScrollDown = { listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0 }
+            onScroll = { toolbarDimensions.onScroll(it) },
+            canScrollDown = {
+                listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+            }
         )
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        GlassSlidingPlayerLayout(
-            state = playerState,
-            modifier = Modifier.fillMaxSize(),
-            miniPlayerContent = {
-                StationMiniPlayer(uiState.selectedStation, onAction, playerState)
-            },
-            fullPlayerContent = { progress ->
-                StationFullPlayer(progress, uiState, onAction, playerState)
-            }
+        StationListPlayerLayout(
+            uiState = uiState,
+            playerState = playerState,
+            onAction = onAction
         ) {
             StationListContent(
                 uiState = uiState,
@@ -217,39 +203,131 @@ private fun StationListScreen(
                 nestedScrollConnection = nestedScrollConnection,
                 snackbarHostState = snackbarHostState,
                 onAction = onAction,
-                onLongClick = { station ->
-                    contextMenuState.show(station)
-                }
+                onLongClick = { contextMenuState.show(it) }
             )
         }
 
-        StationContextMenu(
-            showMenu = contextMenuState.showMenu,
-            station = contextMenuState.station,
-            useBottomSheet = contextMenuState.useBottomSheet,
-            onDismiss = contextMenuState::dismiss,
-            onAction = { action ->
-                if (action is Action.UnpinStation) {
-                    val stationToUnpin = contextMenuState.station
-                    onAction(action)
-                    if (stationToUnpin != null) {
-                        scope.launch {
-                            val result = snackbarHostState.showSnackbar(
-                                message = context.getString(R.string.pinned_removed_message, stationToUnpin.name),
-                                actionLabel = undoLabel,
-                                duration = androidx.compose.material3.SnackbarDuration.Short
-                            )
-                            if (result == SnackbarResult.ActionPerformed) {
-                                onAction(Action.PinStation(stationToUnpin))
-                            }
+        StationListContextMenuWrapper(
+            contextMenuState = contextMenuState,
+            onAction = onAction,
+            snackbarHostState = snackbarHostState,
+            undoLabel = undoLabel
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun StationListLocationSheet(handlers: LocationPermissionHandlers) {
+    if (handlers.showSheet) {
+        LocationPermissionBottomSheet(
+            onAllowClick = handlers.onLaunchRequest,
+            onDismissRequest = handlers.onDismiss,
+        )
+    }
+}
+
+@Composable
+private fun StationListEventObserver(
+    eventFlow: Flow<UiEvent>,
+    context: android.content.Context,
+    snackbarHostState: SnackbarHostState,
+    uiState: UiState
+) {
+    LaunchedEffect(eventFlow, context) {
+        eventFlow.collect { event ->
+            when (event) {
+                is UiEvent.ShowPinnedLimitReached -> {
+                    snackbarHostState.showSnackbar(
+                        message = context.getString(R.string.pinned_limit_reached_message, event.maxPins)
+                    )
+                }
+                UiEvent.ShowCastChooser -> {
+                    showCastChooser(context, uiState.castState)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StationListContextMenuWrapper(
+    contextMenuState: StationContextMenuState,
+    onAction: (Action) -> Unit,
+    snackbarHostState: SnackbarHostState,
+    undoLabel: String
+) {
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    StationContextMenu(
+        showMenu = contextMenuState.showMenu,
+        station = contextMenuState.station,
+        useBottomSheet = contextMenuState.useBottomSheet,
+        onDismiss = contextMenuState::dismiss,
+        onAction = { action ->
+            if (action is Action.UnpinStation) {
+                val stationToUnpin = contextMenuState.station
+                onAction(action)
+                if (stationToUnpin != null) {
+                    scope.launch {
+                        val result = snackbarHostState.showSnackbar(
+                            message = context.getString(R.string.pinned_removed_message, stationToUnpin.name),
+                            actionLabel = undoLabel,
+                            duration = androidx.compose.material3.SnackbarDuration.Short
+                        )
+                        if (result == SnackbarResult.ActionPerformed) {
+                            onAction(Action.PinStation(stationToUnpin))
                         }
                     }
-                } else {
-                    onAction(action)
                 }
-                contextMenuState.dismiss()
+            } else {
+                onAction(action)
             }
-        )
+            contextMenuState.dismiss()
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun StationListPlayerLayout(
+    uiState: UiState,
+    playerState: GlassPlayerState,
+    onAction: (Action) -> Unit,
+    content: @Composable () -> Unit
+) {
+    GlassSlidingPlayerLayout(
+        state = playerState,
+        modifier = Modifier.fillMaxSize(),
+        miniPlayerContent = {
+            StationMiniPlayer(uiState.selectedStation, onAction, playerState)
+        },
+        fullPlayerContent = { progress ->
+            StationFullPlayer(progress, uiState, onAction, playerState)
+        }
+    ) {
+        content()
+    }
+}
+
+private fun showCastChooser(context: android.content.Context, castState: CastState) {
+    try {
+        val selector = MediaRouteSelector.Builder()
+            .addControlCategory(
+                CastMediaControlIntent.categoryForCast(
+                    CastMediaControlIntent.DEFAULT_MEDIA_RECEIVER_APPLICATION_ID
+                )
+            )
+            .build()
+        if (castState == CastState.CONNECTED) {
+            MediaRouteControllerDialog(context).show()
+        } else {
+            val dialog = MediaRouteChooserDialog(context)
+            dialog.routeSelector = selector
+            dialog.show()
+        }
+    } catch (e: Exception) {
+        Timber.tag("StationListScreen").e(e, "Failed to show cast chooser dialog")
     }
 }
 
@@ -298,6 +376,7 @@ private fun StationFullPlayer(
             station = station,
             playerColors = uiState.playerColors,
             featureFlag = uiState.featureFlag,
+            castState = uiState.castState,
             onPlay = { onAction(Action.Play(station)) },
             onPause = { onAction(Action.Pause(station)) },
             onStop = {
@@ -309,6 +388,7 @@ private fun StationFullPlayer(
                 onAction(Action.CollapsePlayer(source = "collapse_button"))
                 playerState.collapse()
             },
+            onCastClick = { onAction(Action.ClickCast) },
             modifier = Modifier.fillMaxWidth()
         )
     }
@@ -329,7 +409,8 @@ private fun StationListContent(
             StationListToolbar(
                 dims = dims,
                 uiState = uiState,
-                onSearch = { onAction(Action.Search(it)) }
+                onSearch = { onAction(Action.Search(it)) },
+                onCastClick = { onAction(Action.ClickCast) }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -400,9 +481,11 @@ private fun StationListScreenPreview() {
                 statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
             ),
             contextMenuState = rememberStationContextMenuState(),
-            showLocationPermissionSheet = false,
-            onLaunchLocationPermissionRequest = {},
-            onDismissLocationPermission = {},
+            locationPermissionHandlers = LocationPermissionHandlers(
+                showSheet = false,
+                onLaunchRequest = {},
+                onDismiss = {}
+            ),
             eventFlow = emptyFlow(),
         )
     }

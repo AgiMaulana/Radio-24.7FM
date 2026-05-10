@@ -23,6 +23,10 @@
             android:value="false"
             tools:replace="android:value" />
 
+        <meta-data
+            android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"
+            android:value="io.github.agimaulana.radio.CastOptionsProvider" />
+
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"

@@ -24,6 +24,8 @@ internal fun RadioMediaItem.toMediaItem(
 ): MediaItem {
     val metadataBuilder = MediaMetadata.Builder()
         .setTitle(radioMetadata.stationName)
+        .setArtist(radioMetadata.genre)
+        .setAlbumTitle("Radio Stations")
         .setSubtitle(radioMetadata.genre)
         .setArtworkUri(radioMetadata.imageUrl.toUri())
 

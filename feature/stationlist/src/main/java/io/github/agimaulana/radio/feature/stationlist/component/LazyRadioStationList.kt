@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -24,8 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.agimaulana.radio.core.design.RadioTheme
 import io.github.agimaulana.radio.feature.stationlist.R
-import io.github.agimaulana.radio.feature.stationlist.player.BufferingIcon
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.UiState.Station
+import io.github.agimaulana.radio.feature.stationlist.player.BufferingIcon
 import kotlinx.collections.immutable.ImmutableList
 
 @Composable
@@ -102,11 +102,16 @@ internal fun LazyRadioStationList(
                 )
             }
         } else {
-            items(stations, key = { it.serverUuid }) {
+            itemsIndexed(
+                items = stations,
+                key = { index, station -> 
+                    station.serverUuid.ifEmpty { "station_${station.name}_${station.streamUrl}_$index" } 
+                }
+            ) { _, station ->
                 StationTile(
-                    station = it,
-                    onClick = { onClick(it) },
-                    onLongClick = { onLongClick(it) },
+                    station = station,
+                    onClick = { onClick(station) },
+                    onLongClick = { onLongClick(station) },
                     modifier = Modifier.padding(
                         start = 16.dp,
                         end = 16.dp

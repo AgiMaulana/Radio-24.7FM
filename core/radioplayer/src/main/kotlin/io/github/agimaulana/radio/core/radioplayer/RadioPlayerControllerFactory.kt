@@ -19,7 +19,7 @@ class RadioPlayerControllerFactory @Inject constructor(
         val controllerFuture = MediaController.Builder(context, sessionToken).buildAsync()
 
         controllerFuture.addListener({
-            val controller = RadioPlayerControllerImpl(controllerFuture.get())
+            val controller = RadioPlayerControllerImpl(controllerFuture.get(), context)
             cont.resume(controller)
         }, MoreExecutors.directExecutor())
     }
