@@ -270,6 +270,33 @@ class StationListViewModelTest : StationListViewModelTest__Fixtures() {
     }
 
     @Test
+    fun `given station is not playing when clicked then show buffering immediately`() = runTest {
+        turbineScope {
+            val station = newUiStateStation(
+                withServerUuid = "radio-1",
+                withName = "Radio 1"
+            )
+            every { radioPlayerController.currentMediaId } returns "radio-2"
+
+            val uiState = viewModel.uiState.testIn(backgroundScope)
+            uiState.awaitItem()
+
+            viewModel.init(hasLocationPermission = false, shouldShowRationale = false)
+            runCurrent()
+            uiState.expectMostRecentItem()
+
+            viewModel.onAction(StationListViewModel.Action.Click(station))
+
+            with(uiState.awaitItem()) {
+                assertEquals(
+                    station.copy(isBuffering = true),
+                    selectedStation
+                )
+            }
+        }
+    }
+
+    @Test
     fun `when pause then pause radio player`() {
         val station = newUiStateStation()
         viewModel.init(hasLocationPermission = false, shouldShowRationale = false)

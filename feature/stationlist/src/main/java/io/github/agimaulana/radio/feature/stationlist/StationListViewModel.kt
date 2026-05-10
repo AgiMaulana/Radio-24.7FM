@@ -253,6 +253,15 @@ class StationListViewModel @Inject constructor(
                 stationName = station.name
             )
 
+            _uiState.update {
+                it.copy(
+                    selectedStation = station.copy(
+                        isBuffering = true,
+                        isPlaying = false
+                    )
+                )
+            }
+
             val main = _uiState.value.stations
             val startIndex = main.indexOfFirst { it.serverUuid == station.serverUuid }
 
