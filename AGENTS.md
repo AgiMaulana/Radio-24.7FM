@@ -63,7 +63,7 @@ Detekt — always append: --console=plain 2>&1 | grep -E '(detekt|e:|w:|error:|w
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **247FM**. Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **247FM** (1748 symbols, 4049 relationships, 140 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
