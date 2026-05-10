@@ -387,6 +387,10 @@ class StationListViewModel @Inject constructor(
 
         fetchJob?.cancel()
         fetchJob = viewModelScope.launch {
+            val browser = radioBrowser ?: run {
+                _uiState.update { it.copy(isStationsLoading = false) }
+                return@launch
+            }
             _uiState.update { it.copy(isStationsLoading = true) }
             try {
                 val nextPage = _uiState.value.currentPage + 1
@@ -394,7 +398,7 @@ class StationListViewModel @Inject constructor(
                 val searchName = _uiState.value.filterStationName
                 val location = _uiState.value.currentPosition
                 val pinnedUuids = _uiState.value.pinnedStations.map { it.serverUuid }.toSet()
-                val fetchedStations = radioBrowser?.getStations(
+                val fetchedStations = browser.getStations(
                     page = browserPage,
                     pageSize = PAGE_SIZE,
                     searchName = searchName,
