@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -71,7 +71,12 @@ internal fun PinnedStationRow(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            items(pinnedStations, key = { it.serverUuid.ifEmpty { "pinned_${it.name}_${it.streamUrl}" } }) { station ->
+            itemsIndexed(
+                items = pinnedStations,
+                key = { index, station -> 
+                    station.serverUuid.ifEmpty { "pinned_${station.name}_${station.streamUrl}_$index" } 
+                }
+            ) { _, station ->
                 PinnedStationChip(
                     station = station,
                     onClick = { onStationClick(station) },

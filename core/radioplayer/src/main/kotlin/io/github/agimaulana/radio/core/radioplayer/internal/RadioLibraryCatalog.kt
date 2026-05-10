@@ -185,6 +185,8 @@ internal class RadioLibraryCatalog(
                 MediaMetadata.Builder()
                     .setIsPlayable(streamUri.isNotBlank())
                     .setTitle(name)
+                    .setArtist(tags.joinToString(", "))
+                    .setAlbumTitle("Radio Stations")
                     .setSubtitle(tags.firstOrNull().orEmpty())
                     .setArtworkUri(imageUrl.takeIf { it.isNotBlank() }?.toUri())
                     .build()

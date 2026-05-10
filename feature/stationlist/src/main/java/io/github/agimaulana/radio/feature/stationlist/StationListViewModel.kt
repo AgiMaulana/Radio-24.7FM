@@ -98,7 +98,8 @@ class StationListViewModel @Inject constructor(
                         isPinnedStationsLoading = false,
                         pinnedStations = pinned.map {
                             it.toUiStateStation(pinnedUuids)
-                        }.toImmutableList(),
+                        }.distinctBy { s -> s.serverUuid.ifEmpty { "pinned_${s.name}_${s.streamUrl}" } }
+                        .toImmutableList(),
                         stations = state.stations.map {
                             it.copy(isPinned = it.serverUuid in pinnedUuids)
                         }.toPersistentList()
@@ -110,7 +111,7 @@ class StationListViewModel @Inject constructor(
 
     private suspend fun restoreSelectedStation() {
         val mediaId = radioPlayerController?.currentMediaId ?: return
-        if (mediaId.isNotEmpty()) {
+        if (mediaId.isNotBlank()) {
             val station = getRadioStationUseCase.execute(mediaId)
             val uiStation = station.toUiStateStation(emptySet())
                 .copy(isPlaying = radioPlayerController?.isPlaying == true)
@@ -212,6 +213,7 @@ class StationListViewModel @Inject constructor(
     }
 
     private fun handlePinStation(station: UiState.Station) {
+        if (station.serverUuid.isBlank()) return
         viewModelScope.launch {
             val domainStation = getRadioStationUseCase.execute(station.serverUuid) ?: return@launch
             try {
@@ -406,11 +408,14 @@ class StationListViewModel @Inject constructor(
                     val isCurrentlyPlaying = (radioPlayerController?.currentMediaId == it.stationUuid)
                         && (radioPlayerController?.isPlaying == true)
                     it.toUiStateStation(pinnedUuids).copy(isPlaying = isCurrentlyPlaying)
-                }.toPersistentList()
+                }
                 _uiState.update {
+                    val combinedStations = (it.stations + fetchedStations)
+                        .distinctBy { s -> s.serverUuid.ifEmpty { "key_${s.name}_${s.streamUrl}" } }
+                        .toPersistentList()
                     it.copy(
                         currentPage = nextPage,
-                        stations = (it.stations + fetchedStations).toPersistentList(),
+                        stations = combinedStations,
                         hasMorePages = fetchedStations.isNotEmpty() && fetchedStations.size >= PAGE_SIZE,
                         isStationsLoading = false
                     )
@@ -449,6 +454,7 @@ class StationListViewModel @Inject constructor(
                 )
             }
             is PlaybackEvent.MediaItemTransition -> playbackEvent.mediaId?.let { mediaId ->
+                if (mediaId.isBlank()) return@let
                 viewModelScope.launch {
                     val pinnedUuids = _uiState.value.pinnedStations.map { it.serverUuid }.toSet()
                     val s = getRadioStationUseCase.execute(mediaId)
@@ -494,12 +500,12 @@ class StationListViewModel @Inject constructor(
                     } else {
                         playerItem.toUiStateStation(pinnedUuids, currentMediaId, isPlaying)
                     }
-                }.toPersistentList()
+                }
             } else {
                 playerPlaylist.map { item ->
                     item.toUiStateStation(pinnedUuids, currentMediaId, isPlaying)
-                }.toPersistentList()
-            }
+                }
+            }.distinctBy { s -> s.serverUuid.ifEmpty { "key_${s.name}_${s.streamUrl}" } }.toPersistentList()
 
             state.copy(
                 stations = updatedStations,

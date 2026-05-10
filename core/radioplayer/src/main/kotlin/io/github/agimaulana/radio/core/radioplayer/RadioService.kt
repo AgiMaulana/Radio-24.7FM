@@ -6,6 +6,7 @@ import androidx.annotation.OptIn
 import androidx.media3.cast.CastPlayer
 import androidx.media3.cast.MediaItemConverter
 import androidx.media3.cast.RemoteCastPlayer
+import androidx.media3.cast.SessionAvailabilityListener
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -66,7 +67,19 @@ class RadioService : MediaLibraryService() {
 
     private fun initializePlayer() {
         val exoPlayer = createExoPlayer()
-        val castPlayerBuilder = CastPlayer.Builder(this).setLocalPlayer(exoPlayer)
+        val castPlayerBuilder = CastPlayer.Builder(this)
+            .setLocalPlayer(exoPlayer)
+            .setTransferCallback { sourcePlayer, targetPlayer ->
+                val items = mutableListOf<MediaItem>()
+                for (i in 0 until sourcePlayer.mediaItemCount) {
+                    items.add(sourcePlayer.getMediaItemAt(i))
+                }
+                val currentIndex = sourcePlayer.currentMediaItemIndex
+                val position = sourcePlayer.currentPosition
+                targetPlayer.setMediaItems(items, currentIndex, position)
+                targetPlayer.playWhenReady = sourcePlayer.playWhenReady
+                targetPlayer.prepare()
+            }
 
         try {
             val mediaItemConverter = object : MediaItemConverter {
@@ -83,6 +96,15 @@ class RadioService : MediaLibraryService() {
                     val remotePlayer = RemoteCastPlayer.Builder(this)
                         .setMediaItemConverter(mediaItemConverter)
                         .build()
+                    remotePlayer.setSessionAvailabilityListener(object : SessionAvailabilityListener {
+                        override fun onCastSessionAvailable() {
+                            player?.let { playlistPaginator?.updatePlayer(it) }
+                        }
+
+                        override fun onCastSessionUnavailable() {
+                            player?.let { playlistPaginator?.updatePlayer(it) }
+                        }
+                    })
                     val castPlayer = castPlayerBuilder.setRemotePlayer(remotePlayer)
                         .setLocalPlayer(exoPlayer)
                         .build()
@@ -167,17 +189,23 @@ class RadioService : MediaLibraryService() {
         val castMetadata = com.google.android.gms.cast.MediaMetadata(
             com.google.android.gms.cast.MediaMetadata.MEDIA_TYPE_MUSIC_TRACK
         ).apply {
-            putString(com.google.android.gms.cast.MediaMetadata.KEY_TITLE, metadata.title?.toString().orEmpty())
+            putString(com.google.android.gms.cast.MediaMetadata.KEY_TITLE, metadata.title?.toString() ?: "Station")
             putString(com.google.android.gms.cast.MediaMetadata.KEY_SUBTITLE, metadata.subtitle?.toString().orEmpty())
-            putString(com.google.android.gms.cast.MediaMetadata.KEY_ARTIST, metadata.artist?.toString().orEmpty())
-            metadata.albumTitle?.let {
-                putString(com.google.android.gms.cast.MediaMetadata.KEY_ALBUM_TITLE, it.toString())
-            }
+            putString(com.google.android.gms.cast.MediaMetadata.KEY_ARTIST, (metadata.artist ?: metadata.subtitle)?.toString().orEmpty())
+            putString(com.google.android.gms.cast.MediaMetadata.KEY_ALBUM_TITLE, metadata.albumTitle?.toString() ?: "Radio")
             metadata.artworkUri?.let { addImage(WebImage(it)) }
         }
 
-        val mediaInfo = MediaInfo.Builder(this.localConfiguration?.uri.toString())
+        val uriString = this.localConfiguration?.uri?.toString() ?: this.requestMetadata.mediaUri?.toString()
+        if (uriString.isNullOrEmpty() || uriString == "null") {
+            Timber.tag("RadioService").w("Cannot convert MediaItem to MediaQueueItem: No URI for %s", metadata.title)
+            // Return a minimal item to avoid crashing, though this item will likely fail to play
+            return MediaQueueItem.Builder(MediaInfo.Builder("invalid://").build()).build()
+        }
+
+        val mediaInfo = MediaInfo.Builder(uriString)
             .setStreamType(MediaInfo.STREAM_TYPE_LIVE)
+            .setStreamDuration(MediaInfo.UNKNOWN_DURATION)
             .setContentType(this.localConfiguration?.mimeType ?: "audio/mpeg")
             .setMetadata(castMetadata)
             .build()

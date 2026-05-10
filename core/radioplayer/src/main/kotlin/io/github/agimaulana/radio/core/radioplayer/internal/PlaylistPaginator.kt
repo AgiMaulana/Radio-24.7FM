@@ -26,17 +26,12 @@ internal class PlaylistPaginator(
     }
 
     fun updatePlayer(newPlayer: Player) {
+        if (player === newPlayer) return
         player.removeListener(playerListener)
         player = newPlayer
         player.addListener(playerListener)
-        reset()
+        // Don't reset everything, just check if we need to load more for the new player
         checkPagination()
-    }
-
-    fun reset() {
-        lastLoadedPage = -1
-        hasMorePages = true
-        isLoading = false
     }
 
     private fun checkPagination() {
