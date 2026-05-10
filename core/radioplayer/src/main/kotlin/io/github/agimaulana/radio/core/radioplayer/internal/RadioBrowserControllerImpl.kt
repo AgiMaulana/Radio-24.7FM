@@ -21,6 +21,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
@@ -28,6 +30,7 @@ internal class RadioBrowserControllerImpl(
     private val pinnedStationLimit: Int,
 ) : RadioBrowserController {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val refreshPinnedMutex = Mutex()
     private val _pinnedStations = MutableStateFlow<List<RadioMediaItem>>(emptyList())
     private var browser: MediaBrowser? = null
     private var pinnedSubscriptionJob: Job? = null
@@ -55,6 +58,7 @@ internal class RadioBrowserControllerImpl(
         pinnedSubscriptionJob?.cancel()
         pinnedSubscriptionJob = scope.launch {
             withContext(Dispatchers.Main.immediate) {
+                browser.addListener(browserListener)
                 browser.subscribe(RadioLibraryContract.PINNED_MEDIA_ID, null).await()
             }
 
@@ -63,15 +67,16 @@ internal class RadioBrowserControllerImpl(
     }
 
     private suspend fun refreshPinned() {
-        val currentPinned = _pinnedStations.value
+        refreshPinnedMutex.withLock {
+            runCatching {
+                getPinned()
+            }.onSuccess {
+                _pinnedStations.value = it
+            }.onFailure { error ->
+                if (error is CancellationException) throw error
 
-        _pinnedStations.value = runCatching {
-            getPinned()
-        }.getOrElse { error ->
-            if (error is CancellationException) throw error
-
-            Timber.tag(TAG).w(error, "Failed to refresh pinned stations")
-            currentPinned
+                Timber.tag(TAG).w(error, "Failed to refresh pinned stations")
+            }
         }
     }
 
@@ -134,6 +139,7 @@ internal class RadioBrowserControllerImpl(
 
     override fun release() {
         pinnedSubscriptionJob?.cancel()
+        browser?.removeListener(browserListener)
         browser?.unsubscribe(RadioLibraryContract.PINNED_MEDIA_ID)
         browser?.release()
         browser = null
