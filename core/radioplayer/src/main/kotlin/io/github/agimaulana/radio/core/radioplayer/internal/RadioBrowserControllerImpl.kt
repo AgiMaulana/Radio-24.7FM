@@ -10,7 +10,8 @@ import io.github.agimaulana.radio.core.radioplayer.RadioLibraryContract
 import io.github.agimaulana.radio.core.radioplayer.RadioMediaItem
 import io.github.agimaulana.radio.core.radioplayer.toRadioMediaItem
 import io.github.agimaulana.radio.domain.api.entity.GeoLatLong
-import kotlinx.coroutines.CancellationException
+import io.github.agimaulana.radio.domain.api.entity.RadioStation
+import io.github.agimaulana.radio.domain.api.usecase.GetPinnedStationsUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -21,19 +22,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import timber.log.Timber
 
 internal class RadioBrowserControllerImpl(
     private val pinnedStationLimit: Int,
+    private val getPinnedStationsUseCase: GetPinnedStationsUseCase,
 ) : RadioBrowserController {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val refreshPinnedMutex = Mutex()
     private val _pinnedStations = MutableStateFlow<List<RadioMediaItem>>(emptyList())
     private var browser: MediaBrowser? = null
-    private var pinnedSubscriptionJob: Job? = null
+    private var pinnedCollectionJob: Job? = null
 
     override val pinnedStations: Flow<List<RadioMediaItem>> =
         _pinnedStations.asStateFlow()
@@ -45,52 +43,41 @@ internal class RadioBrowserControllerImpl(
             itemCount: Int,
             params: MediaLibraryService.LibraryParams?
         ) {
-            if (parentId == RadioLibraryContract.PINNED_MEDIA_ID) {
-                scope.launch {
-                    refreshPinned()
-                }
-            }
         }
     }
 
     fun attach(browser: MediaBrowser) {
         this.browser = browser
-        pinnedSubscriptionJob?.cancel()
-        pinnedSubscriptionJob = scope.launch {
+        scope.launch {
             withContext(Dispatchers.Main.immediate) {
                 browser.subscribe(RadioLibraryContract.PINNED_MEDIA_ID, null).await()
             }
-
-            refreshPinned()
         }
+        observePinnedStations()
     }
 
-    private suspend fun refreshPinned() {
-        refreshPinnedMutex.withLock {
-            runCatching {
-                getPinned()
-            }.onSuccess {
-                _pinnedStations.value = it
-            }.onFailure { error ->
-                if (error is CancellationException) throw error
-
-                Timber.tag(TAG).w(error, "Failed to refresh pinned stations")
+    private fun observePinnedStations() {
+        pinnedCollectionJob?.cancel()
+        pinnedCollectionJob = scope.launch {
+            getPinnedStationsUseCase.execute().collect { stations ->
+                _pinnedStations.value = stations.map { it.toRadioMediaItem() }
             }
         }
     }
 
-    override suspend fun getPinned(): List<RadioMediaItem> {
-        val mediaBrowser = browser ?: return emptyList()
-        return withContext(Dispatchers.Main.immediate) {
-            val result = mediaBrowser.getChildren(
-                RadioLibraryContract.PINNED_MEDIA_ID,
-                0,
-                pinnedStationLimit,
-                null
-            ).await()
-            result.value.orEmpty().map { it.toRadioMediaItem() }
-        }
+    private fun RadioStation.toRadioMediaItem(): RadioMediaItem {
+        return RadioMediaItem(
+            mediaId = stationUuid,
+            streamUrl = resolvedUrl.ifEmpty { url },
+            radioMetadata = RadioMediaItem.RadioMetadata(
+                stationName = name,
+                genre = tags.firstOrNull().orEmpty(),
+                imageUrl = imageUrl
+            )
+        )
     }
+
+    override suspend fun getPinned(): List<RadioMediaItem> = _pinnedStations.value
 
     override suspend fun getStation(mediaId: String): RadioMediaItem? {
         val mediaBrowser = browser ?: return null
@@ -137,7 +124,7 @@ internal class RadioBrowserControllerImpl(
     }
 
     override fun release() {
-        pinnedSubscriptionJob?.cancel()
+        pinnedCollectionJob?.cancel()
         browser?.unsubscribe(RadioLibraryContract.PINNED_MEDIA_ID)
         browser?.release()
         browser = null
