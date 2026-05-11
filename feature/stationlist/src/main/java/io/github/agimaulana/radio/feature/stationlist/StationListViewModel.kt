@@ -47,7 +47,7 @@ class StationListViewModel @Inject constructor(
     private val stationListTracker: StationListTracker,
     private val locationProvider: LocationProvider,
     @ApplicationContext private val context: Context,
-    ) : ViewModel() {
+) : ViewModel() {
     private val _uiState = MutableStateFlow(UiState())
     val uiState = _uiState.asStateFlow()
     private val _uiEvent = MutableSharedFlow<UiEvent>()
