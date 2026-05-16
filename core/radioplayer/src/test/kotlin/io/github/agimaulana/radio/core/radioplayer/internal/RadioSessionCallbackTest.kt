@@ -1,10 +1,14 @@
 package io.github.agimaulana.radio.core.radioplayer.internal
 
+import android.os.Bundle
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
+import io.github.agimaulana.radio.core.radioplayer.PlaybackExtras
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
+import io.github.agimaulana.radio.domain.api.repository.CatalogState
 import io.github.agimaulana.radio.domain.api.repository.CatalogStateRepository
 import io.github.agimaulana.radio.domain.api.usecase.GetPinnedStationsUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationUseCase
@@ -62,6 +66,49 @@ class RadioSessionCallbackTest {
         assertEquals(1500L, result.startPositionMs)
     }
 
+    @Test
+    fun onSetMediaItems_usesContextFromExtrasForSearchPlaylist() = runTest {
+        val searchStation1 = radioStation(
+            stationUuid = "search-1",
+            name = "Jazz Station",
+            tags = listOf("jazz"),
+            imageUrl = "https://example.com/jazz1.png",
+            url = "https://example.com/jazz1",
+            resolvedUrl = "https://stream.example.com/jazz1"
+        )
+        val searchStation2 = radioStation(
+            stationUuid = "search-2",
+            name = "Jazz Station Two",
+            tags = listOf("jazz"),
+            imageUrl = "https://example.com/jazz2.png",
+            url = "https://example.com/jazz2",
+            resolvedUrl = "https://stream.example.com/jazz2"
+        )
+        val callback = callbackForSearchStations(listOf(searchStation1, searchStation2))
+        val controller = controller()
+        val session = session()
+
+        val extras = Bundle().apply {
+            putString(PlaybackExtras.KEY_CONTEXT_TYPE, "SEARCH")
+            putString(PlaybackExtras.KEY_CONTEXT_QUERY, "jazz")
+        }
+        val mediaItem = MediaItem.Builder()
+            .setMediaId("search-1")
+            .setMediaMetadata(MediaMetadata.Builder().setExtras(extras).build())
+            .build()
+
+        val result = callback.onSetMediaItems(
+            mediaSession = session,
+            controller = controller,
+            mediaItems = listOf(mediaItem),
+            startIndex = 0,
+            startPositionMs = 0L
+        ).get()
+
+        assertEquals(2, result.mediaItems.size)
+        assertEquals("search-1", result.mediaItems[0].mediaId)
+        assertEquals(0, result.startIndex)
+    }
 
     @Test
     fun onPlaybackResumption_returnsFirstCatalogItemWhenNothingIsPlaying() = runTest {
@@ -145,6 +192,29 @@ class RadioSessionCallbackTest {
         every { getPinnedStationsUseCase.execute() } returns kotlinx.coroutines.flow.flowOf(emptyList())
         coEvery { useCase.execute(page = 1, searchName = null, location = null) } returns stations
         coEvery { useCase.execute(page = 2, searchName = null, location = null) } returns emptyList()
+        coEvery { getRadioStationUseCase.execute(any()) } answers {
+            val id = firstArg<String>()
+            stations.first { it.stationUuid == id }
+        }
+        return RadioSessionCallback(
+            RadioLibraryCatalog(
+                useCase,
+                getPinnedStationsUseCase,
+                getRadioStationUseCase,
+                catalogStateRepository
+            )
+        )
+    }
+
+    private fun callbackForSearchStations(stations: List<RadioStation>): RadioSessionCallback {
+        val useCase = mockk<GetRadioStationsUseCase>()
+        val getPinnedStationsUseCase = mockk<GetPinnedStationsUseCase>()
+        val getRadioStationUseCase = mockk<GetRadioStationUseCase>()
+        val catalogStateRepository = mockk<CatalogStateRepository>(relaxed = true)
+        coEvery { catalogStateRepository.load() } returns CatalogState(source = CatalogState.Source.SEARCH, query = "jazz")
+        every { getPinnedStationsUseCase.execute() } returns kotlinx.coroutines.flow.flowOf(emptyList())
+        coEvery { useCase.execute(page = 1, searchName = "jazz", location = null) } returns stations
+        coEvery { useCase.execute(page = 2, searchName = "jazz", location = null) } returns emptyList()
         coEvery { getRadioStationUseCase.execute(any()) } answers {
             val id = firstArg<String>()
             stations.first { it.stationUuid == id }

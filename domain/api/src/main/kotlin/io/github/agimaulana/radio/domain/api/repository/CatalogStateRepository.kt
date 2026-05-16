@@ -13,6 +13,7 @@ data class CatalogState(
         ALL,
         SEARCH,
         LOCATION,
+        PINNED,
     }
 
     fun toLocation(): GeoLatLong? {

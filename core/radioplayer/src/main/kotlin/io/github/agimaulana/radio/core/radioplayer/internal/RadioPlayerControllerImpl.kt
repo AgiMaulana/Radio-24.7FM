@@ -47,7 +47,15 @@ internal class RadioPlayerControllerImpl(
         startIndex: Int,
         context: RadioPlayerController.PlaybackContext
     ) {
-        val mediaItems = items.map { it.toMediaItem(context.type.name, context.query, null) }
+        val mediaItems = items.map {
+            it.toMediaItem(
+                contextType = context.type.name,
+                contextQuery = context.query,
+                page = null,
+                contextLat = context.location?.latitude,
+                contextLon = context.location?.longitude,
+            )
+        }
         mediaController.setMediaItems(mediaItems, startIndex, 0L)
     }
 
@@ -55,7 +63,15 @@ internal class RadioPlayerControllerImpl(
         items: List<RadioMediaItem>,
         context: RadioPlayerController.PlaybackContext
     ) {
-        val mediaItems = items.map { it.toMediaItem(context.type.name, context.query, null) }
+        val mediaItems = items.map {
+            it.toMediaItem(
+                contextType = context.type.name,
+                contextQuery = context.query,
+                page = null,
+                contextLat = context.location?.latitude,
+                contextLon = context.location?.longitude,
+            )
+        }
         mediaController.addMediaItems(mediaItems)
     }
 
@@ -68,7 +84,9 @@ internal class RadioPlayerControllerImpl(
             it.toMediaItem(
                 contextType = context.type.name,
                 contextQuery = context.query,
-                page = null
+                page = null,
+                contextLat = context.location?.latitude,
+                contextLon = context.location?.longitude,
             )
         }
         mediaController.addMediaItems(index, mediaItems)

@@ -17,24 +17,41 @@ data class RadioMediaItem(
     )
 }
 
-private const val EXTRA_STREAM_URL = "radio_stream_url"
+object PlaybackExtras {
+    const val KEY_STREAM_URL = "radio_stream_url"
+    const val KEY_CONTEXT_TYPE = "playback_context_type"
+    const val KEY_CONTEXT_QUERY = "playback_context_query"
+    const val KEY_CONTEXT_PAGE = "playback_context_page"
+    const val KEY_CONTEXT_LAT = "playback_context_lat"
+    const val KEY_CONTEXT_LON = "playback_context_lon"
+
+    const val TYPE_PINNED = "PINNED"
+    const val TYPE_SEARCH = "SEARCH"
+    const val TYPE_ALL = "ALL"
+    const val TYPE_LOCATION = "LOCATION"
+}
+
+private const val EXTRA_STREAM_URL = PlaybackExtras.KEY_STREAM_URL
 
 internal fun RadioMediaItem.toMediaItem(
     contextType: String? = null,
     contextQuery: String? = null,
-    page: Int? = null
+    page: Int? = null,
+    contextLat: Double? = null,
+    contextLon: Double? = null,
 ): MediaItem {
     val metadataBuilder = MediaMetadata.Builder()
         .setTitle(radioMetadata.stationName)
         .setSubtitle(radioMetadata.genre)
         .setArtworkUri(radioMetadata.imageUrl.toUri())
 
-    // Attach minimal playback context so the service can restore context after process death
     val extras = android.os.Bundle()
     extras.putString(EXTRA_STREAM_URL, streamUrl)
-    contextType?.let { extras.putString("playback_context_type", it) }
-    contextQuery?.let { extras.putString("playback_context_query", it) }
-    page?.let { extras.putInt("playback_context_page", it) }
+    contextType?.let { extras.putString(PlaybackExtras.KEY_CONTEXT_TYPE, it) }
+    contextQuery?.let { extras.putString(PlaybackExtras.KEY_CONTEXT_QUERY, it) }
+    page?.let { extras.putInt(PlaybackExtras.KEY_CONTEXT_PAGE, it) }
+    contextLat?.let { extras.putDouble(PlaybackExtras.KEY_CONTEXT_LAT, it) }
+    contextLon?.let { extras.putDouble(PlaybackExtras.KEY_CONTEXT_LON, it) }
 
     if (!extras.isEmpty) {
         metadataBuilder.setExtras(extras)
