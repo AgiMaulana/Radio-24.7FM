@@ -38,6 +38,22 @@ class DataStoreCatalogStateRepositoryTest {
     }
 
     @Test
+    fun saveAndLoad_roundTripsPinnedSource() = runTest {
+        val repository = repository()
+        val state = CatalogState(
+            query = null,
+            locationLat = null,
+            locationLon = null,
+            page = 0,
+            source = CatalogState.Source.PINNED,
+        )
+
+        repository.save(state)
+
+        assertEquals(state, repository.load())
+    }
+
+    @Test
     fun loadFallsBackToAllForInvalidSource() = runTest {
         val dataStore = PreferenceDataStoreFactory.create(
             scope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
