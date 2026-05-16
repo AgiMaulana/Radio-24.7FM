@@ -1,14 +1,11 @@
 package io.github.agimaulana.radio.core.design
 
-import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -38,12 +35,10 @@ fun GlassSlidingPlayerLayout(
 ) {
     val configuration = LocalConfiguration.current
     val screenHeight = with(LocalDensity.current) { configuration.screenHeightDp.dp.toPx() }
-    val peekHeightPx = with(LocalDensity.current) { peekHeight.toPx() }
-    val maxOffset = screenHeight - peekHeightPx
     val scope = rememberCoroutineScope()
 
     val progress by remember {
-        derivedStateOf { ((maxOffset - state.offsetY.value) / maxOffset).coerceIn(0f, 1f) }
+        derivedStateOf { ((state.maxOffset - state.offsetY.value) / state.maxOffset).coerceIn(0f, 1f) }
     }
 
     Box(modifier.fillMaxSize()) {
@@ -61,7 +56,7 @@ fun GlassSlidingPlayerLayout(
                 .draggable(
                     orientation = Orientation.Vertical,
                     state = rememberDraggableState { delta ->
-                        scope.launch { state.offsetY.snapTo((state.offsetY.value + delta).coerceIn(0f, maxOffset)) }
+                        scope.launch { state.offsetY.snapTo((state.offsetY.value + delta).coerceIn(0f, state.maxOffset)) }
                     },
                     onDragStopped = { velocity ->
                         if (velocity < -500f || state.offsetY.value < screenHeight / 2) {

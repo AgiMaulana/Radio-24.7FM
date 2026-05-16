@@ -1,6 +1,5 @@
 package io.github.agimaulana.radio.core.design
 
-import android.os.Build
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -9,21 +8,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 class GlassPlayerState(
     initialOffset: Float,
     private val minOffset: Float,
-    private val maxOffset: Float,
+    val maxOffset: Float,
     private val scope: CoroutineScope
 ) {
     val offsetY = Animatable(initialOffset)
 
     val isExpanded: Boolean
-        get() = offsetY.value < (maxOffset / 2) // True if dragged more than halfway up
+        get() = offsetY.value < (maxOffset / 2)
 
     val isFullyCollapsed: Boolean
         get() = offsetY.value >= maxOffset
@@ -49,18 +51,16 @@ fun rememberGlassPlayerState(peekHeight: Dp): GlassPlayerState {
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
-    
+    val view = LocalView.current
+
     val screenHeight = with(density) { configuration.screenHeightDp.dp.toPx() }
     val peekHeightPx = with(density) { peekHeight.toPx() }
-    
-    val minOffset = 0f
-    val isSupportEdge2EdgeByDefault = Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM // API 35+
 
-    return if (isSupportEdge2EdgeByDefault) {
-        val maxOffset = screenHeight - peekHeightPx
-        remember { GlassPlayerState(maxOffset, minOffset, maxOffset, scope) }
-    } else {
-        val maxOffset = screenHeight - peekHeightPx + with(density) { 32.dp.toPx()  }
-        remember { GlassPlayerState(maxOffset, minOffset, maxOffset, scope) }
-    }
+    val navBarHeight = ViewCompat.getRootWindowInsets(view)
+        ?.getInsets(WindowInsetsCompat.Type.navigationBars())
+        ?.bottom ?: 0
+
+    val maxOffset = screenHeight - navBarHeight - peekHeightPx
+
+    return remember { GlassPlayerState(maxOffset, 0f, maxOffset, scope) }
 }
