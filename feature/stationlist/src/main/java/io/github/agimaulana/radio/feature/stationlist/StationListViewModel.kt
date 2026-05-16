@@ -503,14 +503,18 @@ class StationListViewModel @Inject constructor(
     }
 
     private fun UiState.toPlaybackContext(): RadioPlayerController.PlaybackContext {
-        val contextType = if (!filterStationName.isNullOrEmpty()) {
-            RadioPlayerController.PlaybackContext.Type.SEARCH
-        } else {
-            RadioPlayerController.PlaybackContext.Type.DEFAULT
+        val location = currentPosition?.let {
+            RadioPlayerController.PlaybackContext.Location(it.latitude, it.longitude)
+        }
+        val contextType = when {
+            currentPosition != null -> RadioPlayerController.PlaybackContext.Type.LOCATION
+            !filterStationName.isNullOrEmpty() -> RadioPlayerController.PlaybackContext.Type.SEARCH
+            else -> RadioPlayerController.PlaybackContext.Type.ALL
         }
         return RadioPlayerController.PlaybackContext(
             type = contextType,
-            query = filterStationName
+            query = filterStationName,
+            location = location
         )
     }
 

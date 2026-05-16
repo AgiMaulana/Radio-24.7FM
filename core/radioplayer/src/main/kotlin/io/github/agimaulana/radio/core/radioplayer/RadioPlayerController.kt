@@ -1,6 +1,6 @@
 package io.github.agimaulana.radio.core.radioplayer
 
-import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController.PlaybackContext.Type.DEFAULT
+import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController.PlaybackContext.Type.ALL
 import kotlinx.coroutines.flow.Flow
 
 interface RadioPlayerController {
@@ -15,24 +15,24 @@ interface RadioPlayerController {
     fun startPlayback(
         items: List<RadioMediaItem>,
         startIndex: Int = 0,
-        context: PlaybackContext = PlaybackContext(DEFAULT, null)
+        context: PlaybackContext = PlaybackContext(ALL, null, null)
     )
 
     fun setMediaItems(
         items: List<RadioMediaItem>,
         startIndex: Int = 0,
-        context: PlaybackContext = PlaybackContext(DEFAULT, null)
+        context: PlaybackContext = PlaybackContext(ALL, null, null)
     )
 
     fun addMediaItems(
         items: List<RadioMediaItem>,
-        context: PlaybackContext = PlaybackContext(DEFAULT, null)
+        context: PlaybackContext = PlaybackContext(ALL, null, null)
     )
 
     fun addMediaItems(
         index: Int,
         items: List<RadioMediaItem>,
-        context: PlaybackContext = PlaybackContext(DEFAULT, null)
+        context: PlaybackContext = PlaybackContext(ALL, null, null)
     )
 
     fun getPlaylist(): List<RadioMediaItem>
@@ -48,8 +48,10 @@ interface RadioPlayerController {
 
     data class PlaybackContext(
         val type: Type,
-        val query: String? = null
+        val query: String? = null,
+        val location: Location? = null
     ) {
-        enum class Type { DEFAULT, SEARCH, PINNED }
+        data class Location(val latitude: Double, val longitude: Double)
+        enum class Type { ALL, PINNED, SEARCH, LOCATION }
     }
 }

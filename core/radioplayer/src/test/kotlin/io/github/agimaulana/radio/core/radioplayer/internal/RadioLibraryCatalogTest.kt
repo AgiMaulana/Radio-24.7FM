@@ -1,5 +1,6 @@
 package io.github.agimaulana.radio.core.radioplayer.internal
 
+import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
 import io.github.agimaulana.radio.domain.api.repository.CatalogState
 import io.github.agimaulana.radio.domain.api.repository.CatalogStateRepository
@@ -207,6 +208,69 @@ class RadioLibraryCatalogTest {
                     it.locationLon == location.longitude &&
                     it.page == 0 &&
                     it.source == CatalogState.Source.LOCATION
+            })
+        }
+    }
+
+    @Test
+    fun getPlaylistForContext_searchContext_loadsSearchPlaylist() = runTest {
+        coEvery { catalogStateRepository.load() } returns null
+        coEvery {
+            getRadioStationsUseCase.execute(page = 1, searchName = "jazz", location = null)
+        } returns buildStations(1, 5)
+        coEvery {
+            getRadioStationsUseCase.execute(page = 2, searchName = "jazz", location = null)
+        } returns emptyList()
+
+        val catalog = RadioLibraryCatalog(
+            getRadioStationsUseCase,
+            getPinnedStationsUseCase,
+            getRadioStationUseCase,
+            catalogStateRepository
+        )
+
+        val context = RadioPlayerController.PlaybackContext(
+            type = RadioPlayerController.PlaybackContext.Type.SEARCH,
+            query = "jazz"
+        )
+        val playlist = catalog.getPlaylistForContext(context)
+
+        assertEquals(5, playlist.size)
+        coVerify {
+            catalogStateRepository.save(match {
+                it.query == "jazz" && it.source == CatalogState.Source.SEARCH
+            })
+        }
+    }
+
+    @Test
+    fun getPlaylistForContext_locationContext_loadsLocationPlaylist() = runTest {
+        coEvery { catalogStateRepository.load() } returns null
+        val location = io.github.agimaulana.radio.domain.api.entity.GeoLatLong(-6.2, 106.8)
+        coEvery {
+            getRadioStationsUseCase.execute(page = 1, searchName = null, location = location)
+        } returns buildStations(1, 3)
+        coEvery {
+            getRadioStationsUseCase.execute(page = 2, searchName = null, location = location)
+        } returns emptyList()
+
+        val catalog = RadioLibraryCatalog(
+            getRadioStationsUseCase,
+            getPinnedStationsUseCase,
+            getRadioStationUseCase,
+            catalogStateRepository
+        )
+
+        val context = RadioPlayerController.PlaybackContext(
+            type = RadioPlayerController.PlaybackContext.Type.LOCATION,
+            location = RadioPlayerController.PlaybackContext.Location(-6.2, 106.8)
+        )
+        val playlist = catalog.getPlaylistForContext(context)
+
+        assertEquals(3, playlist.size)
+        coVerify {
+            catalogStateRepository.save(match {
+                it.locationLat == -6.2 && it.locationLon == 106.8 && it.source == CatalogState.Source.LOCATION
             })
         }
     }

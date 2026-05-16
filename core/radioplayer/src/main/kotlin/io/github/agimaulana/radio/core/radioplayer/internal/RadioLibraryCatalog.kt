@@ -3,6 +3,7 @@ package io.github.agimaulana.radio.core.radioplayer.internal
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
 import io.github.agimaulana.radio.domain.api.entity.GeoLatLong
 import io.github.agimaulana.radio.domain.api.entity.RadioStation
 import io.github.agimaulana.radio.domain.api.repository.CatalogState
@@ -10,9 +11,9 @@ import io.github.agimaulana.radio.domain.api.repository.CatalogStateRepository
 import io.github.agimaulana.radio.domain.api.usecase.GetPinnedStationsUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationUseCase
 import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.flow.first
 import timber.log.Timber
 
 internal class RadioLibraryCatalog(
@@ -147,6 +148,18 @@ internal class RadioLibraryCatalog(
         return cachedChildren ?: cacheMutex.withLock {
             cachedChildren ?: loadInitialChildren().also { cachedChildren = it }
         }
+    }
+
+    suspend fun getPlaylistForContext(context: RadioPlayerController.PlaybackContext): List<MediaItem> {
+        val source = when (context.type) {
+            RadioPlayerController.PlaybackContext.Type.PINNED -> CatalogState.Source.PINNED
+            RadioPlayerController.PlaybackContext.Type.SEARCH -> CatalogState.Source.SEARCH
+            RadioPlayerController.PlaybackContext.Type.LOCATION -> CatalogState.Source.LOCATION
+            RadioPlayerController.PlaybackContext.Type.ALL -> CatalogState.Source.ALL
+        }
+        val location = context.location?.let { GeoLatLong(it.latitude, it.longitude) }
+        loadInitial(query = context.query, location = location, source = source)
+        return if (source == CatalogState.Source.PINNED) getPinned() else getPlaylist()
     }
 
     suspend fun restore() {
@@ -290,6 +303,8 @@ internal class RadioLibraryCatalog(
                 search = null,
                 location = state.toLocation()
             )
+
+            CatalogState.Source.PINNED -> emptyList()
         }
     }
 

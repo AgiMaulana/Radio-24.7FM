@@ -14,7 +14,9 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
+import io.github.agimaulana.radio.core.radioplayer.PlaybackExtras
 import io.github.agimaulana.radio.core.radioplayer.RadioLibraryContract
+import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
 import io.github.agimaulana.radio.domain.api.entity.GeoLatLong
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -64,14 +66,18 @@ internal class RadioSessionCallback(
         )
         return callbackScope.future {
             val firstItem = mediaItems.firstOrNull()
+            val context = firstItem?.mediaMetadata?.extras?.let { extractContext(it) }
+
             val (playlist, resolvedIndex) = if (firstItem != null && mediaItems.size == 1) {
-                val catalogPlaylist = radioLibraryCatalog.getPlaylist()
+                val catalogPlaylist = if (context != null) {
+                    radioLibraryCatalog.getPlaylistForContext(context)
+                } else {
+                    radioLibraryCatalog.getPlaylist()
+                }
                 val index = catalogPlaylist.indexOfFirst { it.mediaId == firstItem.mediaId }
                 if (index >= 0) {
                     catalogPlaylist to index
                 } else {
-                    // Item not in catalog (could be a direct ID from an external source)
-                    // Try to find it and build a playlist around it or just use it as is
                     val resolvedItem = radioLibraryCatalog.findChild(firstItem.mediaId) ?: firstItem
                     listOf(resolvedItem) to 0
                 }
@@ -139,8 +145,13 @@ internal class RadioSessionCallback(
         )
 
         return callbackScope.future {
-            val playlist = radioLibraryCatalog.getPlaylist()
             val currentMediaItem = mediaSession.player.currentMediaItem
+            val context = currentMediaItem?.mediaMetadata?.extras?.let { extractContext(it) }
+            val playlist = if (context != null) {
+                radioLibraryCatalog.getPlaylistForContext(context)
+            } else {
+                radioLibraryCatalog.getPlaylist()
+            }
             val startPositionMs = if (isForPlayback) mediaSession.player.currentPosition else C.TIME_UNSET
 
             val (items, index) = if (currentMediaItem != null) {
@@ -252,6 +263,20 @@ internal class RadioSessionCallback(
 
     fun close() {
         callbackScope.cancel()
+    }
+
+    private fun extractContext(extras: Bundle): RadioPlayerController.PlaybackContext? {
+        val typeStr = extras.getString(PlaybackExtras.KEY_CONTEXT_TYPE) ?: return null
+        val type = runCatching { RadioPlayerController.PlaybackContext.Type.valueOf(typeStr) }.getOrNull() ?: return null
+        val query = extras.getString(PlaybackExtras.KEY_CONTEXT_QUERY)
+        val lat = extras.getDouble(PlaybackExtras.KEY_CONTEXT_LAT, Double.NaN).takeIf { !it.isNaN() }
+        val lon = extras.getDouble(PlaybackExtras.KEY_CONTEXT_LON, Double.NaN).takeIf { !it.isNaN() }
+        val location = if (lat != null && lon != null) {
+            RadioPlayerController.PlaybackContext.Location(lat, lon)
+        } else {
+            null
+        }
+        return RadioPlayerController.PlaybackContext(type, query, location)
     }
 
     private companion object {
