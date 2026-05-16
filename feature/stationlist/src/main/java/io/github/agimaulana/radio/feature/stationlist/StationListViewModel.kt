@@ -143,7 +143,6 @@ class StationListViewModel @Inject constructor(
                 stationListTracker.trackPlaybackResumed(stationToPlay.serverUuid)
 
                 if (radioPlayerController?.currentMediaId == stationToPlay.serverUuid) {
-                    // already loaded; just resume
                     radioPlayerController?.play()
                 } else {
                     val main = _uiState.value.stations
@@ -162,13 +161,29 @@ class StationListViewModel @Inject constructor(
                             )
                         }
                     } else {
-                        // Fallback to single item (pinned or not in list) —
-                        // use startPlayback for metadata
-                        radioPlayerController?.startPlayback(
-                            items = listOf(stationToPlay.toRadioMediaItem()),
-                            startIndex = 0,
-                            context = context
-                        )
+                        val isPinnedStation = _uiState.value.pinnedStations.any {
+                            it.serverUuid == stationToPlay.serverUuid
+                        }
+                        if (isPinnedStation) {
+                            viewModelScope.launch {
+                                val pinnedItems = radioBrowser?.getPinned().orEmpty()
+                                val pinnedIndex = pinnedItems.indexOfFirst {
+                                    it.mediaId == stationToPlay.serverUuid
+                                }
+                                val pinnedContext = _uiState.value.toPlaybackContext(isPinned = true)
+                                radioPlayerController?.startPlayback(
+                                    items = pinnedItems,
+                                    startIndex = maxOf(pinnedIndex, 0),
+                                    context = pinnedContext
+                                )
+                            }
+                        } else {
+                            radioPlayerController?.startPlayback(
+                                items = listOf(stationToPlay.toRadioMediaItem()),
+                                startIndex = 0,
+                                context = context
+                            )
+                        }
                     }
                 }
             }
@@ -276,13 +291,29 @@ class StationListViewModel @Inject constructor(
                     )
                 }
             } else {
-                // Fallback: station not found in in-memory list (e.g., pinned or stale).
-                // Play single item via startPlayback for metadata.
-                radioPlayerController?.startPlayback(
-                    items = listOf(station.toRadioMediaItem()),
-                    startIndex = 0,
-                    context = context
-                )
+                val isPinnedStation = _uiState.value.pinnedStations.any {
+                    it.serverUuid == station.serverUuid
+                }
+                if (isPinnedStation) {
+                    viewModelScope.launch {
+                        val pinnedItems = radioBrowser?.getPinned().orEmpty()
+                        val pinnedIndex = pinnedItems.indexOfFirst {
+                            it.mediaId == station.serverUuid
+                        }
+                        val pinnedContext = _uiState.value.toPlaybackContext(isPinned = true)
+                        radioPlayerController?.startPlayback(
+                            items = pinnedItems,
+                            startIndex = maxOf(pinnedIndex, 0),
+                            context = pinnedContext
+                        )
+                    }
+                } else {
+                    radioPlayerController?.startPlayback(
+                        items = listOf(station.toRadioMediaItem()),
+                        startIndex = 0,
+                        context = context
+                    )
+                }
             }
 
             updatePlayerColors(station.imageUrl)
@@ -502,11 +533,12 @@ class StationListViewModel @Inject constructor(
         }
     }
 
-    private fun UiState.toPlaybackContext(): RadioPlayerController.PlaybackContext {
+    private fun UiState.toPlaybackContext(isPinned: Boolean = false): RadioPlayerController.PlaybackContext {
         val location = currentPosition?.let {
             RadioPlayerController.PlaybackContext.Location(it.latitude, it.longitude)
         }
         val contextType = when {
+            isPinned -> RadioPlayerController.PlaybackContext.Type.PINNED
             currentPosition != null -> RadioPlayerController.PlaybackContext.Type.LOCATION
             !filterStationName.isNullOrEmpty() -> RadioPlayerController.PlaybackContext.Type.SEARCH
             else -> RadioPlayerController.PlaybackContext.Type.ALL

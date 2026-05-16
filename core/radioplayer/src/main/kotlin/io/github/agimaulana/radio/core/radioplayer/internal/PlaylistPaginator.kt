@@ -2,6 +2,7 @@ package io.github.agimaulana.radio.core.radioplayer.internal
 
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import io.github.agimaulana.radio.core.radioplayer.PlaybackExtras
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -31,6 +32,13 @@ internal class PlaylistPaginator(
 
     private fun checkPagination() {
         if (isLoading || !hasMorePages) return
+
+        val currentMediaItem = player.currentMediaItem
+        val contextType = currentMediaItem?.mediaMetadata?.extras?.getString(PlaybackExtras.KEY_CONTEXT_TYPE)
+        if (contextType == PlaybackExtras.TYPE_PINNED) {
+            hasMorePages = false
+            return
+        }
 
         val currentIndex = player.currentMediaItemIndex
         val playlistSize = player.mediaItemCount

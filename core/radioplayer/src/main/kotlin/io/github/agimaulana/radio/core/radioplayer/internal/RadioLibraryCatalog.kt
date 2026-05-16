@@ -105,6 +105,7 @@ internal class RadioLibraryCatalog(
 
     suspend fun loadChildren(page: Int, pageSize: Int): List<MediaItem> {
         restore()
+        if (currentState().source == CatalogState.Source.PINNED) return emptyList()
         updateState { it.copy(page = page) }
 
         val startIndex = page * pageSize

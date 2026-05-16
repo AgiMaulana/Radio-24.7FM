@@ -275,6 +275,63 @@ class RadioLibraryCatalogTest {
         }
     }
 
+    @Test
+    fun loadChildren_returnsEmptyForPinnedSource() = runTest {
+        coEvery { catalogStateRepository.load() } returns CatalogState(
+            source = CatalogState.Source.PINNED,
+            page = 0
+        )
+
+        val catalog = RadioLibraryCatalog(
+            getRadioStationsUseCase,
+            getPinnedStationsUseCase,
+            getRadioStationUseCase,
+            catalogStateRepository
+        )
+
+        val result = catalog.loadChildren(page = 0, pageSize = 10)
+
+        assertTrue(result.isEmpty())
+        coVerify(exactly = 0) { getRadioStationsUseCase.execute(any(), any(), any()) }
+    }
+
+    @Test
+    fun getPinned_returnsPinnedStationsAsMediaItems() = runTest {
+        every { getPinnedStationsUseCase.execute() } returns kotlinx.coroutines.flow.flowOf(
+            listOf(
+                RadioStation(
+                    stationUuid = "pinned-a",
+                    name = "Pinned A",
+                    tags = listOf("News"),
+                    imageUrl = "https://example.com/a.png",
+                    url = "https://example.com/stream-a",
+                    resolvedUrl = "https://example.com/resolved-a"
+                ),
+                RadioStation(
+                    stationUuid = "pinned-b",
+                    name = "Pinned B",
+                    tags = listOf("Music"),
+                    imageUrl = "https://example.com/b.png",
+                    url = "https://example.com/stream-b",
+                    resolvedUrl = "https://example.com/resolved-b"
+                )
+            )
+        )
+
+        val catalog = RadioLibraryCatalog(
+            getRadioStationsUseCase,
+            getPinnedStationsUseCase,
+            getRadioStationUseCase,
+            catalogStateRepository
+        )
+
+        val result = catalog.getPinned()
+
+        assertEquals(2, result.size)
+        assertEquals("pinned-a", result[0].mediaId)
+        assertEquals("pinned-b", result[1].mediaId)
+    }
+
     private fun buildStations(startIndex: Int, count: Int): List<RadioStation> {
         return (0 until count).map { offset ->
             val index = startIndex + offset
