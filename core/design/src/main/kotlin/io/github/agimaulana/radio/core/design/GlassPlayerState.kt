@@ -62,5 +62,5 @@ fun rememberGlassPlayerState(peekHeight: Dp): GlassPlayerState {
 
     val maxOffset = screenHeight - navBarHeight - peekHeightPx
 
-    return remember { GlassPlayerState(maxOffset, 0f, maxOffset, scope) }
+    return remember(maxOffset) { GlassPlayerState(maxOffset, 0f, maxOffset, scope) }
 }

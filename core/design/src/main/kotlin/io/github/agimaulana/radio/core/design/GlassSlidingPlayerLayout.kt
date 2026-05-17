@@ -1,13 +1,11 @@
 package io.github.agimaulana.radio.core.design
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -52,7 +50,6 @@ fun GlassSlidingPlayerLayout(
         Box(
             modifier = Modifier
                 .offset { IntOffset(0, state.offsetY.value.roundToInt()) }
-                .background(MaterialTheme.colorScheme.background.copy(alpha = 0.6f))
                 .draggable(
                     orientation = Orientation.Vertical,
                     state = rememberDraggableState { delta ->
