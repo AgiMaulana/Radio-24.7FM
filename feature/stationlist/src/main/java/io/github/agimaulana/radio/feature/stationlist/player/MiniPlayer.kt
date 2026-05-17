@@ -1,29 +1,25 @@
 package io.github.agimaulana.radio.feature.stationlist.player
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -39,59 +35,65 @@ internal fun MiniPlayer(
     onPause: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .height(80.dp)
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
-            .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .background(MaterialTheme.colorScheme.surface)
     ) {
-        Image(
-            painter = rememberAsyncImagePainter(
-                model = station.imageUrl,
-                placeholder = painterResource(id = R.drawable.station_default),
-                error = painterResource(id = R.drawable.station_default),
-            ),
-            contentDescription = station.name,
-            modifier = Modifier.size(64.dp)
-                .clip(
-                    shape = RoundedCornerShape(8.dp)
-                )
-                .background(
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = RoundedCornerShape(8.dp)
-                )
-        )
-
-        Column(
-            modifier = Modifier.weight(1f)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(80.dp)
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = station.name,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onBackground
+            Image(
+                painter = rememberAsyncImagePainter(
+                    model = station.imageUrl,
+                    placeholder = painterResource(id = R.drawable.station_default),
+                    error = painterResource(id = R.drawable.station_default),
+                ),
+                contentDescription = station.name,
+                modifier = Modifier.size(64.dp)
+                    .clip(
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .background(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(8.dp)
+                    )
             )
 
-            Text(
-                text = station.genre,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onBackground
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = station.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+
+                Text(
+                    text = station.genre,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+            }
+
+            MiniPlayerPlayPauseButton(
+                isBuffering = station.isBuffering,
+                isPlaying = station.isPlaying,
+                onClick = { isPlaying ->
+                    if (isPlaying) {
+                        onPause()
+                    } else {
+                        onPlay()
+                    }
+                }
             )
         }
-
-        MiniPlayerPlayPauseButton(
-            isBuffering = station.isBuffering,
-            isPlaying = station.isPlaying,
-            onClick = { isPlaying ->
-                if (isPlaying) {
-                    onPause()
-                } else {
-                    onPlay()
-                }
-            }
-        )
+        Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
     }
 }
 
