@@ -1,5 +1,6 @@
 plugins {
     id(libs.plugins.boilerplate.android.feature.get().pluginId)
+    id(libs.plugins.boilerplate.android.media3.get().pluginId)
 }
 
 android {

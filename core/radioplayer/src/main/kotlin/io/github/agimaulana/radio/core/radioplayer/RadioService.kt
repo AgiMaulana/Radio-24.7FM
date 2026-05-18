@@ -7,6 +7,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.cast.CastPlayer
 import androidx.media3.exoplayer.DefaultLivePlaybackSpeedControl
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
@@ -54,11 +55,12 @@ class RadioService : MediaLibraryService() {
             catalogStateRepository
         )
         val player = createPlayer()
+        val castPlayer = CastPlayer.Builder(this).setLocalPlayer(player).build()
         radioSessionCallback = RadioSessionCallback(radioLibraryCatalog)
 
         playlistPaginator = PlaylistPaginator(player, radioLibraryCatalog, serviceScope)
 
-        mediaSession = MediaLibrarySession.Builder(this, player, radioSessionCallback)
+        mediaSession = MediaLibrarySession.Builder(this, castPlayer, radioSessionCallback)
             .setSessionActivity(createPendingMainActivityIntent())
             .build()
         setMediaNotificationProvider(DefaultMediaNotificationProvider.Builder(this).build())

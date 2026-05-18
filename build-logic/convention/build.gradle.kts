@@ -61,5 +61,9 @@ gradlePlugin {
             id = libs.plugins.boilerplate.android.library.jacoco.get().pluginId
             implementationClass = "AndroidLibraryJacocoConventionPlugin"
         }
+        register("androidMedia3") {
+            id = libs.plugins.boilerplate.android.media3.get().pluginId
+            implementationClass = "Media3ConventionPlugin"
+        }
     }
 }
