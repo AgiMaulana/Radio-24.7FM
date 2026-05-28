@@ -1,8 +1,11 @@
 package io.github.agimaulana.radio.feature.widget.small
 
+import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.glance.GlanceModifier
 import androidx.glance.ImageProvider
+import androidx.glance.LocalContext
+import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.components.Scaffold
 import androidx.glance.appwidget.components.TitleBar
 import androidx.glance.layout.fillMaxSize
@@ -18,6 +21,17 @@ internal fun SmallWidget(
     modifier: GlanceModifier = GlanceModifier,
     titleIcon: ImageProvider = ImageProvider(R.drawable.ic_star_filled),
 ) {
+    val openAppAction = actionStartActivity(
+        LocalContext.current.packageManager
+            .getLaunchIntentForPackage(LocalContext.current.packageName)
+            ?.apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
+            ?: Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                `package` = LocalContext.current.packageName
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+    )
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         backgroundColor = ColorProvider(RadioTheme.colors.background),
@@ -29,7 +43,8 @@ internal fun SmallWidget(
         },
     ) {
         SmallWidgetEmptyPinnedStations(
-            modifier = GlanceModifier.fillMaxWidth()
+            modifier = GlanceModifier.fillMaxWidth(),
+            onOpenAppAction = openAppAction,
         )
     }
 }

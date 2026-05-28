@@ -1,15 +1,13 @@
 package io.github.agimaulana.radio.feature.widget.small
 
-import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.glance.ColorFilter
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
-import androidx.glance.LocalContext
+import androidx.glance.action.Action
 import androidx.glance.action.clickable
-import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
@@ -27,16 +25,8 @@ import io.github.agimaulana.radio.feature.widget.R
 @Composable
 internal fun SmallWidgetEmptyPinnedStations(
     modifier: GlanceModifier = GlanceModifier,
+    onOpenAppAction: Action? = null,
 ) {
-    val openAppIntent = LocalContext.current.packageManager
-        .getLaunchIntentForPackage(LocalContext.current.packageName)
-        ?.apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
-        ?: Intent(Intent.ACTION_MAIN).apply {
-            addCategory(Intent.CATEGORY_LAUNCHER)
-            `package` = LocalContext.current.packageName
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        }
-
     Column(
         modifier = modifier.padding(horizontal = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -73,7 +63,9 @@ internal fun SmallWidgetEmptyPinnedStations(
             modifier = GlanceModifier
                 .padding(top = 12.dp)
                 .fillMaxWidth()
-                .clickable(actionStartActivity(openAppIntent))
+                .let { modifier ->
+                    if (onOpenAppAction != null) modifier.clickable(onOpenAppAction) else modifier
+                }
                 .background(ColorProvider(RadioTheme.colors.primary))
                 .padding(horizontal = 24.dp, vertical = 10.dp),
         ) {
