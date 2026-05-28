@@ -16,6 +16,8 @@ class GlanceConventionPlugin : Plugin<Project> {
                 add("implementation", libs.findLibrary("glance-appwidget").get())
                 add("implementation", libs.findLibrary("glance-material3").get())
                 add("implementation", libs.findLibrary("glance-material").get())
+                add("debugImplementation", libs.findLibrary("glance-appwidget-preview").get())
+                add("debugImplementation", libs.findLibrary("glance-preview").get())
             }
         }
     }
