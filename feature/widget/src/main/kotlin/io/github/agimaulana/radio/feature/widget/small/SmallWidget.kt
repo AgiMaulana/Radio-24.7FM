@@ -24,11 +24,12 @@ internal fun SmallWidget(
     val openAppAction = actionStartActivity(
         LocalContext.current.packageManager
             .getLaunchIntentForPackage(LocalContext.current.packageName)
-            ?.apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
-            ?: Intent(Intent.ACTION_MAIN).apply {
+            ?.apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            } ?: Intent(Intent.ACTION_MAIN).apply {
                 addCategory(Intent.CATEGORY_LAUNCHER)
                 `package` = LocalContext.current.packageName
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
             }
     )
 

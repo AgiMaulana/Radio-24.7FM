@@ -2,12 +2,13 @@ package io.github.agimaulana.radio.feature.widget.small
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
+import androidx.glance.Button
+import androidx.glance.ButtonDefaults
 import androidx.glance.ColorFilter
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.action.Action
-import androidx.glance.action.clickable
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
@@ -59,27 +60,18 @@ internal fun SmallWidgetEmptyPinnedStations(
             ),
         )
 
-        Box(
-            modifier = GlanceModifier
-                .padding(top = 12.dp)
-                .fillMaxWidth()
-                .let { modifier ->
-                    if (onOpenAppAction != null) modifier.clickable(onOpenAppAction) else modifier
-                }
-                .background(ColorProvider(RadioTheme.colors.primary))
-                .padding(horizontal = 24.dp, vertical = 10.dp),
-        ) {
-            Column(
-                modifier = GlanceModifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(
-                    text = "Open app",
-                    style = TextStyle(
-                        color = ColorProvider(RadioTheme.colors.primaryForeground),
-                    ),
-                )
-            }
+        if (onOpenAppAction != null) {
+            Button(
+                text = "Open app",
+                onClick = onOpenAppAction,
+                modifier = GlanceModifier
+                    .padding(top = 12.dp)
+                    .fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = ColorProvider(RadioTheme.colors.primary),
+                    contentColor = ColorProvider(RadioTheme.colors.primaryForeground),
+                ),
+            )
         }
     }
 }
