@@ -6,3 +6,7 @@ plugins {
 android {
     namespace = "io.github.agimaulana.radio.feature.widget"
 }
+
+dependencies {
+    implementation(project(":core:design"))
+}
