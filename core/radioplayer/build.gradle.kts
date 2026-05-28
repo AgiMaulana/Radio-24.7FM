@@ -1,6 +1,7 @@
 plugins {
     id(libs.plugins.boilerplate.android.library.asProvider().get().pluginId)
     id(libs.plugins.boilerplate.android.hilt.get().pluginId)
+    id(libs.plugins.boilerplate.android.media3.get().pluginId)
 }
 
 android {
@@ -8,9 +9,6 @@ android {
 }
 
 dependencies {
-    implementation(libs.androidx.media3.session)
-    implementation(libs.androidx.media3.exoplayer)
-    implementation(libs.androidx.media3.exoplayer.hls)
     implementation(libs.kotlinx.coroutines.guava)
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
@@ -22,8 +20,6 @@ dependencies {
     testImplementation(libs.mockk)
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
 
-    androidTestImplementation(libs.androidx.media3.session)
-    androidTestImplementation(libs.androidx.media3.exoplayer)
     androidTestImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")

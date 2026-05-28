@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
+import androidx.media3.cast.MediaRouteButton
 import io.github.agimaulana.radio.core.design.RadioTheme
 import io.github.agimaulana.radio.core.design.theme.PreviewTheme
 import io.github.agimaulana.radio.feature.stationlist.StationListViewModel.UiState
@@ -138,13 +139,23 @@ private fun ToolbarContent(
                 .offset(y = lerp(155.dp, 20.dp, progress))
         )
 
+        MediaRouteButton(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .offset(y = lerp(155.dp, 8.dp, progress))
+                .size(48.dp)
+        )
+
         CustomSearchBar(
             value = uiState.filterStationName.orEmpty(),
             onValueChange = onSearch,
             placeholder = if (progress < 0.5f) "Search your favourite station..." else "Search...",
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(start = lerp(0.dp, 95.dp, progress))
+                .padding(
+                    start = lerp(0.dp, 95.dp, progress),
+                    end = lerp(0.dp, 48.dp + 16.dp, progress)
+                )
                 .offset(y = lerp(205.dp, 8.dp, progress))
                 .fillMaxWidth()
         )

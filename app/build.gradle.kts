@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.boilerplate.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.boilerplate.jetpack.compose)
+    alias(libs.plugins.boilerplate.android.media3)
 }
 
 val isCI = System.getenv("CI")?.toBoolean() == true
