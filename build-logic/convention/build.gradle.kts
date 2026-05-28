@@ -61,5 +61,9 @@ gradlePlugin {
             id = libs.plugins.boilerplate.android.library.jacoco.get().pluginId
             implementationClass = "AndroidLibraryJacocoConventionPlugin"
         }
+        register("androidGlance") {
+            id = libs.plugins.boilerplate.android.glance.get().pluginId
+            implementationClass = "GlanceConventionPlugin"
+        }
     }
 }
