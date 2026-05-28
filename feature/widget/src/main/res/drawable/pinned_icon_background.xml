@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The stroke / border configuration -->
+
+    <solid android:color="#80FF69B4"/>
+
+    <stroke
+        android:width="2dp"
+        android:color="@color/primary" />
+
+    <!-- Optional rounded corners matching your layout clipping -->
+    <corners android:radius="1000dp" />
+</shape>
