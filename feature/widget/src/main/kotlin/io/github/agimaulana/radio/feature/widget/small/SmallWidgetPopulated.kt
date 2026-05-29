@@ -4,15 +4,15 @@ import android.content.Intent
 import android.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
-import androidx.glance.ButtonColors
 import androidx.glance.ButtonDefaults
+import androidx.glance.ExperimentalGlanceApi
 import androidx.glance.GlanceModifier
 import androidx.glance.LocalContext
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.components.FilledButton
-import androidx.glance.layout.Alignment
-import androidx.glance.layout.Column
-import androidx.glance.layout.Row
+import androidx.glance.appwidget.lazy.GridCells
+import androidx.glance.appwidget.lazy.LazyVerticalGrid
+import androidx.glance.appwidget.lazy.items
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.padding
 import androidx.glance.preview.ExperimentalGlancePreviewApi
@@ -23,42 +23,33 @@ import io.github.agimaulana.radio.feature.widget.PinnedTile
 import io.github.agimaulana.radio.feature.widget.TileDispatchActivity
 import io.github.agimaulana.radio.feature.widget.WidgetViewModel
 
+@OptIn(ExperimentalGlanceApi::class)
 @Composable
 internal fun SmallWidgetPopulated(
     uiState: WidgetViewModel.UiState,
     modifier: GlanceModifier = GlanceModifier,
 ) {
     val tiles = uiState.pinnedStationDetails
-    Column(modifier = modifier.padding(horizontal = 8.dp)) {
-        for (row in 0..1) {
-            Row(
-                modifier = GlanceModifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                for (col in 0..1) {
-                    val index = row * 2 + col
-                    val tile = tiles.getOrNull(index)
-                    if (tile != null) {
-                        val intent = Intent(
-                            LocalContext.current,
-                            TileDispatchActivity::class.java,
-                        ).apply {
-                            putExtra("extra_media_id", tile.mediaId)
-                            addFlags(
-                                Intent.FLAG_ACTIVITY_NEW_TASK or
-                                    Intent.FLAG_ACTIVITY_SINGLE_TOP,
-                            )
-                        }
-                        TileView(
-                            tile = tile,
-                            modifier = GlanceModifier.fillMaxWidth(),
-                            onClickIntent = intent,
-                        )
-                    } else {
-                        TileViewEmpty(modifier = GlanceModifier.fillMaxWidth())
-                    }
-                }
+    LazyVerticalGrid(
+        gridCells = GridCells.Fixed(2),
+        modifier = modifier.padding(horizontal = 8.dp),
+    ) {
+        items(tiles) { tile ->
+            val intent = Intent(
+                LocalContext.current,
+                TileDispatchActivity::class.java,
+            ).apply {
+                putExtra("extra_media_id", tile.mediaId)
+                addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP,
+                )
             }
+            TileView(
+                tile = tile,
+                modifier = GlanceModifier.fillMaxWidth(),
+                onClickIntent = intent,
+            )
         }
     }
 }
@@ -79,15 +70,6 @@ private fun TileView(
             contentColor = ColorProvider(RadioTheme.colors.primaryForeground),
         ),
     )
-}
-
-@Composable
-private fun TileViewEmpty(modifier: GlanceModifier = GlanceModifier) {
-    Column(
-        modifier = modifier.padding(6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-    }
 }
 
 @OptIn(ExperimentalGlancePreviewApi::class)
