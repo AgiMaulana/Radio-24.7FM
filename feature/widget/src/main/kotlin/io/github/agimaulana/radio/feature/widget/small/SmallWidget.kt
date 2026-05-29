@@ -47,8 +47,8 @@ private fun SmallWidgetContent(
         backgroundColor = ColorProvider(RadioTheme.colors.background),
         titleBar = {
             TitleBar(
-                startIcon = ImageProvider(R.drawable.ic_star_filled),
-                title = "247FM",
+                startIcon = ImageProvider(R.drawable.ic_app),
+                title = "24.7 FM",
             )
         },
     ) {

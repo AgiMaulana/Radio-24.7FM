@@ -46,12 +46,12 @@ class WidgetViewModel @Inject constructor(
             browser.pinnedStations.collect { list ->
                 val ids = list.map { it.mediaId }
                 // Also attempt to fetch station details for up to 4 pinned stations
-                val details = ids.take(4).mapNotNull { mediaId ->
+                val details = ids.mapNotNull { mediaId ->
                     try {
                         val station = browser.getStation(mediaId)
                         station?.let {
                             val name = it.radioMetadata.stationName
-                            io.github.agimaulana.radio.feature.widget.PinnedTile(
+                            PinnedTile(
                                 mediaId = mediaId,
                                 name = name,
                                 frequency = "",
@@ -60,6 +60,7 @@ class WidgetViewModel @Inject constructor(
                             )
                         }
                     } catch (t: Throwable) {
+                        Timber.e(t, "Failed to fetch station details for pinned station %s: %s", mediaId, t.localizedMessage)
                         null
                     }
                 }
