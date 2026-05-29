@@ -1,6 +1,7 @@
 package io.github.agimaulana.radio.core.glance.state
 
 import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.GlanceId
 import kotlinx.coroutines.CoroutineScope
@@ -19,7 +20,7 @@ import io.github.agimaulana.radio.core.glance.state.ApplicationCoroutineScope
  */
 @Singleton
 public class WidgetStateObserver @Inject constructor(
-    private val context: Context,
+    @ApplicationContext private val context: Context,
     @ApplicationCoroutineScope private val appScope: CoroutineScope
 ) {
 
