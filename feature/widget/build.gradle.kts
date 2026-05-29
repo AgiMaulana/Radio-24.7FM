@@ -9,4 +9,8 @@ android {
 
 dependencies {
     implementation(project(":core:design"))
+    implementation(project(":core:radioplayer"))
+    implementation(project(":core:glance-viewmodel-core"))
+    implementation(project(":core:glance-viewmodel-hilt"))
+    implementation(project(":core:glance-state"))
 }

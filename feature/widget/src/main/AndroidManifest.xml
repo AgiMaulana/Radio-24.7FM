@@ -12,6 +12,17 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/radio_widget_info" />
         </receiver>
+        <receiver
+            android:name=".PlayPinnedStationReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="io.github.agimaulana.radio.action.PLAY_PINNED" />
+            </intent-filter>
+        </receiver>
+
+        <activity
+            android:name=".TileDispatchActivity"
+            android:exported="false" />
     </application>
 
 </manifest>
