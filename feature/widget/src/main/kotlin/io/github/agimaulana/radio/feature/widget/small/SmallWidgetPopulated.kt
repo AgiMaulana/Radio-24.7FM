@@ -10,6 +10,7 @@ import androidx.glance.ExperimentalGlanceApi
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.action.Action
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.action.actionSendBroadcast
 import androidx.glance.appwidget.cornerRadius
@@ -45,7 +46,7 @@ import io.github.agimaulana.radio.feature.widget.component.GlancePlayingWaveIndi
 internal fun SmallWidgetPopulated(
     tiles: List<PinnedTile>,
     modifier: GlanceModifier = GlanceModifier,
-    tileToIntent: (PinnedTile) -> Intent,
+    tileToAction: (PinnedTile) -> Action,
 ) {
     LazyVerticalGrid(
         gridCells = GridCells.Fixed(2),
@@ -55,7 +56,7 @@ internal fun SmallWidgetPopulated(
             TileView(
                 tile = tile,
                 modifier = GlanceModifier.fillMaxWidth(),
-                onClickIntent = tileToIntent(tile),
+                onClickAction = tileToAction(tile),
             )
         }
     }
@@ -66,7 +67,7 @@ internal fun SmallWidgetPopulated(
 private fun TileView(
     tile: PinnedTile,
     modifier: GlanceModifier = GlanceModifier,
-    onClickIntent: Intent,
+    onClickAction: Action,
 ) {
     Box(modifier = modifier.padding(4.dp)) {
         Column(
@@ -74,7 +75,7 @@ private fun TileView(
                 .fillMaxWidth()
                 .background(ColorProvider(RadioTheme.colors.card))
                 .cornerRadius(16.dp)
-                .clickable(actionSendBroadcast(onClickIntent)),
+                .clickable(onClickAction),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -167,6 +168,6 @@ private fun SmallWidgetPopulatedPreview() {
     )
     SmallWidgetPopulated(
         tiles = tiles,
-        tileToIntent = { Intent() },
+        tileToAction = { actionSendBroadcast(Intent()) },
     )
 }

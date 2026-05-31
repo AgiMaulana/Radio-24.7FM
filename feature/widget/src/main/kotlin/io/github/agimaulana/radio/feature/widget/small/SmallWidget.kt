@@ -7,6 +7,7 @@ import androidx.glance.GlanceModifier
 import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
 import androidx.glance.action.Action
+import androidx.glance.appwidget.action.actionSendBroadcast
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.components.Scaffold
 import androidx.glance.appwidget.components.TitleBar
@@ -36,12 +37,13 @@ internal fun SmallWidget(
             packageManager = context.packageManager,
             packageName = context.packageName,
         ),
-        tileToIntent = { tile ->
-            Intent(context, PlayPinnedStationReceiver::class.java).apply {
+        tileToAction = { tile ->
+            val intent = Intent(context, PlayPinnedStationReceiver::class.java).apply {
                 action = if (tile.isPlaying) ACTION_PAUSE_PINNED else ACTION_PLAY_PINNED
                 putExtra("extra_media_id", tile.mediaId)
                 `package` = context.packageName
             }
+            actionSendBroadcast(intent)
         },
     )
 }
@@ -51,7 +53,7 @@ private fun SmallWidgetContent(
     uiState: WidgetViewModel.UiState,
     modifier: GlanceModifier = GlanceModifier,
     emptyStateClickAction: Action? = null,
-    tileToIntent: (PinnedTile) -> Intent,
+    tileToAction: (PinnedTile) -> Action,
 ) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -74,7 +76,7 @@ private fun SmallWidgetContent(
             SmallWidgetPopulated(
                 tiles = uiState.pinnedStationDetails,
                 modifier = GlanceModifier.fillMaxWidth(),
-                tileToIntent = tileToIntent,
+                tileToAction = tileToAction,
             )
         }
     }
@@ -102,7 +104,7 @@ private fun createOnEmptyStateClickAction(
 private fun SmallWidgetContentPreview() {
     SmallWidgetContent(
         uiState = WidgetViewModel.UiState(),
-        tileToIntent = { Intent() },
+        tileToAction = { actionSendBroadcast(Intent()) },
     )
 }
 
@@ -119,6 +121,6 @@ private fun SmallWidgetContentPopulatedPreview() {
                 PinnedTile("id4", "KEXP 90.3", "90.3 FM", "KEXP", android.graphics.Color.parseColor("#6B2FA0")),
             ),
         ),
-        tileToIntent = { Intent() },
+        tileToAction = { actionSendBroadcast(Intent()) },
     )
 }
