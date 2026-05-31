@@ -17,6 +17,9 @@ import androidx.glance.preview.Preview
 import androidx.glance.unit.ColorProvider
 import io.github.agimaulana.radio.core.design.RadioTheme
 import io.github.agimaulana.radio.feature.widget.PinnedTile
+import io.github.agimaulana.radio.feature.widget.PlayPinnedStationReceiver
+import io.github.agimaulana.radio.feature.widget.PlayPinnedStationReceiver.Companion.ACTION_PAUSE_PINNED
+import io.github.agimaulana.radio.feature.widget.PlayPinnedStationReceiver.Companion.ACTION_PLAY_PINNED
 import io.github.agimaulana.radio.feature.widget.R
 import io.github.agimaulana.radio.feature.widget.WidgetViewModel
 
@@ -33,6 +36,13 @@ internal fun SmallWidget(
             packageManager = context.packageManager,
             packageName = context.packageName,
         ),
+        tileToIntent = { tile ->
+            Intent(context, PlayPinnedStationReceiver::class.java).apply {
+                action = if (tile.isPlaying) ACTION_PAUSE_PINNED else ACTION_PLAY_PINNED
+                putExtra("extra_media_id", tile.mediaId)
+                `package` = context.packageName
+            }
+        },
     )
 }
 
@@ -41,6 +51,7 @@ private fun SmallWidgetContent(
     uiState: WidgetViewModel.UiState,
     modifier: GlanceModifier = GlanceModifier,
     emptyStateClickAction: Action? = null,
+    tileToIntent: (PinnedTile) -> Intent,
 ) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -59,7 +70,11 @@ private fun SmallWidgetContent(
                 onOpenAppAction = emptyStateClickAction,
             )
         } else {
-            SmallWidgetPopulated(uiState = uiState, modifier = GlanceModifier.fillMaxWidth())
+            SmallWidgetPopulated(
+                tiles = uiState.pinnedStationDetails,
+                modifier = GlanceModifier.fillMaxWidth(),
+                tileToIntent = tileToIntent,
+            )
         }
     }
 }
@@ -84,7 +99,10 @@ private fun createOnEmptyStateClickAction(
 @Preview
 @Composable
 private fun SmallWidgetContentPreview() {
-    SmallWidgetContent(uiState = WidgetViewModel.UiState())
+    SmallWidgetContent(
+        uiState = WidgetViewModel.UiState(),
+        tileToIntent = { Intent() },
+    )
 }
 
 @OptIn(ExperimentalGlancePreviewApi::class)
@@ -100,5 +118,6 @@ private fun SmallWidgetContentPopulatedPreview() {
                 PinnedTile("id4", "KEXP 90.3", "90.3 FM", "KEXP", android.graphics.Color.parseColor("#6B2FA0")),
             ),
         ),
+        tileToIntent = { Intent() },
     )
 }

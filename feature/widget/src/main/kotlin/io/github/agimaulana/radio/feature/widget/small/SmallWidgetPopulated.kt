@@ -8,7 +8,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.ExperimentalGlanceApi
 import androidx.glance.GlanceModifier
-import androidx.glance.LocalContext
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.action.actionSendBroadcast
 import androidx.glance.appwidget.cornerRadius
@@ -42,25 +41,19 @@ import io.github.agimaulana.radio.feature.widget.component.GlancePlayingWaveIndi
 @OptIn(ExperimentalGlanceApi::class)
 @Composable
 internal fun SmallWidgetPopulated(
-    uiState: WidgetViewModel.UiState,
+    tiles: List<PinnedTile>,
     modifier: GlanceModifier = GlanceModifier,
+    tileToIntent: (PinnedTile) -> Intent,
 ) {
-    val tiles = uiState.pinnedStationDetails
-    val context = LocalContext.current
     LazyVerticalGrid(
         gridCells = GridCells.Fixed(2),
         modifier = modifier.padding(horizontal = 4.dp).fillMaxSize(),
     ) {
         items(tiles) { tile ->
-            val intent = Intent(context, PlayPinnedStationReceiver::class.java).apply {
-                action = "io.github.agimaulana.radio.action.PLAY_PINNED"
-                putExtra("extra_media_id", tile.mediaId)
-                `package` = context.packageName
-            }
             TileView(
                 tile = tile,
                 modifier = GlanceModifier.fillMaxWidth(),
-                onClickIntent = intent,
+                onClickIntent = tileToIntent(tile),
             )
         }
     }
@@ -140,14 +133,14 @@ private fun TileView(
 @Preview
 @Composable
 private fun SmallWidgetPopulatedPreview() {
+    val tiles = listOf(
+        PinnedTile("id1", "Most", "105.8", "MOST", Color.parseColor("#438C76"), isPlaying = true),
+        PinnedTile("id2", "Gen", "98.7", "GEN", Color.parseColor("#634EB8")),
+        PinnedTile("id3", "Jak FM", "", "JAK", Color.parseColor("#3871C1")),
+        PinnedTile("id4", "Insania FM", "", "INS", Color.parseColor("#B34423")),
+    )
     SmallWidgetPopulated(
-        uiState = WidgetViewModel.UiState(
-            pinnedStationDetails = listOf(
-                PinnedTile("id1", "Most", "105.8", "MOST", Color.parseColor("#438C76"), isPlaying = true),
-                PinnedTile("id2", "Gen", "98.7", "GEN", Color.parseColor("#634EB8")),
-                PinnedTile("id3", "Jak FM", "", "JAK", Color.parseColor("#3871C1")),
-                PinnedTile("id4", "Insania FM", "", "INS", Color.parseColor("#B34423")),
-            ),
-        ),
+        tiles = tiles,
+        tileToIntent = { Intent() },
     )
 }

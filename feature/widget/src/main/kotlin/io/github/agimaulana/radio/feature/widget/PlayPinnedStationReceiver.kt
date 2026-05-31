@@ -23,18 +23,23 @@ class PlayPinnedStationReceiver : BroadcastReceiver() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     override fun onReceive(context: Context, intent: Intent?) {
-        val mediaId = intent?.getStringExtra("extra_media_id") ?: return
+        when (intent?.action) {
+            ACTION_PLAY_PINNED -> handlePlay(intent)
+            ACTION_PAUSE_PINNED -> handlePause()
+        }
+    }
+
+    private fun handlePlay(intent: Intent) {
+        val mediaId = intent.getStringExtra("extra_media_id") ?: return
         val pendingResult = goAsync()
 
         scope.launch {
             try {
-                // Get station details
                 val browser = radioBrowserFactory.get()
                 val station = browser.getStation(mediaId)
                 browser.release()
 
                 if (station != null) {
-                    // Play immediately via controller
                     val player = radioPlayerControllerFactory.get()
                     player.startPlayback(
                         items = listOf(station),
@@ -43,7 +48,6 @@ class PlayPinnedStationReceiver : BroadcastReceiver() {
                             type = RadioPlayerController.PlaybackContext.Type.PINNED
                         )
                     )
-                    // We don't release player here because it's managing the session
                 } else {
                     Timber.e("Station not found: %s", mediaId)
                 }
@@ -53,5 +57,25 @@ class PlayPinnedStationReceiver : BroadcastReceiver() {
                 pendingResult.finish()
             }
         }
+    }
+
+    private fun handlePause() {
+        val pendingResult = goAsync()
+
+        scope.launch {
+            try {
+                val player = radioPlayerControllerFactory.get()
+                player.pause()
+            } catch (t: Throwable) {
+                Timber.e(t, "Failed to pause pinned station: %s", t.localizedMessage)
+            } finally {
+                pendingResult.finish()
+            }
+        }
+    }
+
+    companion object {
+        const val ACTION_PLAY_PINNED = "io.github.agimaulana.radio.action.PLAY_PINNED"
+        const val ACTION_PAUSE_PINNED = "io.github.agimaulana.radio.action.PAUSE_PINNED"
     }
 }
