@@ -60,10 +60,11 @@ private fun SmallWidgetContent(
             TitleBar(
                 startIcon = ImageProvider(R.drawable.ic_app),
                 title = "24.7 FM",
+                iconColor = null,
+                textColor = ColorProvider(RadioTheme.colors.foreground),
             )
         },
     ) {
-        // Render empty state when there are no pinned stations; otherwise render populated UI
         if (uiState.pinnedStationDetails.isEmpty()) {
             SmallWidgetEmptyPinnedStations(
                 modifier = GlanceModifier.fillMaxWidth(),
