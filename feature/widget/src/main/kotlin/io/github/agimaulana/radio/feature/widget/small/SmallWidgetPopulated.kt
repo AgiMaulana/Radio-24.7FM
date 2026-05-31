@@ -33,7 +33,6 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import io.github.agimaulana.radio.core.design.RadioTheme
 import io.github.agimaulana.radio.feature.widget.PinnedTile
-import io.github.agimaulana.radio.feature.widget.PlayPinnedStationReceiver
 import io.github.agimaulana.radio.feature.widget.WidgetViewModel
 import io.github.agimaulana.radio.feature.widget.component.GlancePlayingWaveIndicator
 
@@ -47,7 +46,7 @@ internal fun SmallWidgetPopulated(
 ) {
     LazyVerticalGrid(
         gridCells = GridCells.Fixed(2),
-        modifier = modifier.padding(horizontal = 4.dp).fillMaxSize(),
+        modifier = modifier.padding(4.dp).fillMaxSize(),
     ) {
         items(tiles) { tile ->
             TileView(
@@ -66,65 +65,79 @@ private fun TileView(
     modifier: GlanceModifier = GlanceModifier,
     onClickIntent: Intent,
 ) {
-    Column(
-        modifier = modifier
-            .padding(8.dp)
-            .background(ColorProvider(RadioTheme.colors.card))
-            .cornerRadius(16.dp)
-            .clickable(actionSendBroadcast(onClickIntent)),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Spacer(modifier = GlanceModifier.height(12.dp))
-        Box(
+    Box(modifier = modifier.padding(4.dp)) {
+        Column(
             modifier = GlanceModifier
-                .size(60.dp)
-                .background(ColorProvider(ComposeColor(tile.brandColor)))
-                .cornerRadius(12.dp),
-            contentAlignment = Alignment.Center,
+                .fillMaxWidth()
+                .background(ColorProvider(RadioTheme.colors.card))
+                .cornerRadius(16.dp)
+                .clickable(actionSendBroadcast(onClickIntent)),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
+            Spacer(modifier = GlanceModifier.height(12.dp))
+            TileIcon(tile = tile)
+            Spacer(modifier = GlanceModifier.height(8.dp))
             Text(
-                text = tile.shortName,
+                text = "${tile.name} ${tile.frequency}",
+                modifier = GlanceModifier.padding(horizontal = 8.dp),
                 style = TextStyle(
-                    color = ColorProvider(ComposeColor.White),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
+                    color = ColorProvider(RadioTheme.colors.foreground),
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center,
+                    fontWeight = if (tile.isPlaying) FontWeight.Bold else FontWeight.Normal
                 ),
+                maxLines = 1,
             )
-            
-            if (tile.isPlaying) {
+            Spacer(modifier = GlanceModifier.height(12.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalGlanceApi::class)
+private val PlayingOverlayColor = ColorProvider(ComposeColor(0x88000000))
+
+@Suppress("FunctionNaming")
+@Composable
+private fun TileIcon(
+    tile: PinnedTile,
+    modifier: GlanceModifier = GlanceModifier,
+) {
+    Box(
+        modifier = modifier
+            .size(60.dp)
+            .background(ColorProvider(ComposeColor(tile.brandColor)))
+            .cornerRadius(12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = tile.shortName,
+            style = TextStyle(
+                color = ColorProvider(ComposeColor.White),
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+            ),
+        )
+
+        if (tile.isPlaying) {
+            Box(
+                modifier = GlanceModifier.fillMaxSize()
+                    .background(PlayingOverlayColor)
+                    .cornerRadius(12.dp),
+                contentAlignment = Alignment.Center,
+            ) {
                 Box(
-                    modifier = GlanceModifier.fillMaxSize()
-                        .background(ColorProvider(ComposeColor(0x88000000)))
-                        .cornerRadius(12.dp),
-                    contentAlignment = Alignment.Center,
+                    modifier = GlanceModifier.fillMaxSize().padding(4.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        modifier = GlanceModifier.fillMaxSize().padding(4.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        GlancePlayingWaveIndicator(
-                            height = 12.dp,
-                            barWidth = 2.dp,
-                            barSpacing = 1.dp
-                        )
-                    }
+                    GlancePlayingWaveIndicator(
+                        height = 12.dp,
+                        barWidth = 2.dp,
+                        barSpacing = 1.dp
+                    )
                 }
             }
         }
-        Spacer(modifier = GlanceModifier.height(8.dp))
-        Text(
-            text = "${tile.name} ${tile.frequency}",
-            modifier = GlanceModifier.padding(horizontal = 8.dp),
-            style = TextStyle(
-                color = ColorProvider(RadioTheme.colors.foreground),
-                fontSize = 12.sp,
-                textAlign = TextAlign.Center,
-                fontWeight = if (tile.isPlaying) FontWeight.Bold else FontWeight.Normal
-            ),
-            maxLines = 1,
-        )
-        Spacer(modifier = GlanceModifier.height(12.dp))
     }
 }
 
