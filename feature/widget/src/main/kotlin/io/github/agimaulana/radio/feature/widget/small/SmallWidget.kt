@@ -4,6 +4,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.compose.runtime.Composable
 import androidx.glance.GlanceModifier
+import androidx.glance.GlanceTheme
 import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
 import androidx.glance.action.Action
@@ -15,13 +16,12 @@ import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.preview.ExperimentalGlancePreviewApi
 import androidx.glance.preview.Preview
-import androidx.glance.unit.ColorProvider
-import io.github.agimaulana.radio.core.design.RadioTheme
 import io.github.agimaulana.radio.feature.widget.PinnedTile
 import io.github.agimaulana.radio.feature.widget.PlayPinnedStationReceiver
 import io.github.agimaulana.radio.feature.widget.PlayPinnedStationReceiver.Companion.ACTION_PAUSE_PINNED
 import io.github.agimaulana.radio.feature.widget.PlayPinnedStationReceiver.Companion.ACTION_PLAY_PINNED
 import io.github.agimaulana.radio.feature.widget.R
+import io.github.agimaulana.radio.feature.widget.RadioGlanceTheme
 import io.github.agimaulana.radio.feature.widget.WidgetViewModel
 
 @Composable
@@ -57,13 +57,13 @@ private fun SmallWidgetContent(
 ) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        backgroundColor = ColorProvider(RadioTheme.colors.background),
+        backgroundColor = GlanceTheme.colors.background,
         titleBar = {
             TitleBar(
                 startIcon = ImageProvider(R.drawable.ic_app),
                 title = "24.7 FM",
                 iconColor = null,
-                textColor = ColorProvider(RadioTheme.colors.foreground),
+                textColor = GlanceTheme.colors.onBackground,
             )
         },
     ) {
@@ -102,25 +102,29 @@ private fun createOnEmptyStateClickAction(
 @Preview
 @Composable
 private fun SmallWidgetContentPreview() {
-    SmallWidgetContent(
-        uiState = WidgetViewModel.UiState(),
-        tileToAction = { actionSendBroadcast(Intent()) },
-    )
+    RadioGlanceTheme {
+        SmallWidgetContent(
+            uiState = WidgetViewModel.UiState(),
+            tileToAction = { actionSendBroadcast(Intent()) },
+        )
+    }
 }
 
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview
 @Composable
 private fun SmallWidgetContentPopulatedPreview() {
-    SmallWidgetContent(
-        uiState = WidgetViewModel.UiState(
-            pinnedStationDetails = listOf(
-                PinnedTile("id1", "BBC Radio 1", "98.8 FM", "BBC", android.graphics.Color.parseColor("#BC1A29")),
-                PinnedTile("id2", "NPR News", "88.5 FM", "NPR", android.graphics.Color.parseColor("#1A7BB4")),
-                PinnedTile("id3", "Jazz FM", "102.2 FM", "JAZZ", android.graphics.Color.parseColor("#2D5F2D")),
-                PinnedTile("id4", "KEXP 90.3", "90.3 FM", "KEXP", android.graphics.Color.parseColor("#6B2FA0")),
+    RadioGlanceTheme {
+        SmallWidgetContent(
+            uiState = WidgetViewModel.UiState(
+                pinnedStationDetails = listOf(
+                    PinnedTile("id1", "BBC Radio 1", "98.8 FM", "BBC", android.graphics.Color.parseColor("#BC1A29")),
+                    PinnedTile("id2", "NPR News", "88.5 FM", "NPR", android.graphics.Color.parseColor("#1A7BB4")),
+                    PinnedTile("id3", "Jazz FM", "102.2 FM", "JAZZ", android.graphics.Color.parseColor("#2D5F2D")),
+                    PinnedTile("id4", "KEXP 90.3", "90.3 FM", "KEXP", android.graphics.Color.parseColor("#6B2FA0")),
+                ),
             ),
-        ),
-        tileToAction = { actionSendBroadcast(Intent()) },
-    )
+            tileToAction = { actionSendBroadcast(Intent()) },
+        )
+    }
 }

@@ -29,7 +29,9 @@ class RadioWidget : GlanceAppWidget() {
 
         provideContent {
             val uiState = vm.uiState.collectAsState().value
-            SmallWidget(uiState = uiState)
+            RadioGlanceTheme {
+                SmallWidget(uiState = uiState)
+            }
         }
     }
 

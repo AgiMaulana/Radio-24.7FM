@@ -8,6 +8,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.ExperimentalGlanceApi
 import androidx.glance.GlanceModifier
+import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.action.Action
@@ -35,8 +36,8 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
-import io.github.agimaulana.radio.core.design.RadioTheme
 import io.github.agimaulana.radio.feature.widget.PinnedTile
+import io.github.agimaulana.radio.feature.widget.RadioGlanceTheme
 import io.github.agimaulana.radio.feature.widget.WidgetViewModel
 import io.github.agimaulana.radio.feature.widget.component.GlancePlayingWaveIndicator
 
@@ -73,7 +74,7 @@ private fun TileView(
         Column(
             modifier = GlanceModifier
                 .fillMaxWidth()
-                .background(ColorProvider(RadioTheme.colors.card))
+                .background(GlanceTheme.colors.surface)
                 .cornerRadius(16.dp)
                 .clickable(onClickAction),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -86,7 +87,7 @@ private fun TileView(
                 text = "${tile.name} ${tile.frequency}",
                 modifier = GlanceModifier.padding(horizontal = 8.dp),
                 style = TextStyle(
-                    color = ColorProvider(RadioTheme.colors.foreground),
+                    color = GlanceTheme.colors.onSurface,
                     fontSize = 12.sp,
                     textAlign = TextAlign.Center,
                     fontWeight = if (tile.isPlaying) FontWeight.Bold else FontWeight.Normal
@@ -160,14 +161,16 @@ private fun TileIcon(
 @Preview
 @Composable
 private fun SmallWidgetPopulatedPreview() {
-    val tiles = listOf(
-        PinnedTile("id1", "Most", "105.8", "MOST", Color.parseColor("#438C76"), isPlaying = true),
-        PinnedTile("id2", "Gen", "98.7", "GEN", Color.parseColor("#634EB8")),
-        PinnedTile("id3", "Jak FM", "", "JAK", Color.parseColor("#3871C1")),
-        PinnedTile("id4", "Insania FM", "", "INS", Color.parseColor("#B34423")),
-    )
-    SmallWidgetPopulated(
-        tiles = tiles,
-        tileToAction = { actionSendBroadcast(Intent()) },
-    )
+    RadioGlanceTheme {
+        val tiles = listOf(
+            PinnedTile("id1", "Most", "105.8", "MOST", Color.parseColor("#438C76"), isPlaying = true),
+            PinnedTile("id2", "Gen", "98.7", "GEN", Color.parseColor("#634EB8")),
+            PinnedTile("id3", "Jak FM", "", "JAK", Color.parseColor("#3871C1")),
+            PinnedTile("id4", "Insania FM", "", "INS", Color.parseColor("#B34423")),
+        )
+        SmallWidgetPopulated(
+            tiles = tiles,
+            tileToAction = { actionSendBroadcast(Intent()) },
+        )
+    }
 }

@@ -6,6 +6,7 @@ import androidx.glance.Button
 import androidx.glance.ButtonDefaults
 import androidx.glance.ColorFilter
 import androidx.glance.GlanceModifier
+import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.action.Action
@@ -19,8 +20,7 @@ import androidx.glance.preview.ExperimentalGlancePreviewApi
 import androidx.glance.preview.Preview
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
-import androidx.glance.unit.ColorProvider
-import io.github.agimaulana.radio.core.design.RadioTheme
+import io.github.agimaulana.radio.feature.widget.RadioGlanceTheme
 import io.github.agimaulana.radio.feature.widget.R
 
 @Composable
@@ -40,7 +40,7 @@ internal fun SmallWidgetEmptyPinnedStations(
             Image(
                 provider = ImageProvider(R.drawable.ic_star_filled),
                 contentDescription = null,
-                colorFilter = ColorFilter.tint(ColorProvider(RadioTheme.colors.primary))
+                colorFilter = ColorFilter.tint(GlanceTheme.colors.primary)
             )
         }
 
@@ -48,7 +48,7 @@ internal fun SmallWidgetEmptyPinnedStations(
             text = "No pins yet",
             modifier = GlanceModifier.padding(top = 8.dp),
             style = TextStyle(
-                color = ColorProvider(RadioTheme.colors.foreground),
+                color = GlanceTheme.colors.onBackground,
             ),
         )
 
@@ -56,7 +56,7 @@ internal fun SmallWidgetEmptyPinnedStations(
             text = "Long press the station to pin it",
             modifier = GlanceModifier.padding(top = 4.dp),
             style = TextStyle(
-                color = ColorProvider(RadioTheme.colors.foreground.copy(alpha = 0.6f)),
+                color = GlanceTheme.colors.onSurfaceVariant,
             ),
         )
 
@@ -68,8 +68,8 @@ internal fun SmallWidgetEmptyPinnedStations(
                     .padding(top = 12.dp)
                     .fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
-                    backgroundColor = ColorProvider(RadioTheme.colors.primary),
-                    contentColor = ColorProvider(RadioTheme.colors.primaryForeground),
+                    backgroundColor = GlanceTheme.colors.primary,
+                    contentColor = GlanceTheme.colors.onPrimary,
                 ),
             )
         }
@@ -80,5 +80,7 @@ internal fun SmallWidgetEmptyPinnedStations(
 @Preview
 @Composable
 private fun EmptyPinnedStationsPreview() {
-    SmallWidgetEmptyPinnedStations()
+    RadioGlanceTheme {
+        SmallWidgetEmptyPinnedStations()
+    }
 }
