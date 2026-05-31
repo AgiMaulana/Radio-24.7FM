@@ -24,12 +24,16 @@ rootProject.name = "Radio247Fm"
 include(":app")
 
 include(
-    ":feature:stationlist"
+    ":feature:stationlist",
+    ":feature:widget"
 )
 
 include(
     ":core:common",
     ":core:design",
+    ":core:glance-viewmodel-core",
+    ":core:glance-viewmodel-hilt",
+    ":core:glance-state",
     ":core:network",
     ":core:network:test",
     ":core:radioplayer",

@@ -89,9 +89,11 @@ dependencies {
     implementation(project(":domain:impl"))
     implementation(project(":infrastructure"))
     implementation(project(":feature:stationlist"))
+    implementation(project(":feature:widget"))
     implementation(libs.android.material)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.startup)
+    implementation(libs.glance.appwidget)
 
     testImplementation(libs.junit)
 

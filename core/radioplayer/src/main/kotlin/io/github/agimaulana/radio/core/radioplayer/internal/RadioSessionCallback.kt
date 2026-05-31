@@ -18,6 +18,7 @@ import io.github.agimaulana.radio.core.radioplayer.PlaybackExtras
 import io.github.agimaulana.radio.core.radioplayer.RadioLibraryContract
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
 import io.github.agimaulana.radio.domain.api.entity.GeoLatLong
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -28,8 +29,9 @@ import timber.log.Timber
 @OptIn(UnstableApi::class)
 internal class RadioSessionCallback(
     private val radioLibraryCatalog: RadioLibraryCatalog,
+    private val callbackDispatcher: CoroutineDispatcher = Dispatchers.Main,
 ) : MediaLibraryService.MediaLibrarySession.Callback {
-    private val callbackScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val callbackScope = CoroutineScope(SupervisorJob() + callbackDispatcher)
 
     override fun onConnect(
         session: MediaSession,
@@ -74,23 +76,27 @@ internal class RadioSessionCallback(
                 } else {
                     radioLibraryCatalog.getPlaylist()
                 }
-                val index = catalogPlaylist.indexOfFirst { it.mediaId == firstItem.mediaId }
+
+                val playablePlaylist = catalogPlaylist.filter { it.localConfiguration != null }
+                val index = playablePlaylist.indexOfFirst { it.mediaId == firstItem.mediaId }
                 if (index >= 0) {
-                    catalogPlaylist to index
+                    playablePlaylist to index
                 } else {
                     val resolvedItem = radioLibraryCatalog.findChild(firstItem.mediaId) ?: firstItem
-                    listOf(resolvedItem) to 0
+                    if (resolvedItem.localConfiguration != null) {
+                        listOf(resolvedItem) to 0
+                    } else {
+                        emptyList<MediaItem>() to C.INDEX_UNSET
+                    }
                 }
             } else {
-                val hasNoUri = mediaItems.any { it.localConfiguration == null }
-                val resolvedItems = if (hasNoUri) {
-                    mediaItems.map { requested ->
-                        radioLibraryCatalog.findChild(requested.mediaId) ?: requested
-                    }
-                } else {
-                    mediaItems
-                }
-                resolvedItems to startIndex
+                val resolvedItems = mediaItems.map { requested ->
+                    radioLibraryCatalog.findChild(requested.mediaId) ?: requested
+                }.filter { it.localConfiguration != null }
+                resolvedItems to if (resolvedItems.isEmpty()) C.INDEX_UNSET else startIndex.coerceIn(
+                    0,
+                    resolvedItems.size - 1
+                )
             }
 
             MediaSession.MediaItemsWithStartPosition(
@@ -112,8 +118,9 @@ internal class RadioSessionCallback(
             mediaItems.size
         )
         return callbackScope.future {
-            mediaItems.map { requested ->
-                radioLibraryCatalog.findChild(requested.mediaId) ?: requested
+            mediaItems.mapNotNull { requested ->
+                val resolved = radioLibraryCatalog.findChild(requested.mediaId) ?: requested
+                resolved.takeIf { it.localConfiguration != null }
             }
         }
     }
@@ -147,23 +154,35 @@ internal class RadioSessionCallback(
         return callbackScope.future {
             val currentMediaItem = mediaSession.player.currentMediaItem
             val context = currentMediaItem?.mediaMetadata?.extras?.let { extractContext(it) }
-            val playlist = if (context != null) {
+            val fullPlaylist = if (context != null) {
                 radioLibraryCatalog.getPlaylistForContext(context)
             } else {
                 radioLibraryCatalog.getPlaylist()
             }
+            val playablePlaylist = fullPlaylist.filter { it.localConfiguration != null }
             val startPositionMs = if (isForPlayback) mediaSession.player.currentPosition else C.TIME_UNSET
 
             val (items, index) = if (currentMediaItem != null) {
-                val foundIndex = playlist.indexOfFirst { it.mediaId == currentMediaItem.mediaId }
+                val foundIndex = playablePlaylist.indexOfFirst { it.mediaId == currentMediaItem.mediaId }
                 if (foundIndex >= 0) {
-                    playlist to foundIndex
-                } else {
+                    playablePlaylist to foundIndex
+                } else if (currentMediaItem.localConfiguration != null) {
                     listOf(currentMediaItem) to C.INDEX_UNSET
+                } else {
+                    val fallbackItem = playablePlaylist.firstOrNull()
+                    if (fallbackItem != null) {
+                        playablePlaylist to 0
+                    } else {
+                        emptyList<MediaItem>() to C.INDEX_UNSET
+                    }
                 }
             } else {
-                val fallbackItem = playlist.firstOrNull() ?: radioLibraryCatalog.rootItem()
-                listOf(fallbackItem) to 0
+                val fallbackItem = playablePlaylist.firstOrNull()
+                if (fallbackItem != null) {
+                    playablePlaylist to 0
+                } else {
+                    emptyList<MediaItem>() to C.INDEX_UNSET
+                }
             }
 
             MediaSession.MediaItemsWithStartPosition(items, index, startPositionMs)

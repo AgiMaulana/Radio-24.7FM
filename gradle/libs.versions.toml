@@ -42,6 +42,7 @@ androidxPalette = "1.0.0"
 androidxStartup = "1.2.0"
 playServicesLocation = "21.3.0"
 androidxDataStore = "1.1.7"
+glance = "1.2.0-rc01"
 
 # only for tests
 turbine = "1.2.1"
@@ -128,6 +129,12 @@ mockk-android = { module = "io.mockk:mockk-android", version.ref = "mockk" }
 mockk-agent = { module = "io.mockk:mockk-agent-jvm", version.ref = "mockk" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 
+glance-appwidget = { group = "androidx.glance", name = "glance-appwidget", version.ref = "glance" }
+glance-material3 = { group = "androidx.glance", name = "glance-material3", version.ref = "glance" }
+glance-material = { group = "androidx.glance", name = "glance-material", version.ref = "glance" }
+glance-appwidget-preview = { group = "androidx.glance", name = "glance-appwidget-preview", version.ref = "glance" }
+glance-preview = { group = "androidx.glance", name = "glance-preview", version.ref = "glance" }
+
 # Dependencies of the included build-logic
 android-gradlePlugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 kotlin-gradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
@@ -161,3 +168,4 @@ boilerplate-android-hilt = { id = "boilerplate.android.hilt" }
 boilerplate-android-sentry = { id = "boilerplate.android.sentry" }
 boilerplate-kotlin-detekt = { id = "boilerplate.kotlin.detekt" }
 boilerplate-jetpack-compose = { id = "boilerplate.jetpack.compose" }
+boilerplate-android-glance = { id = "boilerplate.android.glance" }
