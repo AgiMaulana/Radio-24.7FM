@@ -84,11 +84,11 @@ internal class PlaylistPaginator(
     }
 
     private fun appendItems(newItems: List<MediaItem>) {
-        val currentIds = (0 until player.mediaItemCount).map { 
-            player.getMediaItemAt(it).mediaId 
+        val currentIds = (0 until player.mediaItemCount).map {
+            player.getMediaItemAt(it).mediaId
         }.toSet()
-        
-        val filtered = newItems.filter { it.mediaId !in currentIds }
+
+        val filtered = newItems.filter { it.mediaId !in currentIds && it.localConfiguration != null }
         if (filtered.isNotEmpty()) {
             player.addMediaItems(filtered)
         }
