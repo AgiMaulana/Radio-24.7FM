@@ -1,5 +1,7 @@
 package io.github.agimaulana.radio.feature.widget
 
+import android.graphics.Bitmap
+
 data class PinnedTile(
     val mediaId: String,
     val name: String,
@@ -7,4 +9,6 @@ data class PinnedTile(
     val shortName: String,
     val brandColor: Int,
     val isPlaying: Boolean = false,
+    val imageUrl: String? = null,
+    val imageBitmap: Bitmap? = null,
 )

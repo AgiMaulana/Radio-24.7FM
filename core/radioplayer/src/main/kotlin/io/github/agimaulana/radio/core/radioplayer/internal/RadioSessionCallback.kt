@@ -29,7 +29,7 @@ import timber.log.Timber
 internal class RadioSessionCallback(
     private val radioLibraryCatalog: RadioLibraryCatalog,
 ) : MediaLibraryService.MediaLibrarySession.Callback {
-    private val callbackScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val callbackScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onConnect(
         session: MediaSession,

@@ -8,6 +8,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.ExperimentalGlanceApi
 import androidx.glance.GlanceModifier
+import androidx.glance.Image
+import androidx.glance.ImageProvider
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.action.actionSendBroadcast
 import androidx.glance.appwidget.cornerRadius
@@ -18,6 +20,7 @@ import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
+import androidx.glance.layout.ContentScale
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
@@ -110,14 +113,24 @@ private fun TileIcon(
             .cornerRadius(12.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = tile.shortName,
-            style = TextStyle(
-                color = ColorProvider(ComposeColor.White),
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-            ),
-        )
+        val imageBitmap = tile.imageBitmap
+        if (imageBitmap != null) {
+            Image(
+                provider = ImageProvider(imageBitmap),
+                contentDescription = tile.name,
+                modifier = GlanceModifier.fillMaxSize().cornerRadius(12.dp),
+                contentScale = ContentScale.FillBounds
+            )
+        } else {
+            Text(
+                text = tile.shortName,
+                style = TextStyle(
+                    color = ColorProvider(ComposeColor.White),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                ),
+            )
+        }
 
         if (tile.isPlaying) {
             Box(

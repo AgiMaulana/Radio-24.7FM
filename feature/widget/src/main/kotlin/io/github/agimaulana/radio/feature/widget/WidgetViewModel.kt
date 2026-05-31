@@ -1,8 +1,14 @@
 package io.github.agimaulana.radio.feature.widget
 
-import android.util.Log
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import coil.imageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
+import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.agimaulana.radio.core.radioplayer.PlaybackEvent
 import io.github.agimaulana.radio.core.radioplayer.PlaybackState
 import io.github.agimaulana.radio.core.radioplayer.RadioBrowserController
@@ -24,10 +30,13 @@ import javax.inject.Inject
 class WidgetViewModel @Inject constructor(
     private val radioBrowserFactory: RadioBrowserFactory,
     private val radioPlayerControllerFactory: RadioPlayerControllerFactory,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState = _uiState.asStateFlow()
+
+    private val bitmaps = MutableStateFlow<Map<String, Bitmap>>(emptyMap())
 
     private var radioBrowser: RadioBrowserController? = null
     private var radioPlayer: RadioPlayerController? = null
@@ -62,8 +71,9 @@ class WidgetViewModel @Inject constructor(
                 merge(
                     flowOf(PlaybackEvent.StateChanged(playbackState)),
                     player.event
-                )
-            ) { pinned, event ->
+                ),
+                bitmaps
+            ) { pinned, event, currentBitmaps ->
                 if (event is PlaybackEvent.StateChanged) {
                     playbackState = event.state
                 }
@@ -76,13 +86,17 @@ class WidgetViewModel @Inject constructor(
                         val station = browser.getStation(item.mediaId)
                         station?.let {
                             val name = it.radioMetadata.stationName
+                            val imageUrl = it.radioMetadata.imageUrl
+                            loadIcon(item.mediaId, imageUrl)
                             PinnedTile(
                                 mediaId = item.mediaId,
                                 name = name,
                                 frequency = "",
                                 shortName = name.take(3).uppercase(),
                                 brandColor = android.graphics.Color.DKGRAY,
-                                isPlaying = isPlaying && item.mediaId == currentMediaId
+                                isPlaying = isPlaying && item.mediaId == currentMediaId,
+                                imageUrl = imageUrl,
+                                imageBitmap = currentBitmaps[item.mediaId]
                             )
                         }
                     } catch (t: Throwable) {
@@ -92,6 +106,29 @@ class WidgetViewModel @Inject constructor(
                 }
             }.collectLatest { details ->
                 _uiState.update { it.copy(isLoading = false, pinnedStationDetails = details) }
+            }
+        }
+    }
+
+    private fun loadIcon(mediaId: String, url: String?) {
+        if (url.isNullOrBlank() || bitmaps.value.containsKey(mediaId)) return
+        viewModelScope.launch {
+            try {
+                val loader = context.imageLoader
+                val request = ImageRequest.Builder(context)
+                    .data(url)
+                    .size(120, 120)
+                    .allowHardware(false)
+                    .build()
+                val result = loader.execute(request)
+                if (result is SuccessResult) {
+                    val bitmap = (result.drawable as? BitmapDrawable)?.bitmap
+                    if (bitmap != null) {
+                        bitmaps.update { it + (mediaId to bitmap) }
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to load icon for $mediaId")
             }
         }
     }
