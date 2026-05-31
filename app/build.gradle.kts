@@ -93,6 +93,7 @@ dependencies {
     implementation(libs.android.material)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.startup)
+    implementation(libs.glance.appwidget)
 
     testImplementation(libs.junit)
 

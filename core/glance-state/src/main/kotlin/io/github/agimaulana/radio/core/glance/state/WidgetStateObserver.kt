@@ -3,6 +3,7 @@ package io.github.agimaulana.radio.core.glance.state
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.GlanceId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -36,7 +37,15 @@ public class WidgetStateObserver @Inject constructor(
         scope.launch {
             val flow = if (debounceMillis > 0) stateFlow.debounce(debounceMillis) else stateFlow
             flow.collect { latest ->
-                updateAllWidgets(context, widgetClass, latest, onUpdate)
+                val manager = GlanceAppWidgetManager(context)
+                val glanceIds = manager.getGlanceIds(widgetClass)
+                if (glanceIds.isEmpty()) {
+                    WidgetStateManager.stopObserving(widgetClass)
+                } else {
+                    for (id in glanceIds) {
+                        onUpdate(context, id, latest)
+                    }
+                }
             }
         }
 

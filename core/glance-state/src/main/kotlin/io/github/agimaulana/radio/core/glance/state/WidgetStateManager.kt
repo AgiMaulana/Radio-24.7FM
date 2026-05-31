@@ -2,7 +2,6 @@ package io.github.agimaulana.radio.core.glance.state
 
 import android.content.Context
 import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.GlanceId
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
@@ -34,24 +33,13 @@ public object WidgetStateManager {
         val existing = jobs[widgetClass]
         if (existing != null && existing.isActive) return existing
 
-        // Start a new observer job using the existing helper (keeps EntryPoint internal)
         val job = observeWidgetState(
             context = context,
             widgetClass = widgetClass,
             stateFlow = stateFlow,
             debounceMillis = debounceMillis,
-        ) { ctx, glanceId, latest ->
-            // Forward update to caller-provided updater
-            onUpdate(ctx, glanceId, latest)
-
-            // After update, check if there are any active GlanceIds for this widget.
-            val manager = GlanceAppWidgetManager(ctx)
-            val ids = manager.getGlanceIds(widgetClass)
-            if (ids.isEmpty()) {
-                // No active widget instances — stop observing and remove job
-                stopObserving(widgetClass)
-            }
-        }
+            onUpdate = onUpdate,
+        )
 
         jobs[widgetClass] = job
         return job

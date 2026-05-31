@@ -101,7 +101,7 @@ private fun createOnEmptyStateClickAction(
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview
 @Composable
-private fun SmallWidgetContentPreview() {
+private fun SmallWidgetContentEmptyPreview() {
     RadioGlanceTheme {
         SmallWidgetContent(
             uiState = WidgetViewModel.UiState(),
@@ -113,7 +113,7 @@ private fun SmallWidgetContentPreview() {
 @OptIn(ExperimentalGlancePreviewApi::class)
 @Preview
 @Composable
-private fun SmallWidgetContentPopulatedPreview() {
+internal fun SmallWidgetContentPreview() {
     RadioGlanceTheme {
         SmallWidgetContent(
             uiState = WidgetViewModel.UiState(

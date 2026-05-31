@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -66,14 +67,28 @@ class WidgetViewModel @Inject constructor(
         observationJob = viewModelScope.launch {
             var playbackState = PlaybackState.IDLE
 
+            val pinnedDetailsFlow = browser.pinnedStations.map { pinned ->
+                pinned.mapNotNull { item ->
+                    try {
+                        browser.getStation(item.mediaId)?.let { station ->
+                            loadIcon(item.mediaId, station.radioMetadata.imageUrl)
+                            station
+                        }
+                    } catch (t: Throwable) {
+                        Timber.e(t, "Failed to fetch station details for mediaId: ${item.mediaId}")
+                        null
+                    }
+                }
+            }
+
             combine(
-                browser.pinnedStations,
+                pinnedDetailsFlow,
                 merge(
                     flowOf(PlaybackEvent.StateChanged(playbackState)),
                     player.event
                 ),
                 bitmaps
-            ) { pinned, event, currentBitmaps ->
+            ) { stations, event, currentBitmaps ->
                 if (event is PlaybackEvent.StateChanged) {
                     playbackState = event.state
                 }
@@ -81,28 +96,19 @@ class WidgetViewModel @Inject constructor(
                 val currentMediaId = player.currentMediaId
                 val isPlaying = player.isPlaying || playbackState == PlaybackState.BUFFERING
 
-                pinned.mapNotNull { item ->
-                    try {
-                        val station = browser.getStation(item.mediaId)
-                        station?.let {
-                            val name = it.radioMetadata.stationName
-                            val imageUrl = it.radioMetadata.imageUrl
-                            loadIcon(item.mediaId, imageUrl)
-                            PinnedTile(
-                                mediaId = item.mediaId,
-                                name = name,
-                                frequency = "",
-                                shortName = name.take(3).uppercase(),
-                                brandColor = android.graphics.Color.DKGRAY,
-                                isPlaying = isPlaying && item.mediaId == currentMediaId,
-                                imageUrl = imageUrl,
-                                imageBitmap = currentBitmaps[item.mediaId]
-                            )
-                        }
-                    } catch (t: Throwable) {
-                        Timber.e(t, "Failed to fetch station details for mediaId: ${item.mediaId}")
-                        null
-                    }
+                stations.map { station ->
+                    val name = station.radioMetadata.stationName
+                    val imageUrl = station.radioMetadata.imageUrl
+                    PinnedTile(
+                        mediaId = station.mediaId,
+                        name = name,
+                        frequency = "",
+                        shortName = name.take(3).uppercase(),
+                        brandColor = android.graphics.Color.DKGRAY,
+                        isPlaying = isPlaying && station.mediaId == currentMediaId,
+                        imageUrl = imageUrl,
+                        imageBitmap = currentBitmaps[station.mediaId]
+                    )
                 }
             }.collectLatest { details ->
                 _uiState.update { it.copy(isLoading = false, pinnedStationDetails = details) }
