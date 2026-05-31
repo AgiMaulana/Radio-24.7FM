@@ -18,6 +18,7 @@ import io.github.agimaulana.radio.core.radioplayer.PlaybackExtras
 import io.github.agimaulana.radio.core.radioplayer.RadioLibraryContract
 import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
 import io.github.agimaulana.radio.domain.api.entity.GeoLatLong
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -28,8 +29,9 @@ import timber.log.Timber
 @OptIn(UnstableApi::class)
 internal class RadioSessionCallback(
     private val radioLibraryCatalog: RadioLibraryCatalog,
+    private val callbackDispatcher: CoroutineDispatcher = Dispatchers.Main,
 ) : MediaLibraryService.MediaLibrarySession.Callback {
-    private val callbackScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private val callbackScope = CoroutineScope(SupervisorJob() + callbackDispatcher)
 
     override fun onConnect(
         session: MediaSession,

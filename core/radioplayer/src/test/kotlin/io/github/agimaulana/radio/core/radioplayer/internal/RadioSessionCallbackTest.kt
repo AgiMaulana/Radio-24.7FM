@@ -16,6 +16,8 @@ import io.github.agimaulana.radio.domain.api.usecase.GetRadioStationsUseCase
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -56,7 +58,7 @@ class RadioSessionCallbackTest {
             mediaItems = listOf(MediaItem.Builder().setMediaId("station-2").build()),
             startIndex = 0,
             startPositionMs = 1500L
-        ).get()
+        ).await()
 
         assertEquals(2, result.mediaItems.size)
         assertEquals("station-1", result.mediaItems[0].mediaId)
@@ -103,7 +105,7 @@ class RadioSessionCallbackTest {
             mediaItems = listOf(mediaItem),
             startIndex = 0,
             startPositionMs = 0L
-        ).get()
+        ).await()
 
         assertEquals(2, result.mediaItems.size)
         assertEquals("search-1", result.mediaItems[0].mediaId)
@@ -128,7 +130,7 @@ class RadioSessionCallbackTest {
             mediaSession = session,
             controller = controller,
             isForPlayback = true
-        ).get()
+        ).await()
 
         assertNotNull(result.mediaItems)
         assertEquals(1, result.mediaItems.size)
@@ -150,7 +152,7 @@ class RadioSessionCallbackTest {
             page = 0,
             pageSize = 10,
             params = null
-        ).get()
+        ).await()
 
         val items = requireNotNull(result.value)
         assertEquals(2, items.size)
@@ -176,7 +178,7 @@ class RadioSessionCallbackTest {
             session = session,
             browser = controller,
             mediaId = "station-4"
-        ).get()
+        ).await()
 
         val item = requireNotNull(result.value)
         assertEquals("station-4", item.mediaId)
@@ -202,7 +204,8 @@ class RadioSessionCallbackTest {
                 getPinnedStationsUseCase,
                 getRadioStationUseCase,
                 catalogStateRepository
-            )
+            ),
+            callbackDispatcher = Dispatchers.IO
         )
     }
 
@@ -225,7 +228,8 @@ class RadioSessionCallbackTest {
                 getPinnedStationsUseCase,
                 getRadioStationUseCase,
                 catalogStateRepository
-            )
+            ),
+            callbackDispatcher = Dispatchers.IO
         )
     }
 
