@@ -53,7 +53,7 @@ private fun SmallWidgetContent(
         },
     ) {
         // Render empty state when there are no pinned stations; otherwise render populated UI
-        if (uiState.pinnedStations.isEmpty()) {
+        if (uiState.pinnedStationDetails.isEmpty()) {
             SmallWidgetEmptyPinnedStations(
                 modifier = GlanceModifier.fillMaxWidth(),
                 onOpenAppAction = emptyStateClickAction,

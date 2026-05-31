@@ -1,12 +1,17 @@
 package io.github.agimaulana.radio.feature.widget
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.agimaulana.radio.core.radioplayer.RadioBrowserController
 import io.github.agimaulana.radio.core.radioplayer.RadioBrowserFactory
+import io.github.agimaulana.radio.core.radioplayer.RadioPlayerController
+import io.github.agimaulana.radio.core.radioplayer.RadioPlayerControllerFactory
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -14,71 +19,80 @@ import javax.inject.Inject
 
 class WidgetViewModel @Inject constructor(
     private val radioBrowserFactory: RadioBrowserFactory,
+    private val radioPlayerControllerFactory: RadioPlayerControllerFactory,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState = _uiState.asStateFlow()
 
     private var radioBrowser: RadioBrowserController? = null
-    private var pinnedStationsJob: Job? = null
+    private var radioPlayer: RadioPlayerController? = null
+    private var observationJob: Job? = null
 
     fun init() {
-        // Start a browser and observe pinned stations. Safe to call multiple times.
         if (radioBrowser != null) return
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            val browser = try {
-                radioBrowserFactory.get()
+            try {
+                radioBrowser = radioBrowserFactory.get()
+                radioPlayer = radioPlayerControllerFactory.get()
+                startObservation()
             } catch (t: Throwable) {
-                Timber.e(t, "Failed to start RadioBrowserController for widget")
+                Timber.e(t, "Failed to initialize WidgetViewModel")
                 _uiState.update { it.copy(isLoading = false) }
-                return@launch
             }
-            radioBrowser = browser
-            observePinnedStations(browser)
         }
     }
 
-    private fun observePinnedStations(browser: RadioBrowserController) {
-        pinnedStationsJob?.cancel()
-        pinnedStationsJob = viewModelScope.launch {
-            browser.pinnedStations.collect { list ->
-                val ids = list.map { it.mediaId }
-                // Also attempt to fetch station details for up to 4 pinned stations
-                val details = ids.mapNotNull { mediaId ->
+    private fun startObservation() {
+        val browser = radioBrowser ?: return
+        val player = radioPlayer ?: return
+
+        observationJob?.cancel()
+        observationJob = viewModelScope.launch {
+            combine(
+                browser.pinnedStations,
+                player.event
+            ) { pinned, _ ->
+                val currentMediaId = player.currentMediaId
+                val isPlaying = player.isPlaying
+                
+                val details = pinned.mapNotNull { item ->
                     try {
-                        val station = browser.getStation(mediaId)
+                        val station = browser.getStation(item.mediaId)
                         station?.let {
                             val name = it.radioMetadata.stationName
                             PinnedTile(
-                                mediaId = mediaId,
+                                mediaId = item.mediaId,
                                 name = name,
                                 frequency = "",
                                 shortName = name.take(3).uppercase(),
                                 brandColor = android.graphics.Color.DKGRAY,
+                                isPlaying = isPlaying && item.mediaId == currentMediaId
                             )
                         }
                     } catch (t: Throwable) {
-                        Timber.e(t, "Failed to fetch station details for pinned station %s: %s", mediaId, t.localizedMessage)
+                        Timber.e(t, "Failed to fetch station details for mediaId: ${item.mediaId}")
                         null
                     }
                 }
-                _uiState.update { it.copy(isLoading = false, pinnedStations = ids, pinnedStationDetails = details) }
+                details
+            }.collectLatest { details ->
+                _uiState.update { it.copy(isLoading = false, pinnedStationDetails = details) }
             }
         }
     }
 
     override fun onCleared() {
         super.onCleared()
-        pinnedStationsJob?.cancel()
+        observationJob?.cancel()
         radioBrowser?.release()
+        radioPlayer?.release()
     }
 
     data class UiState(
         val isLoading: Boolean = false,
-        val pinnedStations: List<String> = emptyList(),
-        // detailed placeholder for widget rendering (not persisted)
-        val pinnedStationDetails: List<io.github.agimaulana.radio.feature.widget.PinnedTile> = emptyList(),
+        val pinnedStationDetails: List<PinnedTile> = emptyList(),
     )
 }

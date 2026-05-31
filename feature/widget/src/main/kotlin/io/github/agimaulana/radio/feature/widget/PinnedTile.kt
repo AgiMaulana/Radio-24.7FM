@@ -6,4 +6,5 @@ data class PinnedTile(
     val frequency: String,
     val shortName: String,
     val brandColor: Int,
+    val isPlaying: Boolean = false,
 )
